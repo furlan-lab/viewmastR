@@ -1,0 +1,24 @@
+Package: viewmastR
+Type: R Package
+Title: This package aims annotate scRNAseq data according to a reference
+Version: 1.0
+Date: 2022-07-18
+Author: Scott Furlan
+Maintainer: Scott Furlan <scfurl@users.noreply.github.com>
+Description: Using a variety of tools, this package seeks to annotate cells from one dataset with
+    cell labels from another experiment.  Currently two major methods are included.  UMAP projection, which
+    projects cells onto a reference atlas using the umap transform function and annotates the cells according
+    to the nearest neighbor in the reference.  The second group of methods use transfer learning algorithms built with
+    the ArrayFire C++ library to annotate cells using an atlas.
+License: MIT
+Imports: Rcpp (>= 1.0.6),
+  monocle3 (>= 0.1.0),
+  Matrix (>= 1.0),
+  ggplot2 (>= 3.0.0),
+  magrittr (> 1.0.0),
+  Seurat (> 4.0.0),
+  biomaRt (> 2.50.0)
+LinkingTo: Rcpp, RcppArrayFire
+RoxygenNote: 7.2.0
+SystemRequirements: C++11
+Encoding: UTF-8
