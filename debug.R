@@ -1,4 +1,19 @@
 
+##cluster
+
+sFH2
+ml ArrayFire/3.8.1-foss-2019b-CUDA-10.2.89
+ml R/4.0.0-foss-2019b-fh1
+export AF_PATH=/app/software/ArrayFire/3.8.1-foss-2019b-CUDA-10.2.89
+R
+if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+ps<-.libPaths()
+.libPaths(ps[c(2,1,3)])
+devtools::install_github("daqana/rcpparrayfire")
+devtools::install_github("furlan-lab/viewmastR")
+
+
 
 setwd("~/develop/viewmastR")
 
@@ -25,28 +40,28 @@ out<-smr(t(data$train$x)[,1:5000],
            num_classes = 10, 
            query = t(data$test$x),
            verbose = T)
-
-out<-smr_sparse(t(data$train$x)[,1:5000],
-         t(data$test$x)[,1:1000],
-         data$train$y[1:5000,],
-         data$test$y[1:1000,],
-         lambda = 1.0,
-         max_error = 0.01,
-         learning_rate = 0.1,
-         num_classes = 10,
-         query = t(data$test$x),
-         verbose = T)
-
-smr_sparse_test(t(data$train$x)[,1:5000],
-                t(data$test$x)[,1:1000],
-                data$train$y[1:5000,],
-                data$test$y[1:1000,],
-                lambda = 1.0,
-                max_error = 0.01,
-                learning_rate = 0.1,
-                num_classes = 10,
-                query = t(data$test$x),
-                verbose = T)
+# 
+# out<-smr_sparse(t(data$train$x)[,1:5000],
+#          t(data$test$x)[,1:1000],
+#          data$train$y[1:5000,],
+#          data$test$y[1:1000,],
+#          lambda = 1.0,
+#          max_error = 0.01,
+#          learning_rate = 0.1,
+#          num_classes = 10,
+#          query = t(data$test$x),
+#          verbose = T)
+# 
+# smr_sparse_test(t(data$train$x)[,1:5000],
+#                 t(data$test$x)[,1:1000],
+#                 data$train$y[1:5000,],
+#                 data$test$y[1:1000,],
+#                 lambda = 1.0,
+#                 max_error = 0.01,
+#                 learning_rate = 0.1,
+#                 num_classes = 10,
+#                 query = t(data$test$x),
+#                 verbose = T)
 
 
 
