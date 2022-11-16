@@ -277,7 +277,7 @@ static int ann_demo_run(int perc, const dtype dt, bool verbose = false, bool ben
     timer::start();
     for (int i = 0; i < 100; i++) { network.predict(test_feats, relu_activation); }
     af::sync();
-    double test_time = timer::stop() / 100;
+    test_time = timer::stop() / 100;
   }
   fprintf(stderr,"\nTraining set:\n");
   fprintf(stderr,"Accuracy on training data: %2.2f\n",
@@ -399,7 +399,7 @@ af::array af_nn(RcppArrayFire::typed_array<f32> train_feats,
       timer::start();
       for (int i = 0; i < 100; i++) { network.predict(test_feats, relu_activation); }
       af::sync();
-      double test_time = timer::stop() / 100;
+      test_time = timer::stop() / 100;
     }
     fprintf(stderr,"\nTraining set:\n");
     fprintf(stderr,"Accuracy on training data: %2.2f\n",
@@ -444,7 +444,7 @@ int ann_demo(int device = 0, int perc = 80, std::string dts = "f32", bool verbos
     af::setDevice(device);
     std::string info_string = af::infoString();
     std::cerr << info_string;
-    return ann_demo_run(perc, dt, verbose = verbose, benchmark = benchmark);
+    return ann_demo_run(perc, dt, verbose, benchmark);
   } catch (af::exception &ae) { std::cerr << ae.what() << std::endl; }
   return 0;
 }

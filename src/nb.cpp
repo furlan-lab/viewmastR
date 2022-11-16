@@ -137,7 +137,7 @@ af::array naive_bayes(RcppArrayFire::typed_array<f32> train_feats,
   array res_labels = naive_bayes_predict(priors, mu, sig2, test_feats, num_classes);
   array query_labels = naive_bayes_predict(priors, mu, sig2, query, num_classes);
   if(verbose) {
-    fprintf(stderr,"Training samples: %4d, Testing samples: %4d\n", train_labels.dims(0), test_labels.dims(0));
+    fprintf(stderr,"Training samples: %4d, Testing samples: %4d\n", int(train_labels.dims(0)), int(test_labels.dims(0)));
     fprintf(stderr,"Accuracy on testing  data: %2.2f\n", nb_accuracy(res_labels, test_labels));
     if(benchmark){
       benchmark_nb(train_feats, test_feats, train_labels, num_classes);

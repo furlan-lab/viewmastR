@@ -14,7 +14,7 @@
 
 // extern std:string ASSETS_DIR;
 
-static bool compare(const std::pair<float, int> l, const std::pair<float, int> r) {
+static inline bool compare(const std::pair<float, int> l, const std::pair<float, int> r) {
     return l.first >= r.first;
 }
 

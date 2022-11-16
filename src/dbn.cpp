@@ -28,13 +28,13 @@ using namespace af;
 
 using std::vector;
 
-static std::string toStr(const dtype dt) {
-  switch (dt) {
-  case f32: return "f32";
-  case f16: return "f16";
-  default: return "N/A";
-  }
-}
+// static std::string toStr(const dtype dt) {
+//   switch (dt) {
+//   case f32: return "f32";
+//   case f16: return "f16";
+//   default: return "N/A";
+//   }
+// }
 
 static float accuracy(const array &predicted, const array &target) {
   array val, plabels, tlabels;
@@ -314,15 +314,15 @@ af::array af_dbn(RcppArrayFire::typed_array<f32> train_feats,
     return EXIT_FAILURE;
   }
   
-  dtype dt        = f32;
-  if (dts == "f16")
-    dt = f16;
-  else if (dts != "f32") {
-    std::cerr << "Unsupported datatype " << dts << ". Supported: f32 or f16"
-              << std::endl;
-    return EXIT_FAILURE;
-  }
-  
+  // dtype dt        = f32;
+  // if (dts == "f16")
+  //   dt = f16;
+  // else if (dts != "f32") {
+  //   std::cerr << "Unsupported datatype " << dts << ". Supported: f32 or f16"
+  //             << std::endl;
+  //   return EXIT_FAILURE;
+  // }
+  // 
   if (dts == "f16" && !af::isHalfAvailable(device)) {
     std::cerr << "Half not available for device " << device << std::endl;
     return EXIT_FAILURE;
@@ -382,7 +382,7 @@ af::array af_dbn(RcppArrayFire::typed_array<f32> train_feats,
     timer::start();
     for (int i = 0; i < 100; i++) { network.predict(test_feats); }
     af::sync();
-    double test_time = timer::stop() / 100;
+    test_time = timer::stop() / 100;
   }
   if (verbose) {
     fprintf(stderr,"\nTraining set:\n");

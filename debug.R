@@ -4,6 +4,52 @@ setwd("~/develop/viewmastR")
 
 roxygen2::roxygenize(".")
 
+
+#test array fire sparse functions
+data<-keras::dataset_mnist()
+dim(data$train$x)<-c(60000, 28*28)
+data$train$x<-data$train$x/255
+data$train$y<-model.matrix(~0+factor(data$train$y))
+colnames(data$train$y)<-0:9
+dim(data$test$x)<-c(10000, 28*28)
+data$test$y<-data$test$y/255
+data$test$y<-model.matrix(~0+factor(data$test$y))
+colnames(data$test$y)<-0:9
+out<-smr(t(data$train$x)[,1:5000], 
+           t(data$test$x)[,1:1000], 
+           data$train$y[1:5000,], 
+           data$test$y[1:1000,],
+           lambda = 2.0,
+           max_error = 0.01,
+           learning_rate = 1, 
+           num_classes = 10, 
+           query = t(data$test$x),
+           verbose = T)
+
+out<-smr_sparse(t(data$train$x)[,1:5000],
+         t(data$test$x)[,1:1000],
+         data$train$y[1:5000,],
+         data$test$y[1:1000,],
+         lambda = 1.0,
+         max_error = 0.01,
+         learning_rate = 0.1,
+         num_classes = 10,
+         query = t(data$test$x),
+         verbose = T)
+
+smr_sparse_test(t(data$train$x)[,1:5000],
+                t(data$test$x)[,1:1000],
+                data$train$y[1:5000,],
+                data$test$y[1:1000,],
+                lambda = 1.0,
+                max_error = 0.01,
+                learning_rate = 0.1,
+                num_classes = 10,
+                query = t(data$test$x),
+                verbose = T)
+
+
+
 #mnist arrayfire working well.
 library(viewmastR)
 data<-keras::dataset_mnist()
