@@ -12,13 +12,58 @@ ps<-.libPaths()
 .libPaths(ps[c(2,1,3)])
 devtools::install_github("daqana/rcpparrayfire")
 devtools::install_github("furlan-lab/viewmastR")
+install.packages("keras")
 
 
 
-setwd("~/develop/viewmastR")
+sFH2
+sinfo
+srun --pty -c 22 --mem=240G -p campus-new -t "7-0" --gres=gpu --nodelist=gizmok138 /bin/bash -il
+ml ArrayFire/3.8.1-foss-2019b-CUDA-10.2.89
+ml R/4.0.0-foss-2019b-fh1
+R
+library(viewmastR)
+library("Seurat")
+library(monocle3)
+library(ggplot2)
+setwd("~/Analysis/viewmastR")
+
+seu<-readRDS("query.RDS")
+DimPlot(seu)
+query<-seurat_to_monocle3(seu)
+  ref<-readRDS("refCDS.RDS")
+  vg<-common_variant_genes(query, ref, top_n = 5000)
+
+  plot_cells(ref, color_cells_by="BioClassification")
+  query<-viewmastR(query, ref, 
+    ref_celldata_col = "BioClassification", 
+    selected_genes = vg, 
+    verbose=T, learning_rate=0.5,
+    FUNC = "neural_network", 
+    hidden_layers = c(500),
+    tf_idf = F)
+
+bmcols=sfc(16)[c(1:3, 5:16)]
+  df<-data.frame(old=levels(factor(ref$BioClassification)), new=c("01_HSC", "02_Early_Erythroid", "03_Late_Erythroid", "04_Myeloid_Progenitor", "04_Myeloid_Progenitor", "05_Lymphoid_Progenitor", "04_Myeloid_Progenitor", "04_Myeloid_Progenitor", "06_pDC", "07_cDC", "08_CD14_Monocyte", "08_CD14_Monocyte", "09_CD16_Monocyte", "10_Other", "05_Lymphoid_Progenitor", "11_Pre_B", "12_B", "13_Plasma", "14_T", "14_T","14_T","14_T","14_T","14_T","15_NK", "10_Other"))
+  query$celltype<-factor(query$nn_celltype)
+  levels(query$celltype)<-df$new[match(levels(query$celltype), df$old)]
+  seu$celltype_nn<-factor(as.character(query$celltype))
+Idents(seu)<-seu$celltype_nn
+DimPlot(seu, group.by = "celltype_nn", label = F, pt.size = 0.4)+scale_color_manual(values=bmcols)
+  query<-viewmastR(query, ref, 
+    ref_celldata_col = "BioClassification", 
+    selected_genes = vg, 
+    verbose=T, 
+    FUNC = "softmax_regression",
+    tf_idf = F)
+  query$celltype<-factor(query$smr_celltype)
+  levels(query$celltype)<-df$new[match(levels(query$celltype), df$old)]
+  seu$celltype_smr<-factor(as.character(query$celltype))
+DimPlot(seu, group.by = "celltype_smr", label = F, pt.size = 0.4)+scale_color_manual(values=bmcols)
+
+
 
 roxygen2::roxygenize(".")
-
 
 #test array fire sparse functions
 data<-keras::dataset_mnist()

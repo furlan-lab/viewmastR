@@ -24,6 +24,7 @@ viewmastR(
   iterations = 1000,
   LSImethod = 1,
   verbose = T,
+  device = 0,
   threshold = NULL
 )
 }

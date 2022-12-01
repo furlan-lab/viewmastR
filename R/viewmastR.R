@@ -24,6 +24,7 @@ viewmastR <-function(query_cds,
                       iterations = 1000,
                       LSImethod=1,
                       verbose = T,
+                      device = 0,
                       threshold = NULL){
   layers=F
   FUNC=match.arg(FUNC)
@@ -110,7 +111,8 @@ viewmastR <-function(query_cds,
                length(labels), 
                query,
                learning_rate = as.double(learning_rate),
-               verbose = verbose)
+               verbose = verbose,
+               device = device)
     if(funclabel=="smr_"){
       args$learning_rate=learning_rate
       args$iterations = as.integer(iterations)
