@@ -52,8 +52,9 @@ ref<-readRDS("refCDS.RDS")
     selected_genes = vg, 
     verbose=T, learning_rate=0.5,
     FUNC = "neural_network", 
+    max_epochs= 500,
     hidden_layers = c(500),
-    tf_idf = F)
+    tf_idf = F, device=1)
 
 bmcols=sfc(16)[c(1:3, 5:16)]
   df<-data.frame(old=levels(factor(ref$BioClassification)), new=c("01_HSC", "02_Early_Erythroid", "03_Late_Erythroid", "04_Myeloid_Progenitor", "04_Myeloid_Progenitor", "05_Lymphoid_Progenitor", "04_Myeloid_Progenitor", "04_Myeloid_Progenitor", "06_pDC", "07_cDC", "08_CD14_Monocyte", "08_CD14_Monocyte", "09_CD16_Monocyte", "10_Other", "05_Lymphoid_Progenitor", "11_Pre_B", "12_B", "13_Plasma", "14_T", "14_T","14_T","14_T","14_T","14_T","15_NK", "10_Other"))
