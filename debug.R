@@ -1,4 +1,23 @@
 
+##install arrayfire
+#download arrayfire
+sFH2
+sinfo
+srun --pty -c 22 --mem=240G -p campus-new -t "7-0" --gres=gpu --nodelist=gizmok136 /bin/bash -il
+ml CUDA/11.3.1
+ml CMake/3.22.1-GCCcore-11.2.0
+cd /home/sfurlan/software/arrayfire/share/ArrayFire
+cp -r examples ~/arrayfire_examples
+cd ~/arrayfire_examples
+mkdir build
+cd build
+cmake -DArrayFire_DIR=$HOME/software/arrayfire/share/ArrayFire/cmake ..
+make
+cd machine_learning
+./naive_bayes_cuda
+./naive_bayes_cpu
+./machine_learning/naive_bayes_opencl
+
 ##cluster
 
 sFH2
@@ -18,7 +37,7 @@ install.packages("keras")
 
 sFH2
 sinfo
-srun --pty -c 22 --mem=240G -p campus-new -t "7-0" --gres=gpu --nodelist=gizmok138 /bin/bash -il
+srun --pty -c 22 --mem=240G -p campus-new -t "7-0" --gres=gpu --nodelist=gizmok135 /bin/bash -il
 ml ArrayFire/3.8.1-foss-2019b-CUDA-10.2.89
 ml R/4.0.0-foss-2019b-fh1
 R
