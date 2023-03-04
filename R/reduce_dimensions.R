@@ -224,7 +224,7 @@ iterative_LSI <- function(cds,
                           resolution=c(1e-4, 3e-4, 5e-4), do_tf_idf=T,
                           num_features=c(3000,3000,3000), exclude_features=NULL,
                           binarize=FALSE, scale=T, log_transform=T,
-                          LSI_method=1, partition_qval = 0.05, 
+                          LSI_method=1, partition_qval = 0.05, nn_control=list("method"="nn2"), 
                           seed=2020, scale_to = 10000, leiden_k=20, leiden_weight=FALSE, leiden_iter=1, verbose=F, return_iterations=F,
                           ...){
   extra_arguments <- list(...)
@@ -281,7 +281,7 @@ iterative_LSI <- function(cds,
   cluster_result <- monocle3:::leiden_clustering(data = svd_list$matSVD, 
                                       pd = colData(cds), k = leiden_k, weight = leiden_weight, num_iter = leiden_iter, 
                                       resolution_parameter = resolution[1], random_seed = seed, 
-                                      verbose = verbose, ...)
+                                      verbose = verbose, nn_control = nn_control, extra_arguments)
   clusters <- factor(igraph::membership(cluster_result$optim_res))
   clusterMat <- edgeR::cpm(groupSums(mat, clusters, sparse = TRUE), log=TRUE, prior.count = 3)
   if(length(resolution)==1){
@@ -324,7 +324,7 @@ iterative_LSI <- function(cds,
     cluster_result <- monocle3:::leiden_clustering(data = svd_list$matSVD, 
                                                    pd = colData(cds), k = leiden_k, weight = leiden_weight, num_iter = leiden_iter, 
                                                    resolution_parameter = resolution[iteration], random_seed = seed, 
-                                                   verbose = verbose, ...)
+                                                   verbose = verbose, nn_control = nn_control, extra_arguments)
     clusters <- factor(igraph::membership(cluster_result$optim_res))
     clusterMat <- edgeR::cpm(groupSums(mat, clusters, sparse = TRUE), log=TRUE, prior.count = 3)
     if(iteration!=length(resolution)){
@@ -342,8 +342,9 @@ iterative_LSI <- function(cds,
                        row_sums = row_sums, seed=seed, binarize=binarize, 
                        scale_to=scale_to, num_dim=num_dim, resolution=resolution, 
                        granges=rowRanges(cds)[f_idx], LSI_method=LSI_method, outliers=NULL)
-      pp_aux <- SimpleList(iLSI=iLSI, gene_loadings=irlba_rotation, features=original_features[f_idx])
-      cds@preprocess_aux <- pp_aux
+      # pp_aux <- SimpleList(iLSI=iLSI, gene_loadings=irlba_rotation, features=original_features[f_idx])
+      # cds@preprocess_aux <- pp_aux
+      
       if (length(unique(cluster_result$optim_res$membership)) > 
           1) {
         cluster_graph_res <- monocle3:::compute_partitions(cluster_result$g, 

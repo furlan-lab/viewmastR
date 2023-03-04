@@ -19,7 +19,7 @@ cd machine_learning
 ./machine_learning/naive_bayes_opencl
 
 ##cluster
-
+rm(list=ls())
 sFH2
 ml ArrayFire/3.8.1-foss-2019b-CUDA-10.2.89
 ml R/4.0.0-foss-2019b-fh1
@@ -44,13 +44,25 @@ R
 library(viewmastR)
 library("Seurat")
 library(monocle3)
+#devtools::install_github('cole-trapnell-lab/monocle3')
 library(ggplot2)
 setwd("~/Analysis/viewmastR")
 
 seu<-readRDS("query.RDS")
 DimPlot(seu)
-query<-seurat_to_monocle3(seu)
-  ref<-readRDS("refCDS.RDS")
+refm<-seurat_to_monocle3(seu)
+# refm<-monocle3::preprocess_cds(refm)
+# refm<-reduce_dimension(refm)
+# plot_cells(refm, color_cells_by = "seurat_clusters")
+# plot_cells(refm, color_cells_by = "celltype")
+
+undebug(iterative_LSI)
+undebug(monocle3:::leiden_clustering)
+cluster_cells
+refm<-viewmastR::iterative_LSI(refm)
+refm<-reduce_dimension(refm, preprocess_method = "LSI")
+plot_cells(refm, color_cells_by = "celltype")
+ref<-readRDS("refCDS.RDS")
   vg<-common_variant_genes(query, ref, top_n = 5000)
 
   plot_cells(ref, color_cells_by="BioClassification")
