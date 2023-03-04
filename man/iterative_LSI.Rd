@@ -17,6 +17,7 @@ iterative_LSI(
   log_transform = T,
   LSI_method = 1,
   partition_qval = 0.05,
+  nn_control = list(method = "nn2"),
   seed = 2020,
   scale_to = 10000,
   leiden_k = 20,

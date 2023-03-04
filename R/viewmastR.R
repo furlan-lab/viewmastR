@@ -11,7 +11,7 @@ viewmastR <-function(query_cds,
                       ref_cds, 
                       ref_celldata_col="celltype", 
                       query_celldata_col=NULL, 
-                      FUNC=c("naive_bayes", "neural_network", "bagging","softmax_regression", "logistic_regression", "deep_belief_nn", "perceptron"),
+                      FUNC=c("naive_bayes", "neural_network", "bagging","softmax_regression", "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn"),
                         selected_genes=NULL,
                       train_frac = 0.8,
                       tf_idf=F,
@@ -94,6 +94,9 @@ viewmastR <-function(query_cds,
         perceptron={FUNC = perceptron
           funclabel="perceptron_"
           output = "probs"},
+        keras_nn={FUNC = keras_helper
+        funclabel="keras_"
+        output = "probs"},
         )
         
   if(is.null(query_celldata_col)){
@@ -125,6 +128,11 @@ viewmastR <-function(query_cds,
       args$max_epochs = as.integer(max_epochs)
       args$batch_size = as.integer(batch_size)
       args$max_error = as.integer(max_error)
+    }
+    if(funclabel=="keras_"){
+      args$layers = c(as.integer(dim(data[,train_idx])[1]), sapply(hidden_layers, as.integer), as.integer(length(labels)))
+      args$max_epochs = 12
+      args$batch_size = 100
     }
     out<-do.call(FUNC, args)
     colnames(out)<-labels
@@ -160,6 +168,78 @@ viewmastR <-function(query_cds,
     return(query_cds)
   }
 }
+
+
+#' Keras helper
+#' @description A function for input of viewmastR data into keras for training and evaluation of a query
+#' @return model evaluation of query
+#' @import keras
+#' 
+
+keras_helper<-function(
+    x_train, 
+    x_test, 
+    y_train, 
+    y_test, 
+    num_classes, 
+    query,
+    learning_rate,
+    verbose,
+    layers = layers,
+    max_epochs = max_epochs,
+    batch_size = batch_size,
+    device = device
+){
+
+  x_train = t(x_train)
+  x_test = t(x_test)
+  message("device = keras")
+  message(paste0("Train feature dims:\n", paste0(dim(x_train), collapse=" ")))
+  message(paste0("Test feature dims:\n", paste0(dim(x_test), collapse=" ")))
+  message(paste0("Train labels dims:\n", paste0(dim(y_train), collapse=" ")))
+  message(paste0("Test labels dims:\n", paste0(dim(y_test), collapse=" ")))
+  message(paste0("Query dims:\n", paste0(dim(query), collapse=" ")))
+  message(paste0("Num classes:\n", num_classes))
+  message(paste0("Creating network with the following layers:\n", paste0(layers, collapse=" ")))
+  message(paste0("Max epochs:\n", max_epochs))
+  message(paste0("Batch size:\n", batch_size))
+  
+  model <- keras_model_sequential() %>%
+    layer_dense(units = layers[2], activation = 'relu', input_shape = dim(x_train)[2]) %>%
+    layer_dense(units = layers[3], activation = 'relu') %>% 
+    layer_dense(units = num_classes, activation = 'softmax')
+  
+  summary(model)
+  
+  # Compile model
+  model %>% compile(
+    loss = loss_categorical_crossentropy,
+    optimizer = optimizer_adadelta(),
+    metrics = c('accuracy')
+  )
+  
+  # Train model
+  model %>% fit(
+    x_train, y_train,
+    batch_size = batch_size,
+    epochs = max_epochs,
+    validation_split = 0.2
+  )
+  
+  
+  scores <- model %>% evaluate(
+    x_test, y_test, verbose = 0
+  )
+  
+  
+  # Output metrics
+  cat('Test loss:', scores[[1]], '\n')
+  cat('Test accuracy:', scores[[2]], '\n')
+  
+  return(model %>% predict(t(query)))
+}
+
+
 
 #' Common Variant Genes
 #' @description Find common variant genes between two cds objects

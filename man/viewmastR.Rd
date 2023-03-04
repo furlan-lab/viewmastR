@@ -11,7 +11,7 @@ viewmastR(
   ref_celldata_col = "celltype",
   query_celldata_col = NULL,
   FUNC = c("naive_bayes", "neural_network", "bagging", "softmax_regression",
-    "logistic_regression", "deep_belief_nn", "perceptron"),
+    "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn"),
   selected_genes = NULL,
   train_frac = 0.8,
   tf_idf = F,
