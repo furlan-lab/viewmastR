@@ -15,7 +15,9 @@ keras_helper(
   verbose,
   layers = layers,
   max_epochs = max_epochs,
-  batch_size = batch_size
+  batch_size = batch_size,
+  device = device,
+  keras_model = NULL
 )
 }
 \value{

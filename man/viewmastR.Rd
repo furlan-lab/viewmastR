@@ -25,7 +25,8 @@ viewmastR(
   LSImethod = 1,
   verbose = T,
   device = 0,
-  threshold = NULL
+  threshold = NULL,
+  keras_model = NULL
 )
 }
 \arguments{

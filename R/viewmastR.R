@@ -25,7 +25,8 @@ viewmastR <-function(query_cds,
                       LSImethod=1,
                       verbose = T,
                       device = 0,
-                      threshold = NULL){
+                      threshold = NULL,
+                      keras_model = NULL){
   layers=F
   FUNC=match.arg(FUNC)
   common_list<-viewmastR::common_features(list(ref_cds, query_cds))
@@ -133,6 +134,7 @@ viewmastR <-function(query_cds,
       args$layers = c(as.integer(dim(data[,train_idx])[1]), sapply(hidden_layers, as.integer), as.integer(length(labels)))
       args$max_epochs = 12
       args$batch_size = 100
+      args$keras_model = keras_model
     }
     out<-do.call(FUNC, args)
     colnames(out)<-labels
@@ -188,7 +190,8 @@ keras_helper<-function(
     layers = layers,
     max_epochs = max_epochs,
     batch_size = batch_size,
-    device = device
+    device = device,
+    keras_model = NULL
 ){
 
   x_train = t(x_train)
@@ -200,23 +203,25 @@ keras_helper<-function(
   message(paste0("Test labels dims:\n", paste0(dim(y_test), collapse=" ")))
   message(paste0("Query dims:\n", paste0(dim(query), collapse=" ")))
   message(paste0("Num classes:\n", num_classes))
-  message(paste0("Creating network with the following layers:\n", paste0(layers, collapse=" ")))
   message(paste0("Max epochs:\n", max_epochs))
   message(paste0("Batch size:\n", batch_size))
-  
-  model <- keras_model_sequential() %>%
-    layer_dense(units = layers[2], activation = 'relu', input_shape = dim(x_train)[2]) %>%
-    layer_dense(units = layers[3], activation = 'relu') %>% 
-    layer_dense(units = num_classes, activation = 'softmax')
+  if(is.null(keras_model)){
+    message(paste0("Creating network with the following layers:\n", paste0(layers, collapse=" ")))
+    model <- keras_model_sequential() %>%
+      layer_dense(units = layers[2], activation = 'relu', input_shape = dim(x_train)[2]) %>%
+      layer_dense(units = layers[3], activation = 'relu') %>% 
+      layer_dense(units = num_classes, activation = 'softmax')
+    
+    # Compile model
+    model %>% compile(
+      loss = loss_categorical_crossentropy,
+      optimizer = optimizer_adadelta(),
+      metrics = c('accuracy')
+    )}else{
+      message("using precompiled keras model")
+    }
   
   summary(model)
-  
-  # Compile model
-  model %>% compile(
-    loss = loss_categorical_crossentropy,
-    optimizer = optimizer_adadelta(),
-    metrics = c('accuracy')
-  )
   
   # Train model
   model %>% fit(
