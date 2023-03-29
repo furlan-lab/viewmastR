@@ -280,6 +280,62 @@ common_variant_genes <-function(cds1,
   }
 
 
+#' Aubment data
+#' @description This function takes a seurat object and finds cells that are not sufficiently abundant when grouped by the
+#' column parameter, then simulates data to augment cell number to a level of the parameter - norm_number
+#' @param column column from the metadata that designates cell group (i.e. celltype)
+#' @param norm_number cell number to augment data to for cells that are not sufficiently abundant in the 
+#' @return a seurat object augmented with simulated cells such that all cell groups are present at a level of norm_number of cells
+#' @importFrom pbmcapply pbmclapply
+#' @export
+#' 
+augment_data<-function(obj, column, norm_number=2000, assay="RNA"){
+  message("Extracting less abundant celltypes")
+  splitparam<-as.character(obj[[column]][,1])
+  deficiency<-table(splitparam) - setNames(rep(norm_number, length(levels(factor(splitparam)))), levels(factor(splitparam)))
+  to_synthesize<-deficiency[deficiency<0]*-1
+  spmat<-obj@assays[[assay]]@counts
+  universe<-rownames(spmat)
+  #type<-to_synthesize[2]
+  tsl<-lapply(1:length(to_synthesize), function(n) setNames(as.numeric(to_synthesize[n]), names(to_synthesize[n])))
+  message("Simulating cells")
+  dl<-pbmclapply(tsl, function(type){
+    N<-as.numeric(type)
+    type<-names(type)
+    #namevec<-c(namevec, rep(type, N))
+    rsums<-rowSums(spmat[,splitparam %in% type])
+    sizes<-colSums(spmat[,splitparam %in% type])
+    # ggplot(data.frame(x=sizes), aes(x=x))+geom_histogram(aes(y = ..density..),
+    #                colour = 1, fill = "white")+geom_density()
+    den<-density(sizes)
+    newsizes <- sample(sizes, N, replace=TRUE) + rnorm(N*2, 0, den$bw)
+    # ggplot(data.frame(x=newsizes), aes(x=x))+geom_histogram(aes(y = ..density..),
+    #                colour = 1, fill = "white")+geom_density()
+    trimmed_newdata<-round(newsizes[newsizes>min(sizes) & max(sizes)], 0)
+    final_newsizes<-sample(trimmed_newdata, N)
+    # ggplot(data.frame(x=final_newsizes), aes(x=x))+geom_histogram(aes(y = ..density..),
+    #                colour = 1, fill = "white")+geom_density()
+    splat <- names(rsums)[rep(seq_along(rsums), rsums)]
+    dl<-lapply(final_newsizes, function(i){
+      tab<-table(sample(splat, newsizes[1]))
+      nf<-universe[!universe %in% names(tab)]
+      all<-c(tab, setNames(rep(0, length(nf)), nf))
+      all[match(universe, names(all))]
+    })
+    as.sparse(do.call(cbind, dl))
+  }, mc.cores = min(c(detectCores(), length(to_synthesize))))
+  message("Merging simulated cells")
+  sm<-do.call(cbind, dl)
+  nvl<-lapply(tsl, function(type){
+    N<-as.numeric(type)
+    type<-names(type)
+    rep(type, N)})
+  colnames(sm)<-make.unique(paste0("stimcell_", do.call(c, nvl)))
+  seuS<-CreateSeuratObject(counts=sm)
+  seuS[[column]]<-do.call(c, nvl)
+  message("Returning merged objects")
+  merge(obj, seuS)
+}
 
 
 #' Pseudo-singlets
