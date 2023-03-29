@@ -346,9 +346,9 @@ pseudo_singlets <- function(se,
 #' Seurat to Monocle3
 #' @description Conver Seurat to Monocle3
 #' @param seu Seurat Object
-#' @param seu_rd Reduced dimname for seurat ('i.e. UMAP')
+#' @param seu_rd Reduced dimname for seurat ('i.e. UMAP'); use NULLto not copy dimensionality reduction
 #' @param assay_name Name of data slot ('i.e. RNA')
-#' @param mon_rd Reduced dimname for monocle3 ('i.e. UMAP')
+#' @param mon_rd Reduced dimname for monocle3 ('i.e. UMAP'); use NULL to not copy dimensionality reduction
 #' @import Seurat
 #' @import monocle3
 #' @return a cell_data_set object
@@ -362,7 +362,11 @@ seurat_to_monocle3 <-function(seu, seu_rd="umap", mon_rd="UMAP", assay_name="RNA
                            row.names = rownames(seu@assays[[assay_name]]@counts), 
                            id=rownames(seu@assays[[assay_name]]@counts), 
                            gene_short_name=rownames(seu@assays[[assay_name]]@counts)))
-  reducedDims(cds)[[mon_rd]]<-seu@reductions[[seu_rd]]@cell.embeddings
+  if(!is.null(seu_rd)){
+    if(!is.null(mon_rd)){
+      reducedDims(cds)[[mon_rd]]<-seu@reductions[[seu_rd]]@cell.embeddings
+    }
+  }
   cds
 }
 

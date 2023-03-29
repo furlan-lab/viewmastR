@@ -11,7 +11,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocMana
 ps<-.libPaths()
 .libPaths(ps[c(2,1,3)])
 devtools::install_github("daqana/rcpparrayfire")
-devtools::install_github("furlan-lab/viewmastR")
+devtools::install_github("furlan-lab/viewmastR", branch="keras")
 install.packages("keras")
 
 
