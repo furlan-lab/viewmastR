@@ -8,7 +8,7 @@
 viewmastR(
   query_cds,
   ref_cds,
-  ref_celldata_col = "celltype",
+  ref_celldata_col,
   query_celldata_col = NULL,
   FUNC = c("naive_bayes", "neural_network", "bagging", "softmax_regression",
     "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn"),
@@ -40,7 +40,7 @@ a cell_data_set object or a list of items if unfiltered data is returned (see un
 \description{
 see single cell datasets through different lenses
 
-ip
+in progress
 }
 \author{
 scfurl

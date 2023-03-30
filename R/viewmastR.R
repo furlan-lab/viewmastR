@@ -1,38 +1,53 @@
 #' ViewmastR
-#' @description ip
+#' @description in progress
 #' @param query_cds cds to query
 #' @param ref_cds reference cds
 #' @return a cell_data_set object or a list of items if unfiltered data is returned (see unfiltered)
 #' @importFrom Matrix colSums
 #' @export
 
-
 viewmastR <-function(query_cds, 
-                      ref_cds, 
-                      ref_celldata_col="celltype", 
-                      query_celldata_col=NULL, 
-                      FUNC=c("naive_bayes", "neural_network", "bagging","softmax_regression", "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn"),
-                        selected_genes=NULL,
-                      train_frac = 0.8,
-                      tf_idf=F,
-                      hidden_layers = c(500,100),
-                      learning_rate = 2.0,
-                      batch_size = 100,
-                      max_epochs = 250,
-                      max_error = 0.5,
-                      lambda = 1.0,
-                      iterations = 1000,
-                      LSImethod=1,
-                      verbose = T,
-                      device = 0,
-                      threshold = NULL,
-                      keras_model = NULL){
+                     ref_cds, 
+                     ref_celldata_col, 
+                     query_celldata_col=NULL, 
+                     FUNC=c("naive_bayes", "neural_network", "bagging","softmax_regression", "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn"),
+                     selected_genes=NULL,
+                     train_frac = 0.8,
+                     tf_idf=F,
+                     hidden_layers = c(500,100),
+                     learning_rate = 2.0,
+                     batch_size = 100,
+                     max_epochs = 250,
+                     max_error = 0.5,
+                     lambda = 1.0,
+                     iterations = 1000,
+                     LSImethod=1,
+                     verbose = T,
+                     device = 0,
+                     threshold = NULL,
+                     keras_model = NULL){
   layers=F
+  #get class of object
+  if(class(query_cds) != class(ref_cds)){stop("input objects must be of the same class")}
+  software<-NULL
+  if(class(query_cds)=="Seurat"){
+    software<-"seurat"
+    labf<-as.factor(ref_cds@meta.data[[ref_celldata_col]])
+  }
+  if(class(query_cds)=="monocle3"){
+    software<-"monocle3"
+    labf<-as.factor(colData(ref_cds)[[ref_celldata_col]])
+  }
+  if(is.null(software)){stop("software not found for input objects")}
   FUNC=match.arg(FUNC)
-  common_list<-viewmastR::common_features(list(ref_cds, query_cds))
-
+  common_list<-common_features(list(ref_cds, query_cds))
+  rm(ref_cds)
+  gc()
+  
   rcds<-common_list[[1]]
   qcds<-common_list[[2]]
+  rm(common_list)
+  gc()
   
   if(is.null(selected_genes)){
     selected_common<-rownames(qcds)
@@ -41,28 +56,34 @@ viewmastR <-function(query_cds,
   }
   
   # #no tf_idf
-  query_mat<-monocle3::normalized_counts(rcds)
-  ref_mat<-monocle3::normalized_counts(rcds[selected_common,])
-  query_mat<-monocle3::normalized_counts(qcds[rownames(ref_mat),])
-
+  query_mat<-get_counts(qcds)
+  ref_mat<-get_counts(rcds)
+  ref_mat<-ref_mat[selected_common,]
+  query_mat<-get_counts(qcds)[rownames(ref_mat),]
+  
+  rm(qcds, rcds)
+  gc()
+  
   data<-as.matrix(ref_mat)
   query<-as.matrix(query_mat)
+  rm(ref_mat, query_mat)
+  gc()
   
   if(tf_idf){
     data<-as.matrix(tf_idf_transform(data, LSImethod))
     query<-as.matrix(tf_idf_transform(query, LSImethod))
   }
-  labf<-as.factor(colData(ref_cds)[[ref_celldata_col]])
+  
   labn<-as.numeric(labf)-1
   labels<-levels(labf)
   laboh<-matrix(model.matrix(~0+labf), ncol = length(labels))
   colnames(laboh)<-NULL
   rownames(data)<-NULL
   colnames(data)<-NULL
-
+  
   train_idx<-sample(1:dim(data)[2], round(train_frac*dim(data)[2]))
   test_idx<-which(!1:dim(data)[2] %in% train_idx)
-
+  
   # dim(t(data[train_idx,]))
   # dim(t(data[test_idx,]))
   # dim(laboh[train_idx,])
@@ -72,41 +93,41 @@ viewmastR <-function(query_cds,
   # length(labels)
   # dim(query)
   
- switch(FUNC, 
-        naive_bayes={FUNC = naive_bayes
-          funclabel="naive_bayes_"
-          output = "labels"},
-        neural_network={FUNC = af_nn
-          funclabel="nn_"
-          layers=T
-          output = "probs"},
-        softmax_regression={FUNC = smr
-          funclabel="smr_"
-          output = "probs"},
-        deep_belief_nn={FUNC = af_dbn
-          funclabel="dbnn_"
-          output = "probs"},
-        logistic_regression={FUNC = lr
-          funclabel="lr_"
-          output = "probs"},
-        bagging={FUNC = bagging
-          funclabel="bagging_"
-          output = "labels"},
-        perceptron={FUNC = perceptron
-          funclabel="perceptron_"
-          output = "probs"},
-        keras_nn={FUNC = keras_helper
-        funclabel="keras_"
-        output = "probs"},
-        )
-        
+  switch(FUNC, 
+         naive_bayes={FUNC = naive_bayes
+         funclabel="naive_bayes_"
+         output = "labels"},
+         neural_network={FUNC = af_nn
+         funclabel="nn_"
+         layers=T
+         output = "probs"},
+         softmax_regression={FUNC = smr
+         funclabel="smr_"
+         output = "probs"},
+         deep_belief_nn={FUNC = af_dbn
+         funclabel="dbnn_"
+         output = "probs"},
+         logistic_regression={FUNC = lr
+         funclabel="lr_"
+         output = "probs"},
+         bagging={FUNC = bagging
+         funclabel="bagging_"
+         output = "labels"},
+         perceptron={FUNC = perceptron
+         funclabel="perceptron_"
+         output = "probs"},
+         keras_nn={FUNC = keras_helper
+         funclabel="keras_"
+         output = "probs"},
+  )
+  
   if(is.null(query_celldata_col)){
     coldata_label<-paste0(funclabel, "celltype")
   }else{
     coldata_label = query_celldata_col
   }
   
-
+  
   if(output=="probs"){
     args<-list(data[,train_idx], 
                data[,test_idx], 
@@ -139,7 +160,12 @@ viewmastR <-function(query_cds,
     out<-do.call(FUNC, args)
     colnames(out)<-labels
     if(is.null(threshold)){
-      colData(query_cds)[[coldata_label]]<-colnames(as.data.frame(out))[apply(as.data.frame(out),1,which.max)]
+      if(software=="seurat"){
+        query_cds@meta.data[[coldata_label]]<-colnames(as.data.frame(out))[apply(as.data.frame(out),1,which.max)]
+      }
+      if(software=="monocle3"){
+        colData(query_cds)[[coldata_label]]<-colnames(as.data.frame(out))[apply(as.data.frame(out),1,which.max)]
+      }
       return(query_cds)
     }else{
       if(threshold > 1 & threshold <= 0)stop("thresh must be value between 0 and 1")
@@ -152,7 +178,12 @@ viewmastR <-function(query_cds,
           names(out)
         }
       })
-      colData(query_cds)[[coldata_label]]<-outv
+      if(software=="seurat"){
+        query_cds@meta.data[[coldata_label]]<-outv
+      }
+      if(software=="monocle3"){
+        colData(query_cds)[[coldata_label]]<-outv
+      }
       return(query_cds)
     }
     
@@ -166,9 +197,88 @@ viewmastR <-function(query_cds,
                query, 
                verbose = verbose)
     out<-do.call(FUNC, args)
-    colData(query_cds)[[coldata_label]]<-labels[out+1]
+    if(software=="seurat"){
+      query_cds@meta.data[[coldata_label]]<-labels[out+1]
+    }
+    if(software=="monocle3"){
+      colData(query_cds)[[coldata_label]]<-labels[out+1]
+    }
     return(query_cds)
   }
+}
+
+is_sparse_matrix<-function (x) 
+{
+  class(x) %in% c("dgCMatrix", "dgTMatrix", "lgCMatrix")
+}
+
+get_counts<-function (cds, norm_method = c("log", "binary", "size_only"), 
+                      pseudocount = 1) 
+{
+  software<-NULL
+  norm_method = match.arg(norm_method)
+  if(class(cds)=="Seurat"){software<-"seurat"}
+  if(class(cds)=="cell_data_set"){software<-"monocle3"}
+  if(is.null(software)){stop("software not found for input")}
+  if(software=="monocle3"){
+    norm_mat = SingleCellExperiment::counts(cds)
+    sf<-size_factors(cds)
+  }
+  if(software=="seurat"){
+    norm_mat = cds@assays[[cds@active.assay]]@counts
+    sf<-seurat_size_factors(cds)
+  }
+  if (norm_method == "binary") {
+    norm_mat = norm_mat > 0
+    if (is_sparse_matrix(norm_mat)) {
+      norm_mat = methods::as(norm_mat, "dgCMatrix")
+    }
+  }
+  else {
+    if (is_sparse_matrix(norm_mat)) {
+      norm_mat@x = norm_mat@x/rep.int(sf, 
+                                      diff(norm_mat@p))
+      if (norm_method == "log") {
+        if (pseudocount == 1) {
+          norm_mat@x = log10(norm_mat@x + pseudocount)
+        }
+        else {
+          stop("Pseudocount must equal 1 with sparse expression matrices")
+        }
+      }
+    }
+    else {
+      norm_mat = Matrix::t(Matrix::t(norm_mat)/sf)
+      if (norm_method == "log") {
+        norm_mat@x <- log10(norm_mat + pseudocount)
+      }
+    }
+  }
+  return(norm_mat)
+}
+
+
+seurat_size_factors<-function (cds, round_exprs = TRUE, method = c("mean-geometric-mean-total", 
+                                              "mean-geometric-mean-log-total")) 
+{
+  method <- match.arg(method)
+  if (any(Matrix::colSums(cds@assays[[cds@active.assay]]@counts) == 
+          0)) {
+    warning("Your CDS object contains cells with zero reads. ", 
+            "This causes size factor calculation to fail. Please remove ", 
+            "the zero read cells using ", "cds <- cds[,Matrix::colSums(exprs(cds)) != 0] and then ", 
+            "run cds <- estimate_size_factors(cds)")
+    return(cds)
+  }
+  if (is_sparse_matrix(cds@assays[[cds@active.assay]]@counts)) {
+    sf <- monocle3:::estimate_sf_sparse(cds@assays[[cds@active.assay]]@counts, 
+                                            round_exprs = round_exprs, method = method)
+  }
+  else {
+    sf <- monocle3:::estimate_sf_dense(cds@assays[[cds@active.assay]]@counts, 
+                                           round_exprs = round_exprs, method = method)
+  }
+  return(sf)
 }
 
 
@@ -261,7 +371,8 @@ common_variant_genes <-function(cds1,
                       logmean_ll = -6,
                       row_data_column = "gene_short_name",
                       unique_data_column = "id",
-                      verbose = T){
+                      verbose = T,
+                      plot=F){
   cds1<-calculate_gene_dispersion(cds1)
 
   cds1<-select_genes(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
@@ -287,6 +398,7 @@ common_variant_genes <-function(cds1,
 #' @param norm_number cell number to augment data to for cells that are not sufficiently abundant in the 
 #' @return a seurat object augmented with simulated cells such that all cell groups are present at a level of norm_number of cells
 #' @importFrom pbmcapply pbmclapply
+#' @importFrom parallel detectCores
 #' @export
 #' 
 augment_data<-function(obj, column, norm_number=2000, assay="RNA"){

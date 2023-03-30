@@ -9,9 +9,9 @@ seurat_to_monocle3(seu, seu_rd = "umap", mon_rd = "UMAP", assay_name = "RNA")
 \arguments{
 \item{seu}{Seurat Object}
 
-\item{seu_rd}{Reduced dimname for seurat ('i.e. UMAP')}
+\item{seu_rd}{Reduced dimname for seurat ('i.e. UMAP'); use NULLto not copy dimensionality reduction}
 
-\item{mon_rd}{Reduced dimname for monocle3 ('i.e. UMAP')}
+\item{mon_rd}{Reduced dimname for monocle3 ('i.e. UMAP'); use NULL to not copy dimensionality reduction}
 
 \item{assay_name}{Name of data slot ('i.e. RNA')}
 }
