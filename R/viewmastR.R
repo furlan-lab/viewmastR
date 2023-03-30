@@ -51,15 +51,18 @@ viewmastR <-function(query_cds,
   
   if(is.null(selected_genes)){
     selected_common<-rownames(qcds)
+    selected_common<-selected_commmon[selected_common %in% rownames(rcds)]
   }else{
     selected_common<-selected_genes
+    selected_common<-selected_common[selected_common %in% rownames(qcds)]
+    selected_common<-selected_common[selected_common %in% rownames(rcds)]
   }
   
   # #no tf_idf
-  query_mat<-get_norm_counts(qcds)
-  ref_mat<-get_norm_counts(rcds)
-  ref_mat<-ref_mat[selected_common,]
-  query_mat<-query_mat[rownames(ref_mat),]
+  query_mat<-get_norm_counts(qcds)[selected_common,]
+  ref_mat<-get_norm_counts(rcds)[rownames(query_mat),]
+  # ref_mat<-ref_mat[selected_common %in% rownames(ref_mat),]
+  # query_mat<-query_mat[rownames(ref_mat),]
   
   rm(qcds, rcds)
   gc()
@@ -410,13 +413,13 @@ common_variant_seurat <-function(cds1,
     print(p)
   }
   qsel<-get_selected_genes(cds1)
+  if(is.null(cds2@misc$dispersion)){
+    cds2<-calculate_gene_dispersion(cds1)
+  }
   if(plot){
     if(verbose) {message("Plotting feature dispersion (unselected) for second object")}
     p<-plot_gene_dispersion(cds2)
     print(p)
-  }
-  if(is.null(cds2@misc$dispersion)){
-    cds2<-calculate_gene_dispersion(cds1)
   }
   cds2<-select_genes(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){

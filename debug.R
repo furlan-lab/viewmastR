@@ -95,8 +95,12 @@ seut@misc$dispersion
 plot_gene_dispersion(seut)
 seut<-select_genes(seut, top_n = 3000)
 
-common_variant_genes(seu, seur)
-common_variant_genes(seu, rna)
+vg<-common_variant_genes(seu, seur, plot=F)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", query_celldata_col = "viewmastR", selected_genes = vg)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+debug(viewmastR)
 
 undebug(common_variant_genes)
 debug(viewmastR:::common_variant_seurat)
