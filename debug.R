@@ -78,6 +78,29 @@ DimPlot(seu, group.by = "celltype_smr", label = F, pt.size = 0.4)+scale_color_ma
 
 roxygen2::roxygenize(".")
 
+rm(list=ls())
+library(viewmastR)
+library(Seurat)
+library(monocle3)
+seu<-readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerResearchCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds/220302_final_object.RDS")
+rna<-readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerResearchCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented.RDS")
+
+seur<-monocle3_to_seurat(rna, normalize=F)
+
+DimPlot(seu, group.by = "celltype")
+DimPlot(seur, group.by = "SFClassification", cols = rna@metadata$colorMap$classification)
+
+seut<-calculate_gene_dispersion(seu)
+seut@misc$dispersion
+plot_gene_dispersion(seut)
+seut<-select_genes(seut, top_n = 3000)
+
+common_variant_genes(seu, seur)
+common_variant_genes(seu, rna)
+
+undebug(common_variant_genes)
+debug(viewmastR:::common_variant_seurat)
+
 #test array fire sparse functions
 data<-keras::dataset_mnist()
 dim(data$train$x)<-c(60000, 28*28)

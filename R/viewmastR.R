@@ -56,10 +56,10 @@ viewmastR <-function(query_cds,
   }
   
   # #no tf_idf
-  query_mat<-get_counts(qcds)
-  ref_mat<-get_counts(rcds)
+  query_mat<-get_norm_counts(qcds)
+  ref_mat<-get_norm_counts(rcds)
   ref_mat<-ref_mat[selected_common,]
-  query_mat<-get_counts(qcds)[rownames(ref_mat),]
+  query_mat<-query_mat[rownames(ref_mat),]
   
   rm(qcds, rcds)
   gc()
@@ -212,7 +212,7 @@ is_sparse_matrix<-function (x)
   class(x) %in% c("dgCMatrix", "dgTMatrix", "lgCMatrix")
 }
 
-get_counts<-function (cds, norm_method = c("log", "binary", "size_only"), 
+get_norm_counts<-function (cds, norm_method = c("log", "binary", "size_only"), 
                       pseudocount = 1) 
 {
   software<-NULL
@@ -373,24 +373,98 @@ common_variant_genes <-function(cds1,
                       unique_data_column = "id",
                       verbose = T,
                       plot=F){
-  cds1<-calculate_gene_dispersion(cds1)
-
-  cds1<-select_genes(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
-  p<-plot_gene_dispersion(cds1)
-  print(p)
-  qsel<-rowData(cds1)[[row_data_column]][rowData(cds1)[[unique_data_column]] %in% get_selected_genes(cds1)]
-  cds2<-calculate_gene_dispersion(cds2)
-  p<-plot_gene_dispersion(cds2)
-  print(p)
-  cds2<-select_genes(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
-  p<-plot_gene_dispersion(cds2)
-  print(p)
-  rsel<-rowData(cds2)[[row_data_column]][rowData(cds2)[[unique_data_column]] %in% get_selected_genes(cds2)]
-  selected_common<-intersect(qsel, rsel)
-  selected_common
+  if(class(cds1) != class(cds2)){stop("input objects must be of the same class")}
+  software<-NULL
+  if(class(cds1)=="Seurat"){
+    software<-"seurat"
+  }
+  if(class(cds1)=="cell_data_set"){
+    software<-"monocle3"
+  }
+  if(software=="monocle3"){
+    common_variant_m3(cds1, cds2, top_n,logmean_ul, logmean_ll, 
+                      row_data_column, unique_data_column, verbose, plot)
+  }
+  if(software=="seurat"){
+    common_variant_seurat(cds1, cds2, top_n,logmean_ul, logmean_ll, 
+                      verbose, plot)
+  }
   }
 
 
+
+common_variant_seurat <-function(cds1, 
+                             cds2,
+                             top_n=2000,
+                             logmean_ul = 2, 
+                             logmean_ll = -6,
+                             verbose = T,
+                             plot=F){
+  if(is.null(cds1@misc$dispersion)){
+    cds1<-calculate_gene_dispersion(cds1)
+  }
+  cds1<-select_genes(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  if(plot){
+    if(verbose) {message("Plotting feature dispersion for first object")}
+    p<-plot_gene_dispersion(cds1)
+    print(p)
+  }
+  qsel<-get_selected_genes(cds1)
+  if(plot){
+    if(verbose) {message("Plotting feature dispersion (unselected) for second object")}
+    p<-plot_gene_dispersion(cds2)
+    print(p)
+  }
+  if(is.null(cds2@misc$dispersion)){
+    cds2<-calculate_gene_dispersion(cds1)
+  }
+  cds2<-select_genes(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  if(plot){
+    if(verbose) {message("Plotting gene dispersion for second object")}
+    p<-plot_gene_dispersion(cds2)
+    print(p)
+  }
+  rsel<-get_selected_genes(cds2)
+  selected_common<-intersect(qsel, rsel)
+  selected_common
+}
+
+
+common_variant_m3 <-function(cds1, 
+                                cds2,
+                                top_n=2000,
+                                logmean_ul = 2, 
+                                logmean_ll = -6,
+                                row_data_column = "gene_short_name",
+                                unique_data_column = "id",
+                                verbose = T,
+                                plot=F){
+  if(verbose) {message("Calculating feature dispersion for monocle3 object")}
+  cds1<-calculate_gene_dispersion(cds1)
+  cds1<-select_genes(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  if(plot){
+    if(verbose) {message("Plotting feature dispersion for first object")}
+    p<-plot_gene_dispersion(cds1)
+    print(p)
+  }
+  qsel<-rowData(cds1)[[row_data_column]][rowData(cds1)[[unique_data_column]] %in% get_selected_genes(cds1)]
+  cds2<-calculate_gene_dispersion(cds2)
+  if(plot){
+    if(verbose) {message("Plotting feature dispersion (unselected) for second object")}
+    p<-plot_gene_dispersion(cds2)
+    print(p)
+  }
+  cds2<-select_genes(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  if(plot){
+    if(verbose) {message("Plotting gene dispersion for second object")}
+    p<-plot_gene_dispersion(cds2)
+    print(p)
+  }
+  if(verbose) {message("Returning shared features")}
+  rsel<-rowData(cds2)[[row_data_column]][rowData(cds2)[[unique_data_column]] %in% get_selected_genes(cds2)]
+  selected_common<-intersect(qsel, rsel)
+  selected_common
+}
 #' Aubment data
 #' @description This function takes a seurat object and finds cells that are not sufficiently abundant when grouped by the
 #' column parameter, then simulates data to augment cell number to a level of the parameter - norm_number
