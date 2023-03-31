@@ -262,7 +262,7 @@ process_probabilities<-function(out, query_cds, threshold=NULL, software, coldat
 #' xgboost helper
 #' @description A function for input of viewmastR data into xgboost for training and evaluation of a query
 #' @return model evaluation of query
-#' @import xgboost
+#' @importFrom xgboost xgboost
 #' 
 
 xgboost_helper<-function(
@@ -302,7 +302,7 @@ xgboost_helper<-function(
 #' lasso helper
 #' @description A function for input of viewmastR data into lasso for training and evaluation of a query
 #' @return model evaluation of query
-#' @import glmnet
+#' @importFrom glmnet cv.glmnet
 #' @import doMC
 #' 
 
@@ -358,6 +358,7 @@ lasso_helper<-function(
 #' @description A function for input of viewmastR data into keras for training and evaluation of a query
 #' @return model evaluation of query
 #' @import keras
+#' @import reticulate
 #' 
 
 keras_helper<-function(
@@ -375,7 +376,10 @@ keras_helper<-function(
     device = device,
     keras_model = NULL
 ){
-
+  ##check python
+  py_config()
+  if(!py_available("keras")){stop("keras not found")}
+  if(!py_available("tensorflow")){stop("tensorflow not found")}
   x_train = t(x_train)
   x_test = t(x_test)
   message("device = keras")
