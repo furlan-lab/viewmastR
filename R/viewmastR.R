@@ -10,12 +10,14 @@ viewmastR <-function(query_cds,
                      ref_cds, 
                      ref_celldata_col, 
                      query_celldata_col=NULL, 
-                     FUNC=c("naive_bayes", "neural_network", "bagging","softmax_regression", "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn"),
+                     FUNC=c("naive_bayes", "neural_network", "bagging","softmax_regression", 
+                            "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn",
+                            "xgboost", "lasso"),
                      selected_genes=NULL,
                      train_frac = 0.8,
                      tf_idf=F,
                      hidden_layers = c(500,100),
-                     learning_rate = 2.0,
+                     learning_rate = 0.5,
                      batch_size = 100,
                      max_epochs = 250,
                      max_error = 0.5,
@@ -25,8 +27,19 @@ viewmastR <-function(query_cds,
                      verbose = T,
                      device = 0,
                      threshold = NULL,
-                     keras_model = NULL){
+                     keras_model = NULL, ...){
+  
+  #capture args for specific fxns
+  argg <- c(as.list(environment()), list(...))
   layers=F
+  
+  #deal with null celltype label
+  if(is.null(query_celldata_col)){
+    coldata_label<-paste0(funclabel, "celltype")
+  }else{
+    coldata_label = query_celldata_col
+  }
+  
   #get class of object
   if(class(query_cds) != class(ref_cds)){stop("input objects must be of the same class")}
   software<-NULL
@@ -34,68 +47,14 @@ viewmastR <-function(query_cds,
     software<-"seurat"
     labf<-as.factor(ref_cds@meta.data[[ref_celldata_col]])
   }
-  if(class(query_cds)=="monocle3"){
+  if(class(query_cds)=="cell_data_set"){
     software<-"monocle3"
     labf<-as.factor(colData(ref_cds)[[ref_celldata_col]])
   }
   if(is.null(software)){stop("software not found for input objects")}
+  
+  #set fxn
   FUNC=match.arg(FUNC)
-  common_list<-common_features(list(ref_cds, query_cds))
-  rm(ref_cds)
-  gc()
-  
-  rcds<-common_list[[1]]
-  qcds<-common_list[[2]]
-  rm(common_list)
-  gc()
-  
-  if(is.null(selected_genes)){
-    selected_common<-rownames(qcds)
-    selected_common<-selected_commmon[selected_common %in% rownames(rcds)]
-  }else{
-    selected_common<-selected_genes
-    selected_common<-selected_common[selected_common %in% rownames(qcds)]
-    selected_common<-selected_common[selected_common %in% rownames(rcds)]
-  }
-  
-  # #no tf_idf
-  query_mat<-get_norm_counts(qcds)[selected_common,]
-  ref_mat<-get_norm_counts(rcds)[rownames(query_mat),]
-  # ref_mat<-ref_mat[selected_common %in% rownames(ref_mat),]
-  # query_mat<-query_mat[rownames(ref_mat),]
-  
-  rm(qcds, rcds)
-  gc()
-  
-  data<-as.matrix(ref_mat)
-  query<-as.matrix(query_mat)
-  rm(ref_mat, query_mat)
-  gc()
-  
-  if(tf_idf){
-    data<-as.matrix(tf_idf_transform(data, LSImethod))
-    query<-as.matrix(tf_idf_transform(query, LSImethod))
-  }
-  
-  labn<-as.numeric(labf)-1
-  labels<-levels(labf)
-  laboh<-matrix(model.matrix(~0+labf), ncol = length(labels))
-  colnames(laboh)<-NULL
-  rownames(data)<-NULL
-  colnames(data)<-NULL
-  
-  train_idx<-sample(1:dim(data)[2], round(train_frac*dim(data)[2]))
-  test_idx<-which(!1:dim(data)[2] %in% train_idx)
-  
-  # dim(t(data[train_idx,]))
-  # dim(t(data[test_idx,]))
-  # dim(laboh[train_idx,])
-  # dim(laboh[test_idx,])
-  # length(labn[train_idx])
-  # length(labn[test_idx])
-  # length(labels)
-  # dim(query)
-  
   switch(FUNC, 
          naive_bayes={FUNC = naive_bayes
          funclabel="naive_bayes_"
@@ -122,20 +81,68 @@ viewmastR <-function(query_cds,
          keras_nn={FUNC = keras_helper
          funclabel="keras_"
          output = "probs"},
+         xgboost={FUNC = xgboost_helper
+         funclabel="xgboost_"
+         output = "labels"},
+         lasso={FUNC = lasso_helper
+         funclabel="lasso_"
+         output = "probs"},
   )
   
-  if(is.null(query_celldata_col)){
-    coldata_label<-paste0(funclabel, "celltype")
+  #find common features
+  common_list<-common_features(list(ref_cds, query_cds))
+  rm(ref_cds)
+  gc()
+  rcds<-common_list[[1]]
+  qcds<-common_list[[2]]
+  rm(common_list)
+  gc()
+  if(is.null(selected_genes)){
+    selected_common<-rownames(qcds)
+    selected_common<-selected_commmon[selected_common %in% rownames(rcds)]
   }else{
-    coldata_label = query_celldata_col
+    selected_common<-selected_genes
+    selected_common<-selected_common[selected_common %in% rownames(qcds)]
+    selected_common<-selected_common[selected_common %in% rownames(rcds)]
   }
   
+  #make final X and query
+  # #no tf_idf
+  query_mat<-get_norm_counts(qcds)[selected_common,]
+  ref_mat<-get_norm_counts(rcds)[rownames(query_mat),]
+
+  rm(qcds, rcds)
+  gc()
+  X<-as.matrix(ref_mat)
+  query<-as.matrix(query_mat)
+  rm(ref_mat, query_mat)
+  gc()
   
+  #tf_idf
+  if(tf_idf){
+    X<-as.matrix(tf_idf_transform(X, LSImethod))
+    query<-as.matrix(tf_idf_transform(query, LSImethod))
+  }
+  
+  #prep Y
+  Ylab<-as.numeric(labf)-1
+  labels<-levels(labf)
+  Y<-matrix(model.matrix(~0+labf), ncol = length(labels))
+  colnames(Y)<-NULL
+  rownames(X)<-NULL
+  colnames(X)<-NULL
+  
+  #create test/train indices
+  train_idx<-sample(1:dim(X)[2], round(train_frac*dim(X)[2]))
+  test_idx<-which(!1:dim(X)[2] %in% train_idx)
+
+  
+  #set specific args to run probs fxn
   if(output=="probs"){
-    args<-list(data[,train_idx], 
-               data[,test_idx], 
-               laboh[train_idx,], 
-               laboh[test_idx,], 
+    args<-list(X[,train_idx], 
+               X[,test_idx], 
+               Y[train_idx,], 
+               Y[test_idx,], 
                length(labels), 
                query,
                learning_rate = as.double(learning_rate),
@@ -149,141 +156,203 @@ viewmastR <-function(query_cds,
     }
     if(funclabel=="nn_"){
       args$learning_rate=learning_rate
-      args$layers = c(as.integer(dim(data[,train_idx])[1]), sapply(hidden_layers, as.integer), as.integer(length(labels)))
+      args$layers = c(as.integer(dim(X[,train_idx])[1]), sapply(hidden_layers, as.integer), as.integer(length(labels)))
       args$max_epochs = as.integer(max_epochs)
       args$batch_size = as.integer(batch_size)
       args$max_error = as.integer(max_error)
     }
+    if(funclabel=="perceptron_"){
+      args$learning_rate=NULL
+    }
+    if(funclabel=="dbnn_"){
+      if(is.null(argg$rbm_learning_rate)){args$rbm_learning_rate = 0.2} else {args$rbm_learning_rate = argg$rbm_learning_rate}
+      if(is.null(argg$nn_learning_rate)){args$nn_learning_rate = 4.0} else {args$nn_learning_rate = argg$nn_learning_rate}
+      if(is.null(argg$rbm_epochs)){args$rbm_epochs = 15} else {args$rbm_epochs = argg$rbm_epochs}
+      if(is.null(argg$nn_epochs)){args$nn_epochs = 250} else {args$nn_epochs = argg$nn_epochs}
+      args$learning_rate=NULL
+    }
     if(funclabel=="keras_"){
-      args$layers = c(as.integer(dim(data[,train_idx])[1]), sapply(hidden_layers, as.integer), as.integer(length(labels)))
+      args$layers = c(as.integer(dim(X[,train_idx])[1]), sapply(hidden_layers, as.integer), as.integer(length(labels)))
       args$max_epochs = 12
       args$batch_size = 100
       args$keras_model = keras_model
     }
-    out<-do.call(FUNC, args)
-    colnames(out)<-labels
-    if(is.null(threshold)){
-      if(software=="seurat"){
-        query_cds@meta.data[[coldata_label]]<-colnames(as.data.frame(out))[apply(as.data.frame(out),1,which.max)]
-      }
-      if(software=="monocle3"){
-        colData(query_cds)[[coldata_label]]<-colnames(as.data.frame(out))[apply(as.data.frame(out),1,which.max)]
-      }
-      return(query_cds)
-    }else{
-      if(threshold > 1 & threshold <= 0)stop("thresh must be value between 0 and 1")
-      out[out<threshold]<-NA
-      outd<-apply(as.data.frame(out),1,which.max)
-      outv<-sapply(outd, function(out){
-        if(length(out)==0){
-          NA
-        }else{
-          names(out)
-        }
-      })
-      if(software=="seurat"){
-        query_cds@meta.data[[coldata_label]]<-outv
-      }
-      if(software=="monocle3"){
-        colData(query_cds)[[coldata_label]]<-outv
-      }
-      return(query_cds)
+    if(funclabel=="lasso_"){
+      args$argg<-argg
     }
     
+    ##run FXN for probs output
+    out<-do.call(FUNC, args)
+    colnames(out)<-labels
+    
+    ##process probs output
+    return(process_probabilities(out, query_cds, threshold, software, coldata_label))
   }
+  
+  #set specific args to run labels fxn
   if(output=="labels"){
-    args<-list(data[,train_idx], 
-               data[,test_idx], 
-               labn[train_idx], 
-               labn[test_idx], 
+    args<-list(X[,train_idx], 
+               X[,test_idx], 
+               Ylab[train_idx], 
+               Ylab[test_idx], 
                length(labels), 
                query, 
                verbose = verbose)
+    if(funclabel=="xgboost_"){
+      args$argg<-argg
+    }
+    
+    ##run FXN for labels output
     out<-do.call(FUNC, args)
+  
+    #deal with xgboost
+    if(funclabel=="xgboost_"){
+      colnames(out)<-labels
+      return(process_probabilities(out, query_cds, threshold, software, coldata_label))
+    }
+    
+    #process labels output
+    return(process_labels(out, query_cds, software, coldata_label, labels))
+  }
+}
+
+
+## helper fxn for dealing with labels output from procedures invoked by viewmastR
+process_labels<-function(out, query_cds, software, coldata_label, labels){
+  if(software=="seurat"){
+    query_cds@meta.data[[coldata_label]]<-labels[out+1]
+  }
+  if(software=="monocle3"){
+    colData(query_cds)[[coldata_label]]<-labels[out+1]
+  }
+  return(query_cds)
+}
+
+## helper fxn for dealing with probs output from procedures invoked by viewmastR
+process_probabilities<-function(out, query_cds, threshold=NULL, software, coldata_label){
+  if(is.null(threshold)){
     if(software=="seurat"){
-      query_cds@meta.data[[coldata_label]]<-labels[out+1]
+      query_cds@meta.data[[coldata_label]]<-colnames(out)[apply(as.data.frame(out),1,which.max)]
     }
     if(software=="monocle3"){
-      colData(query_cds)[[coldata_label]]<-labels[out+1]
+      colData(query_cds)[[coldata_label]]<-colnames(out)[apply(as.data.frame(out),1,which.max)]
+    }
+    return(query_cds)
+  }else{
+    if(threshold > 1 & threshold <= 0)stop("thresh must be value between 0 and 1")
+    out[out<threshold]<-NA
+    outd<-apply(as.data.frame(out),1,which.max)
+    outv<-sapply(outd, function(out){
+      if(length(out)==0){
+        NA
+      }else{
+        names(out)
+      }
+    })
+    if(software=="seurat"){
+      query_cds@meta.data[[coldata_label]]<-outv
+    }
+    if(software=="monocle3"){
+      colData(query_cds)[[coldata_label]]<-outv
     }
     return(query_cds)
   }
 }
 
-is_sparse_matrix<-function (x) 
-{
-  class(x) %in% c("dgCMatrix", "dgTMatrix", "lgCMatrix")
-}
+#' xgboost helper
+#' @description A function for input of viewmastR data into xgboost for training and evaluation of a query
+#' @return model evaluation of query
+#' @import xgboost
+#' 
 
-get_norm_counts<-function (cds, norm_method = c("log", "binary", "size_only"), 
-                      pseudocount = 1) 
-{
-  software<-NULL
-  norm_method = match.arg(norm_method)
-  if(class(cds)=="Seurat"){software<-"seurat"}
-  if(class(cds)=="cell_data_set"){software<-"monocle3"}
-  if(is.null(software)){stop("software not found for input")}
-  if(software=="monocle3"){
-    norm_mat = SingleCellExperiment::counts(cds)
-    sf<-size_factors(cds)
+xgboost_helper<-function(
+  x_train, 
+      x_test, 
+      y_train, 
+      y_test, 
+      num_classes, 
+      query,
+      verbose,
+      argg){
+  if(verbose){verbose<-2}
+  if(is.null(argg$nrounds)){argg$nrounds<-20}
+  if(is.null(argg$objective)){argg$objective<-"multi:softprob"}
+  if(is.null(argg$cores)){argg$cores<-1}
+  x_test<-t(x_test)
+  x_train<-t(x_train)
+  query<-t(query)
+  if(verbose){
+    message(paste0("Running XGBoost with ", argg$cores, " cores"))
+    message(paste0("Train feature dims:\n", paste0(dim(x_train), collapse=" ")))
+    message(paste0("Test feature dims:\n", paste0(dim(x_test), collapse=" ")))
+    message(paste0("Query dims:\n", paste0(dim(query), collapse=" ")))
+    message(paste0("Num classes:\n", num_classes))
+    message(paste0("Num rounds ", argg$nrounds))
+    message(paste0("Objective function: ", argg$objective))
   }
-  if(software=="seurat"){
-    norm_mat = cds@assays[[cds@active.assay]]@counts
-    sf<-seurat_size_factors(cds)
-  }
-  if (norm_method == "binary") {
-    norm_mat = norm_mat > 0
-    if (is_sparse_matrix(norm_mat)) {
-      norm_mat = methods::as(norm_mat, "dgCMatrix")
-    }
-  }
-  else {
-    if (is_sparse_matrix(norm_mat)) {
-      norm_mat@x = norm_mat@x/rep.int(sf, 
-                                      diff(norm_mat@p))
-      if (norm_method == "log") {
-        if (pseudocount == 1) {
-          norm_mat@x = log10(norm_mat@x + pseudocount)
-        }
-        else {
-          stop("Pseudocount must equal 1 with sparse expression matrices")
-        }
-      }
-    }
-    else {
-      norm_mat = Matrix::t(Matrix::t(norm_mat)/sf)
-      if (norm_method == "log") {
-        norm_mat@x <- log10(norm_mat + pseudocount)
-      }
-    }
-  }
-  return(norm_mat)
+  bstSparse <- xgboost(data = x_train, label = y_train, nthread = argg$cores, nrounds = argg$nrounds, num_class=num_classes, objective = argg$objective, verbose=verbose)
+  Yhat<-t(matrix(predict(bstSparse, x_test), ncol=dim(x_test)[1], nrow=num_classes))
+  yhatTest<-apply(Yhat, 1, which.max)-1
+  if(verbose){message(paste("XGbBoost test accuracy: ", (length(yhatTest)-table(yhatTest==y_test)[1])/length(yhatTest)))}
+  return(t(matrix(predict(bstSparse, query), ncol=dim(query)[1], nrow=num_classes)))
 }
 
 
-seurat_size_factors<-function (cds, round_exprs = TRUE, method = c("mean-geometric-mean-total", 
-                                              "mean-geometric-mean-log-total")) 
-{
-  method <- match.arg(method)
-  if (any(Matrix::colSums(cds@assays[[cds@active.assay]]@counts) == 
-          0)) {
-    warning("Your CDS object contains cells with zero reads. ", 
-            "This causes size factor calculation to fail. Please remove ", 
-            "the zero read cells using ", "cds <- cds[,Matrix::colSums(exprs(cds)) != 0] and then ", 
-            "run cds <- estimate_size_factors(cds)")
-    return(cds)
-  }
-  if (is_sparse_matrix(cds@assays[[cds@active.assay]]@counts)) {
-    sf <- monocle3:::estimate_sf_sparse(cds@assays[[cds@active.assay]]@counts, 
-                                            round_exprs = round_exprs, method = method)
-  }
-  else {
-    sf <- monocle3:::estimate_sf_dense(cds@assays[[cds@active.assay]]@counts, 
-                                           round_exprs = round_exprs, method = method)
-  }
-  return(sf)
-}
 
+#' lasso helper
+#' @description A function for input of viewmastR data into lasso for training and evaluation of a query
+#' @return model evaluation of query
+#' @import glmnet
+#' @import doMC
+#' 
+
+lasso_helper<-function(
+    x_train, 
+    x_test, 
+    y_train, 
+    y_test, 
+    num_classes, 
+    query,
+    learning_rate,
+    verbose,
+    device,
+    argg){
+
+  x_test<-t(x_test)
+  x_train<-t(x_train)
+  query <-t(query)
+  if(is.null(argg$cores)){argg$cores<-1}
+  if(argg$cores>1){
+    parallel <- T
+    registerDoMC(cores = argg$cores)
+  } else {
+    parallel <- F
+  }
+  if(verbose){
+    message(paste0("Running Lasso with ", argg$cores, " core(s)"))
+    message(paste0("Train feature dims:\n", paste0(dim(x_train), collapse=" ")))
+    message(paste0("Test feature dims:\n", paste0(dim(x_test), collapse=" ")))
+    message(paste0("Train labels dims:\n", paste0(dim(y_train), collapse=" ")))
+    message(paste0("Test labels dims:\n", paste0(dim(y_test), collapse=" ")))
+    message(paste0("Query dims:\n", paste0(dim(query), collapse=" ")))
+    message(paste0("Num classes:\n", num_classes))
+  }
+  startTime <- Sys.time()
+  cv.lasso <- cv.glmnet(x_train, y_train, family = "multinomial",  parallel = parallel, trace.it=verbose) #lasso
+  endTime <- Sys.time()
+  if(verbose){
+    message(paste0("Training with CV took: ", endTime - startTime))
+    message(paste0("Lambda min:  ", cv.lasso$lambda.min))
+    plot(cv.lasso)
+  }
+  Yhat<-predict(cv.lasso, newx = x_test, s = c("lambda.min"))
+  Yhat_labels<-apply(Yhat, 1, which.max)-1
+  y_test_label <- apply(y_test, 1, which.max)-1
+  if(verbose){message(paste("Lasso test accuracy: ", (length(Yhat_labels)-table(Yhat_labels==y_test_label)[1])/length(Yhat_labels)))}
+  pred<-predict(cv.lasso, newx = query, s = c("lambda.min"))
+  colnames(pred)<-colnames(y_train)
+  return(pred)
+}
 
 #' Keras helper
 #' @description A function for input of viewmastR data into keras for training and evaluation of a query
@@ -683,5 +752,81 @@ franken_helper <- function(x, from_dataset="mmusculus_gene_ensembl", to_dataset=
   to_mart = useMart("ensembl", dataset = to_dataset)
   genesV2 = getLDS(attributes = c(from_type), filters = from_type, values = x , mart = from_mart, attributesL = c(to_type), martL = to_mart, uniqueRows=F)
   return(genesV2)
+}
+
+
+
+is_sparse_matrix<-function (x) 
+{
+  class(x) %in% c("dgCMatrix", "dgTMatrix", "lgCMatrix")
+}
+
+get_norm_counts<-function (cds, norm_method = c("log", "binary", "size_only"), 
+                           pseudocount = 1) 
+{
+  software<-NULL
+  norm_method = match.arg(norm_method)
+  if(class(cds)=="Seurat"){software<-"seurat"}
+  if(class(cds)=="cell_data_set"){software<-"monocle3"}
+  if(is.null(software)){stop("software not found for input")}
+  if(software=="monocle3"){
+    norm_mat = SingleCellExperiment::counts(cds)
+    sf<-size_factors(cds)
+  }
+  if(software=="seurat"){
+    norm_mat = cds@assays[[cds@active.assay]]@counts
+    sf<-seurat_size_factors(cds)
+  }
+  if (norm_method == "binary") {
+    norm_mat = norm_mat > 0
+    if (is_sparse_matrix(norm_mat)) {
+      norm_mat = methods::as(norm_mat, "dgCMatrix")
+    }
+  }
+  else {
+    if (is_sparse_matrix(norm_mat)) {
+      norm_mat@x = norm_mat@x/rep.int(sf, 
+                                      diff(norm_mat@p))
+      if (norm_method == "log") {
+        if (pseudocount == 1) {
+          norm_mat@x = log10(norm_mat@x + pseudocount)
+        }
+        else {
+          stop("Pseudocount must equal 1 with sparse expression matrices")
+        }
+      }
+    }
+    else {
+      norm_mat = Matrix::t(Matrix::t(norm_mat)/sf)
+      if (norm_method == "log") {
+        norm_mat@x <- log10(norm_mat + pseudocount)
+      }
+    }
+  }
+  return(norm_mat)
+}
+
+
+seurat_size_factors<-function (cds, round_exprs = TRUE, method = c("mean-geometric-mean-total", 
+                                                                   "mean-geometric-mean-log-total")) 
+{
+  method <- match.arg(method)
+  if (any(Matrix::colSums(cds@assays[[cds@active.assay]]@counts) == 
+          0)) {
+    warning("Your CDS object contains cells with zero reads. ", 
+            "This causes size factor calculation to fail. Please remove ", 
+            "the zero read cells using ", "cds <- cds[,Matrix::colSums(exprs(cds)) != 0] and then ", 
+            "run cds <- estimate_size_factors(cds)")
+    return(cds)
+  }
+  if (is_sparse_matrix(cds@assays[[cds@active.assay]]@counts)) {
+    sf <- monocle3:::estimate_sf_sparse(cds@assays[[cds@active.assay]]@counts, 
+                                        round_exprs = round_exprs, method = method)
+  }
+  else {
+    sf <- monocle3:::estimate_sf_dense(cds@assays[[cds@active.assay]]@counts, 
+                                       round_exprs = round_exprs, method = method)
+  }
+  return(sf)
 }
 

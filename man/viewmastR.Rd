@@ -11,12 +11,13 @@ viewmastR(
   ref_celldata_col,
   query_celldata_col = NULL,
   FUNC = c("naive_bayes", "neural_network", "bagging", "softmax_regression",
-    "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn"),
+    "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn", "xgboost",
+    "lasso"),
   selected_genes = NULL,
   train_frac = 0.8,
   tf_idf = F,
   hidden_layers = c(500, 100),
-  learning_rate = 2,
+  learning_rate = 0.5,
   batch_size = 100,
   max_epochs = 250,
   max_error = 0.5,
@@ -26,7 +27,8 @@ viewmastR(
   verbose = T,
   device = 0,
   threshold = NULL,
-  keras_model = NULL
+  keras_model = NULL,
+  ...
 )
 }
 \arguments{
