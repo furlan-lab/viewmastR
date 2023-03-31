@@ -1,10 +1,47 @@
 #' @export
 plot_gene_dispersion<-function(cds, size=1, alpha=0.4){
-  if(is.null(cds@int_metadata$dispersion$disp_func)){
-    prd<-cds@int_metadata$dispersion
+  if(class(cds)=="cell_data_set"){
+    if(is.null(cds@int_metadata$dispersion$disp_func)){
+      prd<-cds@int_metadata$dispersion
+      prd$selected_genes<-prd$use_for_ordering
+      g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
+      if("use_for_ordering" %in% colnames(cds@int_metadata$dispersion)){
+        g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_genes), alpha=alpha, size=size)+
+          scale_color_manual(values=c("lightgray", "firebrick1"))
+      }else{
+        g <- g + ggplot2::geom_point(data=prd, ggplot2::aes( x=log_mean, y=log_dispersion), color="grey", alpha=alpha, size=size)
+      }
+      g<-g+
+        ggplot2::theme_bw() +
+        ggplot2::geom_line() # + 
+      #ggplot2::geom_smooth(data=prd, ggplot2::aes(ymin = lci, ymax = uci), stat = "identity")
+      return(g)
+    }else{
+      prd<-cds@int_metadata$dispersion$disp_table
+      prd$fit<-log(cds@int_metadata$dispersion$disp_func(prd$mu))
+      prd$mu<-log(prd$mu)
+      prd$disp<-log(prd$disp)
+      colnames(prd)<-c("log_mean", "log_dispersion", "gene_id", "fit")
+      g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
+      if("use_for_ordering" %in% names(cds@int_metadata$dispersion)){
+        prd$selected_genes = cds@int_metadata$dispersion$use_for_ordering
+        g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_genes, alpha=alpha), size=size)
+      }else{
+        g <- g + ggplot2::geom_point(data=prd, ggplot2::aes( x=log_mean, y=log_dispersion, color="grey", alpha=alpha), size=size)
+      }
+      g<-g+
+        ggplot2::theme_bw() +
+        ggplot2::geom_line(data=prd, ggplot2::aes( x=log_mean, y=fit)) +
+        ggplot2::geom_smooth(data=prd, formula = fit ~ log_mean, stat = "identity") + 
+        xlab("log mean expression")+ylab("log dispersion")
+      return(g)
+    }
+  }
+  if(class(cds)=="Seurat"){
+    prd<-cds@misc$dispersion
     prd$selected_genes<-prd$use_for_ordering
     g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
-    if("use_for_ordering" %in% colnames(cds@int_metadata$dispersion)){
+    if("use_for_ordering" %in% colnames(cds@misc$dispersion)){
       g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_genes), alpha=alpha, size=size)+
         scale_color_manual(values=c("lightgray", "firebrick1"))
     }else{
@@ -13,28 +50,10 @@ plot_gene_dispersion<-function(cds, size=1, alpha=0.4){
     g<-g+
       ggplot2::theme_bw() +
       ggplot2::geom_line() # + 
-      #ggplot2::geom_smooth(data=prd, ggplot2::aes(ymin = lci, ymax = uci), stat = "identity")
-    return(g)
-  }else{
-    prd<-cds@int_metadata$dispersion$disp_table
-    prd$fit<-log(cds@int_metadata$dispersion$disp_func(prd$mu))
-    prd$mu<-log(prd$mu)
-    prd$disp<-log(prd$disp)
-    colnames(prd)<-c("log_mean", "log_dispersion", "gene_id", "fit")
-    g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
-    if("use_for_ordering" %in% names(cds@int_metadata$dispersion)){
-      prd$selected_genes = cds@int_metadata$dispersion$use_for_ordering
-      g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_genes, alpha=alpha), size=size)
-    }else{
-      g <- g + ggplot2::geom_point(data=prd, ggplot2::aes( x=log_mean, y=log_dispersion, color="grey", alpha=alpha), size=size)
-    }
-    g<-g+
-      ggplot2::theme_bw() +
-      ggplot2::geom_line(data=prd, ggplot2::aes( x=log_mean, y=fit)) +
-      ggplot2::geom_smooth(data=prd, formula = fit ~ log_mean, stat = "identity") + 
-      xlab("log mean expression")+ylab("log dispersion")
+    #ggplot2::geom_smooth(data=prd, ggplot2::aes(ymin = lci, ymax = uci), stat = "identity")
     return(g)
   }
+
 }
 
 #' Select genes in a cell_data_set for dimensionality reduction
@@ -68,29 +87,43 @@ plot_gene_dispersion<-function(cds, size=1, alpha=0.4){
 #' @export
 
 select_genes<-function(cds, fit_min=1, fit_max=Inf, logmean_ul=Inf, logmean_ll=-Inf, top_n=NULL){
-  if(is.null(cds@int_metadata$dispersion$disp_func)){
-    df<-cds@int_metadata$dispersion
+  if(class(cds)=="cell_data_set"){
+    if(is.null(cds@int_metadata$dispersion$disp_func)){
+      df<-cds@int_metadata$dispersion
+      df$ratio<-df$log_dispersion/df$fit
+      df$index<-1:nrow(df)
+      if(!is.null(top_n)){
+        in_range<-df[which(df$log_mean > logmean_ll & df$log_mean < logmean_ul),]
+        cds@int_metadata$dispersion$use_for_ordering <- df$index %in% in_range[order(-in_range$ratio),][1:top_n,]$index
+      }else{
+        cds@int_metadata$dispersion$use_for_ordering <- df$ratio > fit_min & df$ratio < fit_max & df$log_mean > logmean_ll & df$log_mean < logmean_ul
+      }
+      return(cds)
+    }else{
+      df<-cds@int_metadata$dispersion$disp_table
+      df$fit<-cds@int_metadata$dispersion$disp_func(df$mu)
+      df$ratio<-df$disp/df$fit
+      df$log_disp=log(df$disp)
+      df$log_mean<-log(df$mu)
+      df$index<-1:nrow(df)
+      if(!is.null(top_n)){
+        in_range<-df[which(df$log_mean > logmean_ll & df$log_mean < logmean_ul),]
+        cds@int_metadata$dispersion$use_for_ordering <- df$index %in% in_range[order(-in_range$ratio),][1:top_n,]$index
+      }else{
+        cds@int_metadata$dispersion$use_for_ordering <- df$ratio > fit_min & df$ratio < fit_max & df$log_mean > logmean_ll & df$log_mean < logmean_ul
+      }
+      return(cds)
+    }
+  }
+  if(class(cds)=="Seurat"){
+    df<-cds@misc$dispersion
     df$ratio<-df$log_dispersion/df$fit
     df$index<-1:nrow(df)
     if(!is.null(top_n)){
       in_range<-df[which(df$log_mean > logmean_ll & df$log_mean < logmean_ul),]
-      cds@int_metadata$dispersion$use_for_ordering <- df$index %in% in_range[order(-in_range$ratio),][1:top_n,]$index
+      cds@misc$dispersion$use_for_ordering <- df$index %in% in_range[order(-in_range$ratio),][1:top_n,]$index
     }else{
-      cds@int_metadata$dispersion$use_for_ordering <- df$ratio > fit_min & df$ratio < fit_max & df$log_mean > logmean_ll & df$log_mean < logmean_ul
-    }
-    return(cds)
-  }else{
-    df<-cds@int_metadata$dispersion$disp_table
-    df$fit<-cds@int_metadata$dispersion$disp_func(df$mu)
-    df$ratio<-df$disp/df$fit
-    df$log_disp=log(df$disp)
-    df$log_mean<-log(df$mu)
-    df$index<-1:nrow(df)
-    if(!is.null(top_n)){
-      in_range<-df[which(df$log_mean > logmean_ll & df$log_mean < logmean_ul),]
-      cds@int_metadata$dispersion$use_for_ordering <- df$index %in% in_range[order(-in_range$ratio),][1:top_n,]$index
-    }else{
-      cds@int_metadata$dispersion$use_for_ordering <- df$ratio > fit_min & df$ratio < fit_max & df$log_mean > logmean_ll & df$log_mean < logmean_ul
+      cds@misc$dispersion$use_for_ordering <- df$ratio > fit_min & df$ratio < fit_max & df$log_mean > logmean_ll & df$log_mean < logmean_ul
     }
     return(cds)
   }
@@ -99,33 +132,51 @@ select_genes<-function(cds, fit_min=1, fit_max=Inf, logmean_ul=Inf, logmean_ll=-
 
 #' @export
 get_selected_genes<-function(cds, gene_column="id"){
-  if(is.null(cds@int_metadata$dispersion$disp_func)){
-    as.character(cds@int_metadata$dispersion[[gene_column]][cds@int_metadata$dispersion$use_for_ordering])
-  }else{
-    as.character(cds@int_metadata$dispersion$disp_table[[gene_column]][cds@int_metadata$dispersion$use_for_ordering])
+  if(class(cds)=="cell_data_set"){
+    if(is.null(cds@int_metadata$dispersion$disp_func)){
+      return(as.character(cds@int_metadata$dispersion[[gene_column]][cds@int_metadata$dispersion$use_for_ordering]))
+    }else{
+      return(as.character(cds@int_metadata$dispersion$disp_table[[gene_column]][cds@int_metadata$dispersion$use_for_ordering]))
+    }
+  }
+  if(class(cds)=="Seurat"){
+    return(as.character(cds@misc$dispersion[[gene_column]][cds@misc$dispersion$use_for_ordering]))
   }
 }
 
 #' @export
 set_selected_genes<-function(cds, genes, gene_column="id", unique_column="id"){
-  if(is.null(cds@int_metadata$dispersion$disp_func)){
-    if(is.null(cds@int_metadata$dispersion)){
-        cds@int_metadata$dispersion$use_for_ordering = rownames(cds) %in% genes
+  if(class(cds)=="cell_data_set"){
+    if(is.null(cds@int_metadata$dispersion$disp_func)){
+      if(is.null(cds@int_metadata$dispersion)){
+          cds@int_metadata$dispersion$use_for_ordering = rownames(cds) %in% genes
+        return(cds)
+      }
+      if(gene_column %in% colnames(cds@int_metadata$dispersion)){
+        cds@int_metadata$dispersion$use_for_ordering = cds@int_metadata$dispersion[[gene_column]] %in% genes
+      }
+      if(length(which(cds@int_metadata$dispersion$use_for_ordering))<1) warning("No ordering genes found")
+    }else{
+      if(gene_column %in% colnames(cds@int_metadata$dispersion$disp_table)){
+        cds@int_metadata$dispersion$use_for_ordering = cds@int_metadata$dispersion$disp_table[[gene_column]] %in% genes
+      }else{
+        found<-rownames(fData(cds))[fData(cds)[[gene_column]] %in% genes]
+        cds@int_metadata$dispersion$use_for_ordering = cds@int_metadata$dispersion$disp_table[[unique_column]] %in% found
+      }
+    }
+    return(cds)
+  }
+  if(class(cds)=="Seurat"){
+    if(is.null(cds@misc$dispersion)){
+      cds@misc$dispersion$use_for_ordering = rownames(cds) %in% genes
       return(cds)
     }
-    if(gene_column %in% colnames(cds@int_metadata$dispersion)){
-      cds@int_metadata$dispersion$use_for_ordering = cds@int_metadata$dispersion[[gene_column]] %in% genes
+    if(gene_column %in% colnames(cds@misc$dispersion)){
+      cds@misc$dispersion$use_for_ordering = cds@misc$dispersion[[gene_column]] %in% genes
     }
-    if(length(which(cds@int_metadata$dispersion$use_for_ordering))<1) warning("No ordering genes found")
-  }else{
-    if(gene_column %in% colnames(cds@int_metadata$dispersion$disp_table)){
-      cds@int_metadata$dispersion$use_for_ordering = cds@int_metadata$dispersion$disp_table[[gene_column]] %in% genes
-    }else{
-      found<-rownames(fData(cds))[fData(cds)[[gene_column]] %in% genes]
-      cds@int_metadata$dispersion$use_for_ordering = cds@int_metadata$dispersion$disp_table[[unique_column]] %in% found
-    }
+    if(length(which(cds@misc$dispersion$use_for_ordering))<1) warning("No ordering genes found")
+    return(cds)
   }
-  cds
 }
 
 
@@ -159,18 +210,28 @@ set_selected_genes<-function(cds, genes, gene_column="id", unique_column="id"){
 #' the gene symbol; default = "gene_short_name".
 #' @return an updated cell_data_set object with dispersion and mean expression saved
 #' @export
+
 calculate_gene_dispersion<-function(cds, q=3, id_tag="id", symbol_tag="gene_short_name", method="m3addon", removeOutliers=T){
-  cds@int_metadata$dispersion<-NULL
-  if(method=="m2"){
-    df<-data.frame(calc_dispersion_m2(obj = cds, min_cells_detected = 1, min_exprs=1, id_tag=id_tag))
-    fdat<-fData(cds)
-    if (!is.list(df)) 
-      stop("Parametric dispersion fitting failed, please set a different lowerDetectionLimit")
-    disp_table <- subset(df, is.na(mu) == FALSE)
-    res <- monocle:::parametricDispersionFit(disp_table, verbose = T)
-    fit <- res[[1]]
-    coefs <- res[[2]]
-    if (removeOutliers) {
+  software<-NULL
+  if(class(cds)=="Seurat"){
+    software<-"seurat"
+  }
+  if(class(cds)=="cell_data_set"){
+    software<-"monocle3"
+  }
+  if(is.null(software)){stop("software not found for input objects")}
+  if(software=="monocle3"){
+    cds@int_metadata$dispersion<-NULL
+    if(method=="m2"){
+      df<-data.frame(calc_dispersion_m2(obj = cds, min_cells_detected = 1, min_exprs=1, id_tag=id_tag))
+      fdat<-fData(cds)
+      if (!is.list(df)) 
+        stop("Parametric dispersion fitting failed, please set a different lowerDetectionLimit")
+      disp_table <- subset(df, is.na(mu) == FALSE)
+      res <- monocle:::parametricDispersionFit(disp_table, verbose = T)
+      fit <- res[[1]]
+      coefs <- res[[2]]
+      if (removeOutliers) {
         CD <- cooks.distance(fit)
         cooksCutoff <- 4/nrow(disp_table)
         message(paste("Removing", length(CD[CD > cooksCutoff]), 
@@ -178,40 +239,65 @@ calculate_gene_dispersion<-function(cds, q=3, id_tag="id", symbol_tag="gene_shor
         outliers <- union(names(CD[CD > cooksCutoff]), setdiff(row.names(disp_table), 
                                                                names(CD)))
         res <- monocle:::parametricDispersionFit(disp_table[row.names(disp_table) %in% 
-                                                    outliers == FALSE, ], verbose=T)
+                                                              outliers == FALSE, ], verbose=T)
         fit <- res[[1]]
         coefs <- res[[2]]
-      names(coefs) <- c("asymptDisp", "extraPois")
-      ans <- function(q) coefs[1] + coefs[2]/q
-      attr(ans, "coefficients") <- coefs
+        names(coefs) <- c("asymptDisp", "extraPois")
+        ans <- function(q) coefs[1] + coefs[2]/q
+        attr(ans, "coefficients") <- coefs
+      }
+      res <- list(disp_table = disp_table, disp_func = ans)
+      cds@int_metadata$dispersion<-res
+      return(cds)
     }
-    res <- list(disp_table = disp_table, disp_func = ans)
-    cds@int_metadata$dispersion<-res
-    return(cds)
+    if(method=="m3addon"){
+      ncounts<-Matrix::t(Matrix::t(exprs(cds))/monocle3::size_factors(cds))
+      m<-Matrix::rowMeans(ncounts)
+      sd<-sqrt(sparseRowVariances(ncounts))
+      fdat<-fData(cds)
+      cv<-sd/m*100
+      df<-data.frame(log_dispersion=log(cv), log_mean=log(m))
+      df[[id_tag]]<-fdat[[id_tag]]
+      df<-df[is.finite(df$log_dispersion),]
+      model <- lm(data = df, log_dispersion ~ log_mean + poly(log_mean, degree=q))
+      prd <- data.frame(log_mean = df$log_mean)
+      err<-suppressWarnings(predict(model, newdata= prd, se.fit = T))
+      prd$lci <- err$fit - 1.96 * err$se.fit
+      prd$fit <- err$fit
+      prd$uci <- err$fit + 1.96 * err$se.fit
+      prd$log_dispersion<-df$log_dispersion
+      prd[[id_tag]]<-df[[id_tag]]
+      cds@int_metadata$dispersion<-prd
+      return(cds)
+    }
   }
-  if(method=="m3addon"){
-    ncounts<-Matrix::t(Matrix::t(exprs(cds))/monocle3::size_factors(cds))
-    m<-Matrix::rowMeans(ncounts)
-    sd<-sqrt(sparseRowVariances(ncounts))
-    fdat<-fData(cds)
-    cv<-sd/m*100
-    df<-data.frame(log_dispersion=log(cv), log_mean=log(m))
-    df[[id_tag]]<-fdat[[id_tag]]
-    df<-df[is.finite(df$log_dispersion),]
-    model <- lm(data = df, log_dispersion ~ log_mean + poly(log_mean, degree=q))
-    prd <- data.frame(log_mean = df$log_mean)
-    err<-suppressWarnings(predict(model, newdata= prd, se.fit = T))
-    prd$lci <- err$fit - 1.96 * err$se.fit
-    prd$fit <- err$fit
-    prd$uci <- err$fit + 1.96 * err$se.fit
-    prd$log_dispersion<-df$log_dispersion
-    prd[[id_tag]]<-df[[id_tag]]
-    prd$gene_short_name<-fdat[[symbol_tag]][match(prd[[id_tag]], fdat[[id_tag]])]
-    cds@int_metadata$dispersion<-prd
-    return(cds)
+  if(software=="seurat"){
+    if(method=="m2"){
+      stop("m2 method not supported for seurat objects")
+    }
+    if(method=="m3addon"){
+      ncounts<-get_norm_counts(cds)
+      m<-Matrix::rowMeans(ncounts)
+      sd<-sqrt(sparseRowVariances(ncounts))
+      #fdat<-fData(cds)
+      cv<-sd/m*100
+      df<-data.frame(log_dispersion=log(cv), log_mean=log(m))
+      df[[id_tag]]<-rownames(cds)
+      df<-df[is.finite(df$log_dispersion),]
+      model <- lm(data = df, log_dispersion ~ log_mean + poly(log_mean, degree=q))
+      prd <- data.frame(log_mean = df$log_mean)
+      err<-suppressWarnings(predict(model, newdata= prd, se.fit = T))
+      prd$lci <- err$fit - 1.96 * err$se.fit
+      prd$fit <- err$fit
+      prd$uci <- err$fit + 1.96 * err$se.fit
+      prd$log_dispersion<-df$log_dispersion
+      prd[[id_tag]]<-df[[id_tag]]
+      #prd$gene_short_name<-fdat[[symbol_tag]][match(prd[[id_tag]], fdat[[id_tag]])]
+      cds@misc$dispersion<-prd
+      return(cds)
+    }
   }
 }
-
 
 #' @export
 #' @import monocle3

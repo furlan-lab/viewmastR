@@ -8,15 +8,16 @@
 viewmastR(
   query_cds,
   ref_cds,
-  ref_celldata_col = "celltype",
+  ref_celldata_col,
   query_celldata_col = NULL,
   FUNC = c("naive_bayes", "neural_network", "bagging", "softmax_regression",
-    "logistic_regression", "deep_belief_nn", "perceptron"),
+    "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn", "xgboost",
+    "lasso"),
   selected_genes = NULL,
   train_frac = 0.8,
   tf_idf = F,
   hidden_layers = c(500, 100),
-  learning_rate = 2,
+  learning_rate = 0.5,
   batch_size = 100,
   max_epochs = 250,
   max_error = 0.5,
@@ -25,7 +26,9 @@ viewmastR(
   LSImethod = 1,
   verbose = T,
   device = 0,
-  threshold = NULL
+  threshold = NULL,
+  keras_model = NULL,
+  ...
 )
 }
 \arguments{
@@ -39,7 +42,7 @@ a cell_data_set object or a list of items if unfiltered data is returned (see un
 \description{
 see single cell datasets through different lenses
 
-ip
+in progress
 }
 \author{
 scfurl

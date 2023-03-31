@@ -30,7 +30,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocMana
 ps<-.libPaths()
 .libPaths(ps[c(2,1,3)])
 devtools::install_github("daqana/rcpparrayfire")
-devtools::install_github("furlan-lab/viewmastR")
+devtools::install_github("furlan-lab/viewmastR", branch="keras")
 install.packages("keras")
 
 
@@ -96,6 +96,227 @@ DimPlot(seu, group.by = "celltype_smr", label = F, pt.size = 0.4)+scale_color_ma
 
 
 roxygen2::roxygenize(".")
+
+rm(list=ls())
+library(viewmastR)
+library(Seurat)
+library(monocle3)
+library(tidyr)
+library(keras)
+library(reticulate)
+library(ggplot2)
+py_config()
+seu<-readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerResearchCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds/220302_final_object.RDS")
+rna<-readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerResearchCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented.RDS")
+
+seur<-monocle3_to_seurat(rna, normalize=F)
+vg<-common_variant_genes(seu, seur, plot=F, top_n = 2000)
+
+seur<-seur[,sample( 1:dim(seur)[2], 5000)]
+DimPlot(seur, group.by = "SFClassification", cols = rna@metadata$colorMap$classification)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "lasso", verbose=T, cores=8)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "xgboost", verbose=T, cores=8)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "softmax_regression", verbose=T, cores=8)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "naive_bayes", verbose=T, cores=8)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+
+model <- keras_model_sequential() %>%
+  layer_dense(units = 1000, activation = 'relu', input_shape = 1651) %>%
+  layer_dense(units = 500, activation = 'relu') %>%
+  layer_dense(units = 200, activation = 'relu') %>%
+  layer_dense(units = length(levels(factor(rna[["SFClassification"]]))), activation = 'softmax')
+
+model %>% compile(
+  loss = loss_categorical_crossentropy,
+  optimizer = optimizer_adadelta(),
+  metrics = c('accuracy')
+)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "keras", verbose=T, keras_model = model)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "neural_network", verbose=T, learning_rate = 0.05)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "logistic_regression", verbose=T, learning_rate = 0.05)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "bagging", verbose=T, learning_rate = 0.05)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "deep_belief_nn", verbose=T)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "perceptron", verbose=T)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+
+
+
+cds<-seurat_to_monocle3(seu)
+cdsr<-seurat_to_monocle3(seur)
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "lasso", verbose=T, cores=8)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "xgboost", verbose=T, cores=8)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "softmax_regression", verbose=T, cores=8)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "naive_bayes", verbose=T, cores=8)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+model <- keras_model_sequential() %>%
+  layer_dense(units = 1000, activation = 'relu', input_shape = 1651) %>%
+  layer_dense(units = 500, activation = 'relu') %>%
+  layer_dense(units = 200, activation = 'relu') %>%
+  layer_dense(units = length(levels(factor(rna[["SFClassification"]]))), activation = 'softmax')
+
+model %>% compile(
+  loss = loss_categorical_crossentropy,
+  optimizer = optimizer_adadelta(),
+  metrics = c('accuracy')
+)
+
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "keras", verbose=T, keras_model = model)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "neural_network", verbose=T, learning_rate = 0.05)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "logistic_regression", verbose=T, learning_rate = 0.05)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "bagging", verbose=T, learning_rate = 0.05)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "deep_belief_nn", verbose=T)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+cds<-viewmastR(cds, cdsr, ref_celldata_col = "SFClassification", 
+               query_celldata_col = "viewmastR", selected_genes = vg,
+               FUNC = "perceptron", verbose=T)
+plot_cells(cds, color_cells_by  = "viewmastR")+scale_color_manual(values=rna@metadata$colorMap$classification)
+
+
+
+undebug(viewmastR)
+
+DimPlot(seu, group.by = "celltype")
+DimPlot(seur, group.by = "SFClassification", cols = rna@metadata$colorMap$classification)
+
+seut<-calculate_gene_dispersion(seu)
+seut@misc$dispersion
+plot_gene_dispersion(seut)
+seut<-select_genes(seut, top_n = 3000)
+
+vg<-common_variant_genes(seu, seur, plot=F)
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", query_celldata_col = "viewmastR", selected_genes = vg)
+DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+
+### glmNET USING SPARSE - parallel
+require(doMC)
+registerDoMC(cores = detectCores())
+cds<-seurat_to_monocle3(seu)
+rna<-seurat_to_monocle3(seuM)
+common_list<-viewmastR::common_features(list(rna, cds))
+vg<-common_variant_genes(cds, rna, top_n = commonvariant)
+length(vg)
+X<-t(monocle3::normalized_counts(common_list[[1]][vg,]))
+Xnew<-t(monocle3::normalized_counts(common_list[[2]][colnames(X),]))
+labf<-as.factor(colData(rna)[["fCelltype"]])
+labn<-as.numeric(labf)-1
+labels<-levels(labf)
+y<-matrix(model.matrix(~0+labf), ncol = length(labels))
+ind <- sample(2, nrow(X), replace = TRUE, prob = c(0.8, 0.2))
+Xtrain <- X[ind==1,]
+Xtest <- X[ind==2,]
+ytrain <- y[ind==1,]
+ytest <- y[ind==2,]
+
+startTime <- Sys.time()
+cv.lasso <- cv.glmnet(X, y, family = "multinomial", type.multinomial = "grouped", parallel = T, trace.it=T) #lasso
+endTime <- Sys.time()
+print(endTime - startTime)
+
+plot(cv.lasso)
+cv.lasso$lambda.min
+
+pred<-predict(cv.lasso, newx =Xnew, s = c("lambda.min"))
+seu$lasso_celltype_g<-labels[apply(pred, 1, which.max)]
+DimPlot_scCustom(seu, group.by = "lasso_celltype_g", colors_use =sfc(14))
+DimPlot_scCustom(seu, group.by = "lasso_celltype", colors_use =sfc(14))
+
+
+cm <- confusionMatrix(factor(seu$lasso_celltype_g), factor(seu$lasso_celltype), dnn = c("Prediction", "Reference"))
+
+tab<-sweep(cm$table, 2, colSums(cm$table), "/")
+plt <- as.data.frame(tab)
+plt$Freq<-round(plt$Freq, 3)
+plt$Prediction <- factor(plt$Prediction, levels=rev(levels(plt$Prediction)))
+
+ggplot(plt, aes(Prediction,Reference, fill= Freq)) +
+  geom_tile() + geom_text(aes(label=Freq), color="white" ) +
+  scale_fill_viridis_c(option = "A") +
+  labs(x = "Reference",y = "Prediction") +
+  theme(axis.text.x = element_text(angle=90))
+
+
+#1 hour for grouped vs 5 min for default.  not worth the wait
+
+
+debug(viewmastR)
+
+undebug(common_variant_genes)
+debug(viewmastR:::common_variant_seurat)
 
 #test array fire sparse functions
 data<-keras::dataset_mnist()

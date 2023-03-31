@@ -1,8 +1,8 @@
 Package: viewmastR
 Type: R Package
 Title: This package aims annotate scRNAseq data according to a reference
-Version: 1.0
-Date: 2022-07-18
+Version: 1.1
+Date: 2023-03-30
 Author: Scott Furlan
 Maintainer: Scott Furlan <scfurl@users.noreply.github.com>
 Description: Using a variety of tools, this package seeks to annotate cells from one dataset with
@@ -19,6 +19,10 @@ Imports: Rcpp (>= 1.0.6),
   Seurat (> 4.0.0),
   biomaRt (> 2.40.0),
   Hmisc (> 4.3.0),
+  keras (>= 2.9.0),
+  xgboost (>= 1.7),
+  reticulate (>= 1.2),
+  glmnet (>= 4.1),
   hdf5r (> 1.2.0),
 LinkingTo: Rcpp, RcppArrayFire
 RoxygenNote: 7.2.0
