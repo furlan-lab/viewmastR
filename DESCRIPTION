@@ -24,6 +24,7 @@ Imports: Rcpp (>= 1.0.6),
   reticulate (>= 1.2),
   glmnet (>= 4.1),
   hdf5r (> 1.2.0),
+  doMC (> 1.0.0),
 LinkingTo: Rcpp, RcppArrayFire
 RoxygenNote: 7.2.0
 SystemRequirements: C++11

@@ -303,7 +303,7 @@ xgboost_helper<-function(
 #' @description A function for input of viewmastR data into lasso for training and evaluation of a query
 #' @return model evaluation of query
 #' @importFrom glmnet cv.glmnet
-#' @import doMC
+#' @importFrom doMC registerDoMC
 #' 
 
 lasso_helper<-function(
@@ -749,7 +749,7 @@ franken<-function(cds, rowdata_col="gene_short_name", from_species="mm", to_spec
 }
 
 
-#' @import biomaRt
+#' @importFrom biomaRt getLDS
 #' @export
 franken_helper <- function(x, from_dataset="mmusculus_gene_ensembl", to_dataset="hsapiens_gene_ensembl", from_type="mgi_symbol", to_type="hgnc_symbol"){
   from_mart = useMart("ensembl", dataset = from_dataset)

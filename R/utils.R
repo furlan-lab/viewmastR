@@ -55,7 +55,9 @@ common_features <- function(cds_list){
 #' @description Just like it sounds.
 #'
 #' @param cds_list Input cell_data_set object or sparse matrix.
-#' @import Matrix
+#' @importFrom Matrix rowSums
+#' @importFrom Matrix colSums
+#' @importFrom Matrix Diagonal
 #' @export
 tf_idf_transform <- function(input, method=1, verbose=T){
   if(class(input)=="cell_data_set"){
@@ -64,12 +66,12 @@ tf_idf_transform <- function(input, method=1, verbose=T){
     mat<-input
   }
   rn <- rownames(mat)
-  row_sums<-Matrix::rowSums(mat)
+  row_sums<-rowSums(mat)
   nz<-which(row_sums>0)
   mat <- mat[nz,]
   rn <- rn[nz]
   row_sums <- row_sums[nz]
-  col_sums <- Matrix::colSums(mat)
+  col_sums <- colSums(mat)
   
   #column normalize
   mat <- t(t(mat)/col_sums)
@@ -80,7 +82,7 @@ tf_idf_transform <- function(input, method=1, verbose=T){
     if(verbose) message("Computing Inverse Document Frequency")
     idf   <- as(log(1 + ncol(mat) / row_sums), "sparseVector")
     if(verbose) message("Computing TF-IDF Matrix")
-    mat <- as(Matrix::Diagonal(x = as.vector(idf)), "sparseMatrix") %*% 
+    mat <- as(Diagonal(x = as.vector(idf)), "sparseMatrix") %*% 
       mat
   }
   else if (method == 2) {
@@ -88,7 +90,7 @@ tf_idf_transform <- function(input, method=1, verbose=T){
     if(verbose) message("Computing Inverse Document Frequency")
     idf   <- as( ncol(mat) / row_sums, "sparseVector")
     if(verbose) message("Computing TF-IDF Matrix")
-    mat <- as(Matrix::Diagonal(x = as.vector(idf)), "sparseMatrix") %*% 
+    mat <- as(Diagonal(x = as.vector(idf)), "sparseMatrix") %*% 
       mat
     mat@x <- log(mat@x * scale_to + 1)
   }else if (method == 3) {
@@ -96,7 +98,7 @@ tf_idf_transform <- function(input, method=1, verbose=T){
     if(verbose) message("Computing Inverse Document Frequency")
     idf <- as(log(1 + ncol(mat) /row_sums), "sparseVector")
     if(verbose) message("Computing TF-IDF Matrix")
-    mat <- as(Matrix::Diagonal(x = as.vector(idf)), "sparseMatrix") %*% 
+    mat <- as(Diagonal(x = as.vector(idf)), "sparseMatrix") %*% 
       mat
   }else {
     stop("LSIMethod unrecognized please select valid method!")
@@ -115,7 +117,9 @@ tf_idf_transform <- function(input, method=1, verbose=T){
 #' @description Just like it sounds but different.
 #'
 #' @param cds_list Input cell_data_set object or sparse matrix.
-#' @import Matrix
+#' @importFrom Matrix rowSums
+#' @importFrom Matrix colSums
+#' @importFrom Matrix Diagonal
 #' @export
 tf_idf_transform_v2 <- function(input){
   if(class(input)=="cell_data_set"){
