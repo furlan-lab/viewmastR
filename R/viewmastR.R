@@ -33,13 +33,7 @@ viewmastR <-function(query_cds,
   argg <- c(as.list(environment()), list(...))
   layers=F
   
-  #deal with null celltype label
-  if(is.null(query_celldata_col)){
-    coldata_label<-paste0(funclabel, "celltype")
-  }else{
-    coldata_label = query_celldata_col
-  }
-  
+
   #get class of object
   if(class(query_cds) != class(ref_cds)){stop("input objects must be of the same class")}
   software<-NULL
@@ -88,6 +82,13 @@ viewmastR <-function(query_cds,
          funclabel="lasso_"
          output = "probs"},
   )
+  
+  #deal with null celltype label
+  if(is.null(query_celldata_col)){
+    coldata_label<-paste0(funclabel, "celltype")
+  }else{
+    coldata_label = query_celldata_col
+  }
   
   #find common features
   common_list<-common_features(list(ref_cds, query_cds))
