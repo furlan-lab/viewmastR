@@ -1,7 +1,23 @@
 roxygen2::roxygenize(".")
 
+dyn.load('/app/software/ArrayFire/3.8.1/lib64/libaf.so.3')
+library(RcppArrayFire)
+library(viewmastR)
 test_backends()
+devtools::install_github("furlan-lab/viewmastR", ref="develop", force=T)
 
+library(Seurat)
+library(monocle3)
+
+
+seu<-readRDS("/fh/fast/furlan_s/user/mmendoza/cds_objects_from_OneDrive/2201107_LV1_cds.RDS")
+DimPlot(seu)
+rna<-readRDS("/fh/fast/furlan_s/grp/data/ddata/BM_data/230329_rnaAugmented_seurat.RDS")
+
+vg<-common_variant_genes(rna, seu, top_n = 3000)
+seu<-viewmastR(seu, rna, ref_celldata_col = "SFClassification", selected_genes = vg, FUNC = "softmax_regression")
+
+DimPlot(seu, group.by="smr_celltype")
 ##install arrayfire
 #download arrayfire
 sFH2
