@@ -81,6 +81,11 @@ computeSparseRowVariances <- function(j, val, rm, n) {
 }
 
 #' @export
+testBackend <- function() {
+    invisible(.Call('_viewmastR_testBackend', PACKAGE = 'viewmastR'))
+}
+
+#' @export
 get_sigmoid <- function(input) {
     .Call('_viewmastR_get_sigmoid', PACKAGE = 'viewmastR', input)
 }

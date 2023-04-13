@@ -273,6 +273,15 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// testBackend
+void testBackend();
+RcppExport SEXP _viewmastR_testBackend() {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    testBackend();
+    return R_NilValue;
+END_RCPP
+}
 // get_sigmoid
 af::array get_sigmoid(RcppArrayFire::typed_array<f32> input);
 RcppExport SEXP _viewmastR_get_sigmoid(SEXP inputSEXP) {
@@ -325,6 +334,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_viewmastR_smr", (DL_FUNC) &_viewmastR_smr, 14},
     {"_viewmastR_smr_demo", (DL_FUNC) &_viewmastR_smr_demo, 2},
     {"_viewmastR_computeSparseRowVariances", (DL_FUNC) &_viewmastR_computeSparseRowVariances, 4},
+    {"_viewmastR_testBackend", (DL_FUNC) &_viewmastR_testBackend, 0},
     {"_viewmastR_get_sigmoid", (DL_FUNC) &_viewmastR_get_sigmoid, 1},
     {"_viewmastR_get_relu", (DL_FUNC) &_viewmastR_get_relu, 1},
     {"_viewmastR_get_mnist", (DL_FUNC) &_viewmastR_get_mnist, 2},

@@ -1,3 +1,6 @@
+roxygen2::roxygenize(".")
+
+testBackend()
 
 ##install arrayfire
 #download arrayfire
