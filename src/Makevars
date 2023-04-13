@@ -1,5 +1,5 @@
-AF_CXXFLAGS = -I/app/software/ArrayFire/3.8.1-foss-2019b-CUDA-10.2.89/include
-AF_LIBS   = -L/app/software/ArrayFire/3.8.1-foss-2019b-CUDA-10.2.89/lib -laf -Wl,-rpath,/app/software/ArrayFire/3.8.1-foss-2019b-CUDA-10.2.89/lib /home/sfurlan/R/x86_64-pc-linux-gnu-library/4.1/RcppArrayFire/libs/RcppArrayFire.so -Wl,-rpath,/home/sfurlan/R/x86_64-pc-linux-gnu-library/4.1/RcppArrayFire/libs
+AF_CXXFLAGS = -I/opt/arrayfire/include
+AF_LIBS   = -L/opt/arrayfire/lib -laf -Wl,-rpath,/opt/arrayfire/lib /Library/Frameworks/R.framework/Versions/4.1/Resources/library/RcppArrayFire/libs/RcppArrayFire.so -Wl,-rpath,/Library/Frameworks/R.framework/Versions/4.1/Resources/library/RcppArrayFire/libs
 
 # combine with standard arguments for R
 CXX_STD = CXX11
