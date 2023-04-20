@@ -110,33 +110,33 @@ library(reticulate)
 library(ggplot2)
 py_config()
 seu<-readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerResearchCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds/220302_final_object.RDS")
-rna<-readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerResearchCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented.RDS")
+seur<-readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerResearchCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
 
-seur<-monocle3_to_seurat(rna, normalize=F)
+#seur<-monocle3_to_seurat(rna, normalize=F)
 vg<-common_variant_genes(seu, seur, plot=F, top_n = 2000)
-
+length(vg)
 seur<-seur[,sample( 1:dim(seur)[2], 5000)]
-DimPlot(seur, group.by = "SFClassification", cols = rna@metadata$colorMap$classification)
+DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 
 seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
                query_celldata_col = "viewmastR", selected_genes = vg,
                FUNC = "lasso", verbose=T, cores=8)
-DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+DimPlot(seu, group.by = "viewmastR", cols=seur@misc$colors)
 
 seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
                query_celldata_col = "viewmastR", selected_genes = vg,
                FUNC = "xgboost", verbose=T, cores=8)
-DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+DimPlot(seu, group.by = "viewmastR", cols=seur@misc$colors)
 
 seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
                query_celldata_col = "viewmastR", selected_genes = vg,
                FUNC = "softmax_regression", verbose=T, cores=8)
-DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+DimPlot(seu, group.by = "viewmastR", cols=seur@misc$colors)
 
 seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
                query_celldata_col = "viewmastR", selected_genes = vg,
                FUNC = "naive_bayes", verbose=T, cores=8)
-DimPlot(seu, group.by = "viewmastR", cols=rna@metadata$colorMap$classification)
+DimPlot(seu, group.by = "viewmastR", cols=seur@misc$colors)
 
 
 model <- keras_model_sequential() %>%

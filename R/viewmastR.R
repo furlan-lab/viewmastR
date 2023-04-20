@@ -16,6 +16,7 @@ viewmastR <-function(query_cds,
                      selected_genes=NULL,
                      train_frac = 0.8,
                      tf_idf=F,
+                     scale=F,
                      hidden_layers = c(500,100),
                      learning_rate = 0.5,
                      batch_size = 100,
@@ -33,6 +34,11 @@ viewmastR <-function(query_cds,
   argg <- c(as.list(environment()), list(...))
   layers=F
   
+  #deal with conflicting args
+  if(tf_idf & scale){
+    warning("Both tf_idf and scale selected. Cannot do this as they are both scaling methods. Using tf_idf alone")
+    scale<-F
+  }
 
   #get class of object
   if(class(query_cds) != class(ref_cds)){stop("input objects must be of the same class")}
@@ -123,6 +129,10 @@ viewmastR <-function(query_cds,
   if(tf_idf){
     X<-as.matrix(tf_idf_transform(X, LSImethod))
     query<-as.matrix(tf_idf_transform(query, LSImethod))
+  }else{
+    if(scale){
+      X<-scale(X)
+    }
   }
   
   #prep Y
@@ -174,8 +184,8 @@ viewmastR <-function(query_cds,
     }
     if(funclabel=="keras_"){
       args$layers = c(as.integer(dim(X[,train_idx])[1]), sapply(hidden_layers, as.integer), as.integer(length(labels)))
-      args$max_epochs = 12
-      args$batch_size = 100
+      args$max_epochs = as.integer(max_epochs)
+      args$batch_size = as.integer(batch_size)
       args$keras_model = keras_model
     }
     if(funclabel=="lasso_"){
