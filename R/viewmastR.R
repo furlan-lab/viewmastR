@@ -13,6 +13,7 @@ viewmastR <-function(query_cds,
                      FUNC=c("naive_bayes", "neural_network", "bagging","softmax_regression", 
                             "logistic_regression", "deep_belief_nn", "perceptron", "keras_nn",
                             "xgboost", "lasso"),
+                     norm_method=c("log", "binary", "size_only", "none"),
                      selected_genes=NULL,
                      train_frac = 0.8,
                      tf_idf=F,
@@ -34,11 +35,12 @@ viewmastR <-function(query_cds,
   argg <- c(as.list(environment()), list(...))
   layers=F
   
-  #deal with conflicting args
+  #deal with conflicting and other args
   if(tf_idf & scale){
     warning("Both tf_idf and scale selected. Cannot do this as they are both scaling methods. Using tf_idf alone")
     scale<-F
   }
+  norm_method=match.arg(norm_method)
 
   #get class of object
   if(class(query_cds) != class(ref_cds)){stop("input objects must be of the same class")}
@@ -98,34 +100,35 @@ viewmastR <-function(query_cds,
   
   #find common features
   common_list<-common_features(list(ref_cds, query_cds))
+  names(common_list)<-c("ref", "query")
   rm(ref_cds)
   gc()
-  rcds<-common_list[[1]]
-  qcds<-common_list[[2]]
-  rm(common_list)
-  gc()
   if(is.null(selected_genes)){
-    selected_common<-rownames(qcds)
-    selected_common<-selected_commmon[selected_common %in% rownames(rcds)]
+    selected_common<-rownames(common_list[['query']])
+    selected_common<-selected_commmon[selected_common %in% rownames(common_list[['ref']])]
   }else{
     selected_common<-selected_genes
-    selected_common<-selected_common[selected_common %in% rownames(qcds)]
-    selected_common<-selected_common[selected_common %in% rownames(rcds)]
+    selected_common<-selected_common[selected_common %in% rownames(common_list[['query']])]
+    selected_common<-selected_common[selected_common %in% rownames(common_list[['ref']])]
   }
   
-  #make final X and query
+  #make final X and query normalizing along the way
   # #no tf_idf
-  query_mat<-get_norm_counts(qcds)[selected_common,]
-  ref_mat<-get_norm_counts(rcds)[rownames(query_mat),]
-
-  rm(qcds, rcds)
+  if(norm_method!="none"){
+    query_mat<-get_norm_counts(common_list[['query']], norm_method = norm_method)[selected_common,]
+    ref_mat<-get_norm_counts(common_list[['ref']], norm_method = norm_method)[rownames(query_mat),]
+  }else{
+    query_mat<-get_norm_counts(common_list[['query']], norm_method = )[selected_common,]
+    ref_mat<-get_norm_counts(common_list[['ref']], norm_method = )[rownames(query_mat),]
+  }
+  rm(common_list)
   gc()
   X<-as.matrix(ref_mat)
   query<-as.matrix(query_mat)
   rm(ref_mat, query_mat)
   gc()
   
-  #tf_idf
+  #performe scaling methods
   if(tf_idf){
     X<-as.matrix(tf_idf_transform(X, LSImethod))
     query<-as.matrix(tf_idf_transform(query, LSImethod))
@@ -776,7 +779,7 @@ is_sparse_matrix<-function (x)
   class(x) %in% c("dgCMatrix", "dgTMatrix", "lgCMatrix")
 }
 
-get_norm_counts<-function (cds, norm_method = c("log", "binary", "size_only"), 
+get_norm_counts<-function (cds, norm_method = c("log", "binary", "size_only", "none"), 
                            pseudocount = 1) 
 {
   software<-NULL
@@ -786,10 +789,16 @@ get_norm_counts<-function (cds, norm_method = c("log", "binary", "size_only"),
   if(is.null(software)){stop("software not found for input")}
   if(software=="monocle3"){
     norm_mat = SingleCellExperiment::counts(cds)
+    if(norm_method=="none"){
+      return(norm_mat)
+    }
     sf<-size_factors(cds)
   }
   if(software=="seurat"){
     norm_mat = cds@assays[[cds@active.assay]]@counts
+    if(norm_method=="none"){
+      return(norm_mat)
+    }
     sf<-seurat_size_factors(cds)
   }
   if (norm_method == "binary") {
