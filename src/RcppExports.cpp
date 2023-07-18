@@ -143,16 +143,6 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
-// test_backends
-int test_backends();
-RcppExport SEXP _viewmastR_test_backends() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(test_backends());
-    return rcpp_result_gen;
-END_RCPP
-}
 // af_nn
 af::array af_nn(RcppArrayFire::typed_array<f32> train_feats, RcppArrayFire::typed_array<f32> test_feats, RcppArrayFire::typed_array<s32> train_target, RcppArrayFire::typed_array<s32> test_target, int num_classes, std::vector<int> layers, RcppArrayFire::typed_array<f32> query_feats, bool relu_activation, int device, std::string dts, float learning_rate, int max_epochs, int batch_size, float max_error, bool verbose, bool benchmark);
 RcppExport SEXP _viewmastR_af_nn(SEXP train_featsSEXP, SEXP test_featsSEXP, SEXP train_targetSEXP, SEXP test_targetSEXP, SEXP num_classesSEXP, SEXP layersSEXP, SEXP query_featsSEXP, SEXP relu_activationSEXP, SEXP deviceSEXP, SEXP dtsSEXP, SEXP learning_rateSEXP, SEXP max_epochsSEXP, SEXP batch_sizeSEXP, SEXP max_errorSEXP, SEXP verboseSEXP, SEXP benchmarkSEXP) {
@@ -307,6 +297,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// test_backends
+int test_backends();
+RcppExport SEXP _viewmastR_test_backends() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(test_backends());
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_viewmastR_bagging_demo", (DL_FUNC) &_viewmastR_bagging_demo, 2},
@@ -317,7 +317,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_viewmastR_lr_demo", (DL_FUNC) &_viewmastR_lr_demo, 2},
     {"_viewmastR_naive_bayes", (DL_FUNC) &_viewmastR_naive_bayes, 9},
     {"_viewmastR_naive_bayes_demo", (DL_FUNC) &_viewmastR_naive_bayes_demo, 2},
-    {"_viewmastR_test_backends", (DL_FUNC) &_viewmastR_test_backends, 0},
     {"_viewmastR_af_nn", (DL_FUNC) &_viewmastR_af_nn, 16},
     {"_viewmastR_ann_demo", (DL_FUNC) &_viewmastR_ann_demo, 5},
     {"_viewmastR_perceptron", (DL_FUNC) &_viewmastR_perceptron, 8},
@@ -328,6 +327,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_viewmastR_get_sigmoid", (DL_FUNC) &_viewmastR_get_sigmoid, 1},
     {"_viewmastR_get_relu", (DL_FUNC) &_viewmastR_get_relu, 1},
     {"_viewmastR_get_mnist", (DL_FUNC) &_viewmastR_get_mnist, 2},
+    {"_viewmastR_test_backends", (DL_FUNC) &_viewmastR_test_backends, 0},
     {NULL, NULL, 0}
 };
 

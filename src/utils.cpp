@@ -85,3 +85,44 @@ Rcpp::List get_mnist(int perc = 80, bool verbose = true) {
   //     naive_bayes_demo(perc);
   // } catch (af::exception &ae) { std::cerr << ae.what() << std::endl; }
 }
+
+
+
+
+static void testBackend()
+{
+  info();
+  af_print(randu(5, 4));
+}
+
+//' @export
+// [[Rcpp::export]]
+int test_backends()
+{
+  try {
+    fprintf(stderr,"Trying CPU Backend\n");
+    setBackend(AF_BACKEND_CPU);
+    testBackend();
+  } catch (exception& e) {
+    fprintf(stderr,"Caught exception when trying CPU backend\n");
+    fprintf(stderr, "%s\n", e.what());
+  }
+  // try {
+  //   fprintf(stderr,"Trying CUDA Backend\n");
+  //   af::setBackend(AF_BACKEND_CUDA);
+  //   testBackend();
+  // } catch (af::exception& e) {
+  //   fprintf(stderr,"Caught exception when trying CUDA backend\n");
+  //   fprintf(stderr, "%s\n", e.what());
+  // }
+  try {
+    fprintf(stderr, "Trying OpenCL Backend\n");
+    setBackend(AF_BACKEND_OPENCL);
+    testBackend();
+  } catch (exception& e) {
+    fprintf(stderr,"Caught exception when trying OpenCL backend\n");
+    fprintf(stderr, "%s\n", e.what());
+  }
+  return 0;
+}
+

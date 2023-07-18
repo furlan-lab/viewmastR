@@ -12,7 +12,8 @@ common_variant_genes(
   logmean_ll = -6,
   row_data_column = "gene_short_name",
   unique_data_column = "id",
-  verbose = T
+  verbose = T,
+  plot = F
 )
 }
 \arguments{

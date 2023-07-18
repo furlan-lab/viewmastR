@@ -2,16 +2,16 @@
 % Please edit documentation in R/utils.R
 \name{common_features}
 \alias{common_features}
-\title{Finds common features in a list of cds objects}
+\title{Finds common features in a list of single cell objects}
 \usage{
 common_features(cds_list)
 }
 \arguments{
-\item{cds_list}{Input cell_data_set object.}
+\item{cds_list}{Input  object.}
 }
 \description{
 Machine learning algorithms often require features to be the same across 
-datasets.  Thisfunction finds common features between a list of cell data set objects and 
+datasets.  This function finds common features between a list of cell data set objects (monocle3) and 
 returns a list of cds's that have the same features.  Note that this function uses rownames 
-of the 'fData' DataFrame to find the intersect of features common to all cds's
+of the 'fData' DataFrame (monocle3) and the rownames of the seurat_object to find the intersect of features common to all objects
 }
