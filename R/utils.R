@@ -14,6 +14,7 @@
 #' @param obj input Seurat object
 #' @param souporcell_file location of souporcell clusters.tsv file
 #' @param assay_name name of assay object
+#' @param prefix optional prefix to prepend cell barcodes
 #' @param key name of key to use
 #' @param meta_data_label name of the column in the returned meta data to place the souporcell assignment.  Does not check for overwriting
 #' @param rd_label name of the dimensionality reduction
@@ -21,7 +22,7 @@
 #' @importFrom Seurat CreateAssayObject
 #' @importFrom Seurat CreateDimReducObject
 
-add_souporcell_seurat<-function(obj, souporcell_file, assay_name="GENO", key = "gpca_", meta_data_label="geno", rd_label="gpca", rename_assignments=T){
+add_souporcell_seurat<-function(obj, souporcell_file, prefix=NULL, assay_name="GENO", key = "gpca_", meta_data_label="geno", rd_label="gpca", rename_assignments=T){
   #check to see if file exists
   if(length(souporcell_file)>1){stop("only supports one file addition at a time")}
   if(!file.exists(souporcell_file)){stop("Souporcell file does not exist!")}
@@ -34,7 +35,12 @@ add_souporcell_seurat<-function(obj, souporcell_file, assay_name="GENO", key = "
   #check to make sure this has all the bits
   if(!all(c("barcode","status","assignment","log_prob_singleton","log_prob_doublet") %in% colnames(ctsv))){stop(paste0("souporcell file: ", souporcell_file, " does not have the right stuff!"))}
   
-  rownames(ctsv)<-ctsv$barcode
+  if(is.null(prefix)){
+    rownames(ctsv)<-ctsv$barcode
+  } else {
+    rownames(ctsv) <-paste0(prefix[1], ctsv$barcode)
+  }
+  
   if(!all(Cells(obj) %in% rownames(ctsv))) {stop("not all cells in object found in souporcell data")}
   ctsv<-ctsv[Cells(obj),]
   cs<-as.matrix(ctsv[,colnames(ctsv)[grep("^cluster", colnames(ctsv))]])
