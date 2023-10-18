@@ -1,4 +1,10 @@
 roxygen2::roxygenize(".")
+Rcpp::sourceCpp("~/Desktop/test.cpp")
+get_env()
+smr_demo()
+d<-"/Library/Frameworks/R.framework/Resources/library/viewmastR/inst/extdata"
+file.exists(d)
+d<-"/Library/Frameworks/R.framework/Versions/4.1/Resources/library/viewmastR/extdata/mnist/images-subset"
 
 dyn.load('/app/software/ArrayFire/3.8.1/lib64/libaf.so.3')
 library(RcppArrayFire)

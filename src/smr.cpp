@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "mnist_common.h"
+#include <chrono>
 
 // via the depends attribute we tell Rcpp to create hooks for
 // RcppFire so that the build process will know what to do
@@ -26,6 +27,10 @@
 //
 
 using namespace af;
+using std::chrono::high_resolution_clock;
+using std::chrono::duration_cast;
+using std::chrono::duration;
+using std::chrono::milliseconds;
 
 // Get accuracy of the predicted results
 static float accuracy(const array &predicted, const array &target) {
@@ -118,6 +123,7 @@ static void benchmark_softmax_regression(const array &train_feats,
 
 // Demo of one vs all logistic regression
 static int logit_demo_run (int perc, bool verbose = true, bool benchmark = false) {
+  
   array train_images, train_targets;
   array test_images, test_targets;
   int num_train, num_test, num_classes;
@@ -135,6 +141,7 @@ static int logit_demo_run (int perc, bool verbose = true, bool benchmark = false
   train_feats = join(1, constant(1, num_train, 1), train_feats);
   test_feats  = join(1, constant(1, num_test, 1), test_feats);
   // Train logistic regression parameters
+  auto t1 = high_resolution_clock::now();
   array Weights =
     train(train_feats, train_targets,
           0.1,    // learning rate (aka alpha)
@@ -157,6 +164,7 @@ static int logit_demo_run (int perc, bool verbose = true, bool benchmark = false
   // Predict the results
   array train_outputs = predict(train_feats, Weights);
   array test_outputs  = predict(test_feats, Weights);
+  auto t2 = high_resolution_clock::now();
   if(verbose){
     fprintf(stderr, "Accuracy on training data: %2.2f\n",
             accuracy(train_outputs, train_targets));
@@ -168,11 +176,21 @@ static int logit_demo_run (int perc, bool verbose = true, bool benchmark = false
   if(benchmark){
     benchmark_softmax_regression(train_feats, train_targets, test_feats);
   }
+  
+  
+  /* Getting number of milliseconds as an integer. */
+  auto ms_int = duration_cast<milliseconds>(t2 - t1);
+  
+  /* Getting number of milliseconds as a double. */
+  duration<double, std::milli> ms_double = t2 - t1;
+
+  std::cerr << "Training took: " << ms_double.count() << " ms\n";
   return 0;
 }
 
 //' @export
 // [[Rcpp::export]]
+
 af::array smr(RcppArrayFire::typed_array<f32> train_feats,
                  RcppArrayFire::typed_array<f32> test_feats,
                  RcppArrayFire::typed_array<s32> train_targets,
