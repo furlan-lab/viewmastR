@@ -11,6 +11,7 @@
 #include <sstream>
 #include <utility>
 #include "idxio.h"
+#include <string.h>
 
 // extern std:string ASSETS_DIR;
 
@@ -50,11 +51,29 @@ static void setup_mnist(int *num_classes, int *num_train, int *num_test,
     std::vector<float> idata;
     // std::cout << "ASSETS located at:\n";
     // std::cout << ASSETS_DIR << std::endl;
-    read_idx(idims, idata, "/Users/sfurlan/develop/viewmastR/src/examples/data/mnist/images-subset");
+    char *fpath = std::getenv("R_HOME");
+    if (fpath){
+      // std::cout << "R_HOME: " << fpath << '\n';
+    }
+    else{
+      std::cout << "R_HOME not Found" << '\n';
+      return;
+    }
+    char *rpath = realpath(fpath, NULL);
+    std::string root = "/library/viewmastR/extdata/mnist";
+    std::string path1 = rpath;
+    std::string ifile = "/images-subset";
+    // std::strcat(fpath, mpath.c_str());
+    std::string images_f = path1.append(root).append(ifile);
+    read_idx(idims, idata, images_f.c_str());
 
     std::vector<dim_t> ldims;
     std::vector<unsigned> ldata;
-    read_idx(ldims, ldata, "/Users/sfurlan/develop/viewmastR/src/examples/data/mnist/labels-subset");
+    std::string path2 = rpath;
+    std::string lfile = "/labels-subset";
+    // std::strcat(fpath, mpath.c_str());
+    std::string labels_f = path2.append(root).append(lfile);
+    read_idx(ldims, ldata, labels_f.c_str());
 
     std::reverse(idims.begin(), idims.end());
     unsigned numdims = idims.size();
