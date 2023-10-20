@@ -860,7 +860,7 @@ seurat_size_factors<-function (cds, round_exprs = TRUE, method = c("mean-geometr
 #' @param FUNC algorithm to use
 #' @importFrom devtools session_info
 #' @export
-demo<-function(perc = 80, 
+vm_demo<-function(perc = 80, 
                FUNC=c("naive_bayes", 
                       "neural_network", 
                       "softmax_regression",
