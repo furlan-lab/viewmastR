@@ -87,14 +87,14 @@ static array bagging(array &train_feats, array &test_feats, array &train_labels,
 
 //' @export
 // [[Rcpp::export]]
-void bagging_demo(int perc = 50, bool verbose = true) {
+void bagging_demo(std::string lib_path, int perc = 50, bool verbose = true) {
   array train_images, train_labels;
   array test_images, test_labels;
   int num_train, num_test, num_classes;
   // Load mnist data
   float frac = (float)(perc) / 100.0;
   setup_mnist<false>(&num_classes, &num_train, &num_test, train_images,
-                     test_images, train_labels, test_labels, frac);
+                     test_images, train_labels, test_labels, frac, lib_path);
   int feature_length = train_images.elements() / num_train;
   array train_feats  = moddims(train_images, feature_length, num_train).T();
   array test_feats   = moddims(test_images, feature_length, num_test).T();

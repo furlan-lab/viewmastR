@@ -211,7 +211,7 @@ public:
 };
 
 
-static int dbn_demo_run(int perc, const dtype dt, bool verbose = false) {
+static int dbn_demo_run(std::string lib_path, int perc, const dtype dt, bool verbose = false) {
   if (verbose) { fprintf(stderr,"** ArrayFire DBN Demo **\n"); };
   array train_images, test_images;
   array train_target, test_target;
@@ -219,7 +219,7 @@ static int dbn_demo_run(int perc, const dtype dt, bool verbose = false) {
   // Load mnist data
   float frac = (float)(perc) / 100.0;
   setup_mnist<true>(&num_classes, &num_train, &num_test, train_images,
-                    test_images, train_target, test_target, frac);
+                    test_images, train_target, test_target, frac, lib_path);
   if (dt != f32) {
     train_images = train_images.as(dt);
     test_images  = test_images.as(dt);
@@ -403,7 +403,7 @@ af::array af_dbn(RcppArrayFire::typed_array<f32> train_feats,
 
 //' @export
 // [[Rcpp::export]]
-int dbn_demo(int device = 0, int perc = 80, std::string dts = "f32") {
+int dbn_demo(std::string lib_path, int device = 0, int perc = 80, std::string dts = "f32") {
   if (device < 0 || device > 1) {
     std::cerr << "Bad device: " <<device << std::endl;
     return EXIT_FAILURE;
@@ -428,7 +428,7 @@ int dbn_demo(int device = 0, int perc = 80, std::string dts = "f32") {
     af::setDevice(device);
     std::string info_string = af::infoString();
     std::cerr << info_string;
-    return dbn_demo_run(perc, dt);
+    return dbn_demo_run(lib_path, perc, dt);
   } catch (af::exception &ae) { std::cerr << ae.what() << std::endl; }
   return 0;
 }

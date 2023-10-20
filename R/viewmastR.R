@@ -854,3 +854,35 @@ seurat_size_factors<-function (cds, round_exprs = TRUE, method = c("mean-geometr
   return(sf)
 }
 
+#' demo
+#' @description run classification demo
+#' @param perc percent to holdout
+#' @param FUNC algorithm to use
+#' @importFrom devtools session_info
+#' @export
+demo<-function(perc = 80, 
+               FUNC=c("naive_bayes", 
+                      "neural_network", 
+                      "softmax_regression",
+                      "deep_belief_nn", 
+                      "logistic_regression",
+                      "bagging", 
+                      "perceptron"))
+  {
+  d<-session_info()
+  lib_path <- as.character(d$packages$library[d$packages$package=="viewmastR"])
+  FUNC=match.arg(FUNC)
+  switch(FUNC, 
+         naive_bayes={FUNC = naive_bayes_demo},
+         neural_network={FUNC = ann_demo},
+         softmax_regression={FUNC = smr_demo_helper},
+         deep_belief_nn={FUNC = dbn_demo},
+         logistic_regression={FUNC = lr_demo},
+         bagging={FUNC = bagging_demo},
+         perceptron={FUNC = perceptron_demo},
+         # keras_nn={FUNC = keras_helper},
+         # xgboost={FUNC = xgboost_helper},
+         # lasso={FUNC = lasso_helper},
+  )
+  FUNC(lib_path, perc=perc)
+}

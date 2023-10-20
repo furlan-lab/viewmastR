@@ -178,7 +178,7 @@ double ann::train(const array &input, const array &target, double alpha,
 }
 
 
-static int ann_demo_run(int perc, const dtype dt, bool verbose = false, bool benchmark = false, bool relu_activation = false) {
+static int ann_demo_run(std::string lib_path, int perc, const dtype dt, bool verbose = false, bool benchmark = false, bool relu_activation = false) {
   fprintf(stderr,"** ArrayFire ANN Demo **\n");
   array train_images, test_images;
   array train_target, test_target;
@@ -186,7 +186,7 @@ static int ann_demo_run(int perc, const dtype dt, bool verbose = false, bool ben
   // Load mnist data
   float frac = (float)(perc) / 100.0;
   setup_mnist<true>(&num_classes, &num_train, &num_test, train_images,
-                    test_images, train_target, test_target, frac);
+                    test_images, train_target, test_target, frac, lib_path);
   if (dt != f32) {
     train_images = train_images.as(dt);
     test_images  = test_images.as(dt);
@@ -381,7 +381,7 @@ af::array af_nn(RcppArrayFire::typed_array<f32> train_feats,
 
 //' @export
 // [[Rcpp::export]]
-int ann_demo(int device = 0, int perc = 80, std::string dts = "f32", bool verbose = true, bool benchmark = false) {
+int ann_demo(std::string lib_path, int device = 0, int perc = 80, std::string dts = "f32", bool verbose = true, bool benchmark = false) {
   if (device < 0 || device > 1) {
     std::cerr << "Bad device: " <<device << std::endl;
     return EXIT_FAILURE;
@@ -406,7 +406,7 @@ int ann_demo(int device = 0, int perc = 80, std::string dts = "f32", bool verbos
     af::setDevice(device);
     std::string info_string = af::infoString();
     std::cerr << info_string;
-    return ann_demo_run(perc, dt, verbose, benchmark);
+    return ann_demo_run(lib_path, perc, dt, verbose, benchmark);
   } catch (af::exception &ae) { std::cerr << ae.what() << std::endl; }
   return 0;
 }

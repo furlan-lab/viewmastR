@@ -46,22 +46,22 @@ template<bool expand_labels>
 static void setup_mnist(int *num_classes, int *num_train, int *num_test,
                         af::array &train_images, af::array &test_images,
                         af::array &train_labels, af::array &test_labels,
-                        float frac) {
+                        float frac, std::string lib_folder) {
     std::vector<dim_t> idims;
     std::vector<float> idata;
     // std::cout << "ASSETS located at:\n";
     // std::cout << ASSETS_DIR << std::endl;
-    char *fpath = std::getenv("R_HOME");
-    if (fpath){
-      // std::cout << "R_HOME: " << fpath << '\n';
-    }
-    else{
-      std::cout << "R_HOME not Found" << '\n';
-      return;
-    }
-    char *rpath = realpath(fpath, NULL);
-    std::string root = "/library/viewmastR/extdata/mnist";
-    std::string path1 = rpath;
+    // char *fpath = std::getenv("R_HOME");
+    // if (fpath){
+    //   // std::cout << "R_HOME: " << fpath << '\n';
+    // }
+    // else{
+    //   std::cout << "R_HOME not Found" << '\n';
+    //   return;
+    // }
+    // char *rpath = realpath(fpath, NULL);
+    std::string root = "/viewmastR/extdata/mnist";
+    std::string path1 = lib_folder;
     std::string ifile = "/images-subset";
     // std::strcat(fpath, mpath.c_str());
     std::string images_f = path1.append(root).append(ifile);
@@ -69,7 +69,7 @@ static void setup_mnist(int *num_classes, int *num_train, int *num_test,
 
     std::vector<dim_t> ldims;
     std::vector<unsigned> ldata;
-    std::string path2 = rpath;
+    std::string path2 = lib_folder;
     std::string lfile = "/labels-subset";
     // std::strcat(fpath, mpath.c_str());
     std::string labels_f = path2.append(root).append(lfile);

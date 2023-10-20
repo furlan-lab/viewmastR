@@ -122,15 +122,19 @@ static void benchmark_softmax_regression(const array &train_feats,
 
 
 // Demo of one vs all logistic regression
+<<<<<<< HEAD
+static int logit_demo_run (int perc, std::string lib_path, bool verbose = true, bool benchmark = false) {
+=======
 static int logit_demo_run (int perc, bool verbose = true, bool benchmark = false) {
   
+>>>>>>> 5450516e5e4d2061c9073608222837e0827de5b3
   array train_images, train_targets;
   array test_images, test_targets;
   int num_train, num_test, num_classes;
   // Load mnist data
   float frac = (float)(perc) / 100.0;
   setup_mnist<true>(&num_classes, &num_train, &num_test, train_images,
-                    test_images, train_targets, test_targets, frac);
+                    test_images, train_targets, test_targets, frac, lib_path);
   // Reshape images into feature vectors
   int feature_length = train_images.elements() / num_train;
   array train_feats  = moddims(train_images, feature_length, num_train).T();
@@ -261,16 +265,15 @@ af::array smr(RcppArrayFire::typed_array<f32> train_feats,
 }
 
 
-//' @export
-// [[Rcpp::export]]
-void smr_demo(int perc = 80, bool verbose = true) {
+ // [[Rcpp::export]]
+void smr_demo_helper(std::string lib_path, int perc = 80, bool verbose = true) {
   // int device   = argc > 1 ? atoi(argv[1]) : 0;
   // bool console = argc > 2 ? argv[2][0] == '-' : false;
   // int perc     = argc > 3 ? atoi(argv[3]) : 60;
   af::setDevice(0);
   std::string info_string = af::infoString();
   std::cerr << info_string;
-  logit_demo_run(perc);
+  logit_demo_run(perc, lib_path);
   // try {
   //     af::setDevice(0);
   //     af::info();
