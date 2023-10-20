@@ -12,14 +12,15 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bagging_demo
-void bagging_demo(std::string lib_path, int perc, bool verbose);
-RcppExport SEXP _viewmastR_bagging_demo(SEXP lib_pathSEXP, SEXP percSEXP, SEXP verboseSEXP) {
+void bagging_demo(std::string lib_path, int perc, bool verbose, int device);
+RcppExport SEXP _viewmastR_bagging_demo(SEXP lib_pathSEXP, SEXP percSEXP, SEXP verboseSEXP, SEXP deviceSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    bagging_demo(lib_path, perc, verbose);
+    Rcpp::traits::input_parameter< int >::type device(deviceSEXP);
+    bagging_demo(lib_path, perc, verbose, device);
     return R_NilValue;
 END_RCPP
 }
@@ -245,14 +246,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // smr_demo_helper
-void smr_demo_helper(std::string lib_path, int perc, bool verbose);
-RcppExport SEXP _viewmastR_smr_demo_helper(SEXP lib_pathSEXP, SEXP percSEXP, SEXP verboseSEXP) {
+void smr_demo_helper(std::string lib_path, int perc, bool verbose, int device);
+RcppExport SEXP _viewmastR_smr_demo_helper(SEXP lib_pathSEXP, SEXP percSEXP, SEXP verboseSEXP, SEXP deviceSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    smr_demo_helper(lib_path, perc, verbose);
+    Rcpp::traits::input_parameter< int >::type device(deviceSEXP);
+    smr_demo_helper(lib_path, perc, verbose, device);
     return R_NilValue;
 END_RCPP
 }
@@ -317,7 +319,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_viewmastR_bagging_demo", (DL_FUNC) &_viewmastR_bagging_demo, 3},
+    {"_viewmastR_bagging_demo", (DL_FUNC) &_viewmastR_bagging_demo, 4},
     {"_viewmastR_bagging", (DL_FUNC) &_viewmastR_bagging, 11},
     {"_viewmastR_af_dbn", (DL_FUNC) &_viewmastR_af_dbn, 16},
     {"_viewmastR_dbn_demo", (DL_FUNC) &_viewmastR_dbn_demo, 4},
@@ -330,7 +332,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_viewmastR_perceptron", (DL_FUNC) &_viewmastR_perceptron, 8},
     {"_viewmastR_perceptron_demo", (DL_FUNC) &_viewmastR_perceptron_demo, 4},
     {"_viewmastR_smr", (DL_FUNC) &_viewmastR_smr, 14},
-    {"_viewmastR_smr_demo_helper", (DL_FUNC) &_viewmastR_smr_demo_helper, 3},
+    {"_viewmastR_smr_demo_helper", (DL_FUNC) &_viewmastR_smr_demo_helper, 4},
     {"_viewmastR_computeSparseRowVariances", (DL_FUNC) &_viewmastR_computeSparseRowVariances, 4},
     {"_viewmastR_get_sigmoid", (DL_FUNC) &_viewmastR_get_sigmoid, 1},
     {"_viewmastR_get_relu", (DL_FUNC) &_viewmastR_get_relu, 1},

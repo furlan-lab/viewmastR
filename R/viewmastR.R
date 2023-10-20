@@ -867,7 +867,7 @@ vm_demo<-function(perc = 80,
                       "deep_belief_nn", 
                       "logistic_regression",
                       "bagging", 
-                      "perceptron"))
+                      "perceptron"), device = 0)
   {
   d<-session_info()
   lib_path <- as.character(d$packages$library[d$packages$package=="viewmastR"])
@@ -884,5 +884,5 @@ vm_demo<-function(perc = 80,
          # xgboost={FUNC = xgboost_helper},
          # lasso={FUNC = lasso_helper},
   )
-  FUNC(lib_path, perc=perc)
+  FUNC(lib_path, perc=perc, device = device)
 }

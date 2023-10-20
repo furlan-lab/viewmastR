@@ -1,4 +1,14 @@
 roxygen2::roxygenize(".")
+
+
+test_backends()
+
+library(viewmastR)
+vm_demo(FUNC="softmax_regression", device = 1)
+
+
+
+
 Rcpp::sourceCpp("~/Desktop/test.cpp")
 get_env()
 smr_demo()

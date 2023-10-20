@@ -102,6 +102,7 @@ int test_backends()
   try {
     fprintf(stderr,"Trying CPU Backend\n");
     setBackend(AF_BACKEND_CPU);
+    std::cerr << "AF_BACKEND_CPU: " << AF_BACKEND_CPU << std::endl;
     testBackend();
   } catch (exception& e) {
     fprintf(stderr,"Caught exception when trying CPU backend\n");
@@ -118,6 +119,7 @@ int test_backends()
   try {
     fprintf(stderr, "Trying OpenCL Backend\n");
     setBackend(AF_BACKEND_OPENCL);
+    std::cerr << "AF_BACKEND_OPENCL: " << AF_BACKEND_OPENCL << std::endl;
     testBackend();
   } catch (exception& e) {
     fprintf(stderr,"Caught exception when trying OpenCL backend\n");

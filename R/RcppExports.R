@@ -2,8 +2,8 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #' @export
-bagging_demo <- function(lib_path, perc = 50L, verbose = TRUE) {
-    invisible(.Call('_viewmastR_bagging_demo', PACKAGE = 'viewmastR', lib_path, perc, verbose))
+bagging_demo <- function(lib_path, perc = 50L, verbose = TRUE, device = 0L) {
+    invisible(.Call('_viewmastR_bagging_demo', PACKAGE = 'viewmastR', lib_path, perc, verbose, device))
 }
 
 #' @export
@@ -66,8 +66,8 @@ smr <- function(train_feats, test_feats, train_targets, test_targets, num_classe
     .Call('_viewmastR_smr', PACKAGE = 'viewmastR', train_feats, test_feats, train_targets, test_targets, num_classes, query, lambda, learning_rate, iterations, batch_size, max_error, verbose, benchmark, device)
 }
 
-smr_demo_helper <- function(lib_path, perc = 80L, verbose = TRUE) {
-    invisible(.Call('_viewmastR_smr_demo_helper', PACKAGE = 'viewmastR', lib_path, perc, verbose))
+smr_demo_helper <- function(lib_path, perc = 80L, verbose = TRUE, device = 0L) {
+    invisible(.Call('_viewmastR_smr_demo_helper', PACKAGE = 'viewmastR', lib_path, perc, verbose, device))
 }
 
 computeSparseRowVariances <- function(j, val, rm, n) {

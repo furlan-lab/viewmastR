@@ -122,7 +122,12 @@ static void benchmark_softmax_regression(const array &train_feats,
 
 
 // Demo of one vs all logistic regression
-static int logit_demo_run (int perc, std::string lib_path, bool verbose = true, bool benchmark = false) {
+static int smr_demo_run (int perc, std::string lib_path, bool verbose = true, bool benchmark = false, int device = 0) {
+  try {
+    af::setDevice(device);
+    std::string info_string = af::infoString();
+    if(verbose) {std::cerr << info_string;}
+  } catch (af::exception &ae) { std::cerr << ae.what() << std::endl; }
   array train_images, train_targets;
   array test_images, test_targets;
   int num_train, num_test, num_classes;
@@ -257,18 +262,59 @@ af::array smr(RcppArrayFire::typed_array<f32> train_feats,
 }
 
 
+static void testBackend()
+{
+  info();
+  af_print(randu(5, 4));
+}
+
  // [[Rcpp::export]]
-void smr_demo_helper(std::string lib_path, int perc = 80, bool verbose = true) {
+void smr_demo_helper(std::string lib_path, int perc = 80, bool verbose = true, int device = 0) {
   // int device   = argc > 1 ? atoi(argv[1]) : 0;
   // bool console = argc > 2 ? argv[2][0] == '-' : false;
   // int perc     = argc > 3 ? atoi(argv[3]) : 60;
-  af::setDevice(0);
+  
+  try {
+    fprintf(stderr,"Trying CPU Backend\n");
+    setBackend(AF_BACKEND_CPU);
+    std::cerr << "AF_BACKEND_CPU: " << AF_BACKEND_CPU << std::endl;
+    testBackend();
+  } catch (exception& e) {
+    fprintf(stderr,"Caught exception when trying CPU backend\n");
+    fprintf(stderr, "%s\n", e.what());
+  }
+  try {
+    fprintf(stderr,"Trying CUDA Backend\n");
+    af::setBackend(AF_BACKEND_CUDA);
+    std::cerr << "AF_BACKEND_CUDA: " << AF_BACKEND_CUDA << std::endl;
+    testBackend();
+  } catch (af::exception& e) {
+    fprintf(stderr,"Caught exception when trying CUDA backend\n");
+    fprintf(stderr, "%s\n", e.what());
+  }
+  try {
+    fprintf(stderr, "Trying OpenCL Backend\n");
+    setBackend(AF_BACKEND_OPENCL);
+    std::cerr << "AF_BACKEND_OPENCL: " << AF_BACKEND_OPENCL << std::endl;
+    testBackend();
+  } catch (exception& e) {
+    fprintf(stderr,"Caught exception when trying OpenCL backend\n");
+    fprintf(stderr, "%s\n", e.what());
+  }
+  if(device == 0){
+    setBackend(AF_BACKEND_OPENCL);
+  }
+  if(device == 1){
+    setBackend(AF_BACKEND_CPU);
+  }
   std::string info_string = af::infoString();
   std::cerr << info_string;
-  logit_demo_run(perc, lib_path);
+  smr_demo_run(perc, lib_path, device = device);
   // try {
   //     af::setDevice(0);
   //     af::info();
   //     naive_bayes_demo(perc);
   // } catch (af::exception &ae) { std::cerr << ae.what() << std::endl; }
 }
+
+

@@ -87,7 +87,12 @@ static array bagging(array &train_feats, array &test_feats, array &train_labels,
 
 //' @export
 // [[Rcpp::export]]
-void bagging_demo(std::string lib_path, int perc = 50, bool verbose = true) {
+void bagging_demo(std::string lib_path, int perc = 50, bool verbose = true, int device = 0) {
+  try {
+    af::setDevice(device);
+    std::string info_string = af::infoString();
+    if(verbose) {std::cerr << info_string;}
+  } catch (af::exception &ae) { std::cerr << ae.what() << std::endl; }
   array train_images, train_labels;
   array test_images, test_labels;
   int num_train, num_test, num_classes;
