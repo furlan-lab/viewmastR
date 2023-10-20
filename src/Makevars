@@ -1,5 +1,5 @@
 AF_CXXFLAGS = -I/opt/arrayfire/include
-AF_LIBS   = -L/opt/arrayfire/lib -laf -Wl,-rpath,/opt/arrayfire/lib /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/RcppArrayFire/libs/RcppArrayFire.so -Wl,-rpath,/Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/library/RcppArrayFire/libs
+AF_LIBS   = -L/opt/arrayfire/lib -laf -Wl,-rpath,/opt/arrayfire/lib /Library/Frameworks/R.framework/Versions/4.1/Resources/library/RcppArrayFire/libs/RcppArrayFire.so -Wl,-rpath,/Library/Frameworks/R.framework/Versions/4.1/Resources/library/RcppArrayFire/libs
 
 # combine with standard arguments for R
 CXX_STD = CXX11

@@ -2,8 +2,8 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #' @export
-bagging_demo <- function(perc = 50L, verbose = TRUE) {
-    invisible(.Call('_viewmastR_bagging_demo', PACKAGE = 'viewmastR', perc, verbose))
+bagging_demo <- function(lib_path, perc = 50L, verbose = TRUE) {
+    invisible(.Call('_viewmastR_bagging_demo', PACKAGE = 'viewmastR', lib_path, perc, verbose))
 }
 
 #' @export
@@ -17,8 +17,8 @@ af_dbn <- function(train_feats, test_feats, train_target, test_target, num_class
 }
 
 #' @export
-dbn_demo <- function(device = 0L, perc = 80L, dts = "f32") {
-    .Call('_viewmastR_dbn_demo', PACKAGE = 'viewmastR', device, perc, dts)
+dbn_demo <- function(lib_path, device = 0L, perc = 80L, dts = "f32") {
+    .Call('_viewmastR_dbn_demo', PACKAGE = 'viewmastR', lib_path, device, perc, dts)
 }
 
 #' @export
@@ -27,8 +27,8 @@ lr <- function(train_feats, test_feats, train_targets, test_targets, num_classes
 }
 
 #' @export
-lr_demo <- function(perc = 80L, verbose = TRUE) {
-    invisible(.Call('_viewmastR_lr_demo', PACKAGE = 'viewmastR', perc, verbose))
+lr_demo <- function(lib_path, perc = 80L, verbose = TRUE) {
+    invisible(.Call('_viewmastR_lr_demo', PACKAGE = 'viewmastR', lib_path, perc, verbose))
 }
 
 #' @export
@@ -37,8 +37,8 @@ naive_bayes <- function(train_feats, test_feats, train_labels, test_labels, num_
 }
 
 #' @export
-naive_bayes_demo <- function(perc = 80L, verbose = TRUE) {
-    invisible(.Call('_viewmastR_naive_bayes_demo', PACKAGE = 'viewmastR', perc, verbose))
+naive_bayes_demo <- function(lib_path, perc = 80L, verbose = TRUE) {
+    invisible(.Call('_viewmastR_naive_bayes_demo', PACKAGE = 'viewmastR', lib_path, perc, verbose))
 }
 
 #' @export
@@ -47,8 +47,8 @@ af_nn <- function(train_feats, test_feats, train_target, test_target, num_classe
 }
 
 #' @export
-ann_demo <- function(device = 0L, perc = 80L, dts = "f32", verbose = TRUE, benchmark = FALSE) {
-    .Call('_viewmastR_ann_demo', PACKAGE = 'viewmastR', device, perc, dts, verbose, benchmark)
+ann_demo <- function(lib_path, device = 0L, perc = 80L, dts = "f32", verbose = TRUE, benchmark = FALSE) {
+    .Call('_viewmastR_ann_demo', PACKAGE = 'viewmastR', lib_path, device, perc, dts, verbose, benchmark)
 }
 
 #' @export
@@ -57,8 +57,8 @@ perceptron <- function(train_feats, test_feats, train_targets, test_targets, num
 }
 
 #' @export
-perceptron_demo <- function(device = 0L, perc = 80L, verbose = TRUE) {
-    invisible(.Call('_viewmastR_perceptron_demo', PACKAGE = 'viewmastR', device, perc, verbose))
+perceptron_demo <- function(lib_path, device = 0L, perc = 80L, verbose = TRUE) {
+    invisible(.Call('_viewmastR_perceptron_demo', PACKAGE = 'viewmastR', lib_path, device, perc, verbose))
 }
 
 #' @export
@@ -66,9 +66,8 @@ smr <- function(train_feats, test_feats, train_targets, test_targets, num_classe
     .Call('_viewmastR_smr', PACKAGE = 'viewmastR', train_feats, test_feats, train_targets, test_targets, num_classes, query, lambda, learning_rate, iterations, batch_size, max_error, verbose, benchmark, device)
 }
 
-#' @export
-smr_demo <- function(perc = 80L, verbose = TRUE) {
-    invisible(.Call('_viewmastR_smr_demo', PACKAGE = 'viewmastR', perc, verbose))
+smr_demo_helper <- function(lib_path, perc = 80L, verbose = TRUE) {
+    invisible(.Call('_viewmastR_smr_demo_helper', PACKAGE = 'viewmastR', lib_path, perc, verbose))
 }
 
 computeSparseRowVariances <- function(j, val, rm, n) {
@@ -86,8 +85,8 @@ get_relu <- function(input) {
 }
 
 #' @export
-get_mnist <- function(perc = 80L, verbose = TRUE) {
-    .Call('_viewmastR_get_mnist', PACKAGE = 'viewmastR', perc, verbose)
+get_mnist <- function(lib_path, perc = 80L, verbose = TRUE) {
+    .Call('_viewmastR_get_mnist', PACKAGE = 'viewmastR', lib_path, perc, verbose)
 }
 
 #' @export

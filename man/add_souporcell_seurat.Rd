@@ -7,17 +7,20 @@
 add_souporcell_seurat(
   obj,
   souporcell_file,
+  prefix = NULL,
   assay_name = "GENO",
   key = "gpca_",
   meta_data_label = "geno",
   rd_label = "gpca",
-  rename_assignemnts = T
+  rename_assignments = T
 )
 }
 \arguments{
 \item{obj}{input Seurat object}
 
 \item{souporcell_file}{location of souporcell clusters.tsv file}
+
+\item{prefix}{optional prefix to prepend cell barcodes}
 
 \item{assay_name}{name of assay object}
 

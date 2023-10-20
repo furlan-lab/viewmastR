@@ -122,12 +122,7 @@ static void benchmark_softmax_regression(const array &train_feats,
 
 
 // Demo of one vs all logistic regression
-<<<<<<< HEAD
 static int logit_demo_run (int perc, std::string lib_path, bool verbose = true, bool benchmark = false) {
-=======
-static int logit_demo_run (int perc, bool verbose = true, bool benchmark = false) {
-  
->>>>>>> 5450516e5e4d2061c9073608222837e0827de5b3
   array train_images, train_targets;
   array test_images, test_targets;
   int num_train, num_test, num_classes;
@@ -181,9 +176,6 @@ static int logit_demo_run (int perc, bool verbose = true, bool benchmark = false
     benchmark_softmax_regression(train_feats, train_targets, test_feats);
   }
   
-  
-  /* Getting number of milliseconds as an integer. */
-  auto ms_int = duration_cast<milliseconds>(t2 - t1);
   
   /* Getting number of milliseconds as a double. */
   duration<double, std::milli> ms_double = t2 - t1;

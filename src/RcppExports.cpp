@@ -12,13 +12,14 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // bagging_demo
-void bagging_demo(int perc, bool verbose);
-RcppExport SEXP _viewmastR_bagging_demo(SEXP percSEXP, SEXP verboseSEXP) {
+void bagging_demo(std::string lib_path, int perc, bool verbose);
+RcppExport SEXP _viewmastR_bagging_demo(SEXP lib_pathSEXP, SEXP percSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    bagging_demo(perc, verbose);
+    bagging_demo(lib_path, perc, verbose);
     return R_NilValue;
 END_RCPP
 }
@@ -70,15 +71,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // dbn_demo
-int dbn_demo(int device, int perc, std::string dts);
-RcppExport SEXP _viewmastR_dbn_demo(SEXP deviceSEXP, SEXP percSEXP, SEXP dtsSEXP) {
+int dbn_demo(std::string lib_path, int device, int perc, std::string dts);
+RcppExport SEXP _viewmastR_dbn_demo(SEXP lib_pathSEXP, SEXP deviceSEXP, SEXP percSEXP, SEXP dtsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type device(deviceSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< std::string >::type dts(dtsSEXP);
-    rcpp_result_gen = Rcpp::wrap(dbn_demo(device, perc, dts));
+    rcpp_result_gen = Rcpp::wrap(dbn_demo(lib_path, device, perc, dts));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -103,13 +105,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // lr_demo
-void lr_demo(int perc, bool verbose);
-RcppExport SEXP _viewmastR_lr_demo(SEXP percSEXP, SEXP verboseSEXP) {
+void lr_demo(std::string lib_path, int perc, bool verbose);
+RcppExport SEXP _viewmastR_lr_demo(SEXP lib_pathSEXP, SEXP percSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    lr_demo(perc, verbose);
+    lr_demo(lib_path, perc, verbose);
     return R_NilValue;
 END_RCPP
 }
@@ -133,13 +136,14 @@ BEGIN_RCPP
 END_RCPP
 }
 // naive_bayes_demo
-void naive_bayes_demo(int perc, bool verbose);
-RcppExport SEXP _viewmastR_naive_bayes_demo(SEXP percSEXP, SEXP verboseSEXP) {
+void naive_bayes_demo(std::string lib_path, int perc, bool verbose);
+RcppExport SEXP _viewmastR_naive_bayes_demo(SEXP lib_pathSEXP, SEXP percSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    naive_bayes_demo(perc, verbose);
+    naive_bayes_demo(lib_path, perc, verbose);
     return R_NilValue;
 END_RCPP
 }
@@ -170,17 +174,18 @@ BEGIN_RCPP
 END_RCPP
 }
 // ann_demo
-int ann_demo(int device, int perc, std::string dts, bool verbose, bool benchmark);
-RcppExport SEXP _viewmastR_ann_demo(SEXP deviceSEXP, SEXP percSEXP, SEXP dtsSEXP, SEXP verboseSEXP, SEXP benchmarkSEXP) {
+int ann_demo(std::string lib_path, int device, int perc, std::string dts, bool verbose, bool benchmark);
+RcppExport SEXP _viewmastR_ann_demo(SEXP lib_pathSEXP, SEXP deviceSEXP, SEXP percSEXP, SEXP dtsSEXP, SEXP verboseSEXP, SEXP benchmarkSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type device(deviceSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< std::string >::type dts(dtsSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
     Rcpp::traits::input_parameter< bool >::type benchmark(benchmarkSEXP);
-    rcpp_result_gen = Rcpp::wrap(ann_demo(device, perc, dts, verbose, benchmark));
+    rcpp_result_gen = Rcpp::wrap(ann_demo(lib_path, device, perc, dts, verbose, benchmark));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -203,14 +208,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // perceptron_demo
-void perceptron_demo(int device, int perc, bool verbose);
-RcppExport SEXP _viewmastR_perceptron_demo(SEXP deviceSEXP, SEXP percSEXP, SEXP verboseSEXP) {
+void perceptron_demo(std::string lib_path, int device, int perc, bool verbose);
+RcppExport SEXP _viewmastR_perceptron_demo(SEXP lib_pathSEXP, SEXP deviceSEXP, SEXP percSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type device(deviceSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    perceptron_demo(device, perc, verbose);
+    perceptron_demo(lib_path, device, perc, verbose);
     return R_NilValue;
 END_RCPP
 }
@@ -238,14 +244,15 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// smr_demo
-void smr_demo(int perc, bool verbose);
-RcppExport SEXP _viewmastR_smr_demo(SEXP percSEXP, SEXP verboseSEXP) {
+// smr_demo_helper
+void smr_demo_helper(std::string lib_path, int perc, bool verbose);
+RcppExport SEXP _viewmastR_smr_demo_helper(SEXP lib_pathSEXP, SEXP percSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    smr_demo(perc, verbose);
+    smr_demo_helper(lib_path, perc, verbose);
     return R_NilValue;
 END_RCPP
 }
@@ -286,14 +293,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // get_mnist
-Rcpp::List get_mnist(int perc, bool verbose);
-RcppExport SEXP _viewmastR_get_mnist(SEXP percSEXP, SEXP verboseSEXP) {
+Rcpp::List get_mnist(std::string lib_path, int perc, bool verbose);
+RcppExport SEXP _viewmastR_get_mnist(SEXP lib_pathSEXP, SEXP percSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type lib_path(lib_pathSEXP);
     Rcpp::traits::input_parameter< int >::type perc(percSEXP);
     Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_mnist(perc, verbose));
+    rcpp_result_gen = Rcpp::wrap(get_mnist(lib_path, perc, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -309,24 +317,24 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_viewmastR_bagging_demo", (DL_FUNC) &_viewmastR_bagging_demo, 2},
+    {"_viewmastR_bagging_demo", (DL_FUNC) &_viewmastR_bagging_demo, 3},
     {"_viewmastR_bagging", (DL_FUNC) &_viewmastR_bagging, 11},
     {"_viewmastR_af_dbn", (DL_FUNC) &_viewmastR_af_dbn, 16},
-    {"_viewmastR_dbn_demo", (DL_FUNC) &_viewmastR_dbn_demo, 3},
+    {"_viewmastR_dbn_demo", (DL_FUNC) &_viewmastR_dbn_demo, 4},
     {"_viewmastR_lr", (DL_FUNC) &_viewmastR_lr, 10},
-    {"_viewmastR_lr_demo", (DL_FUNC) &_viewmastR_lr_demo, 2},
+    {"_viewmastR_lr_demo", (DL_FUNC) &_viewmastR_lr_demo, 3},
     {"_viewmastR_naive_bayes", (DL_FUNC) &_viewmastR_naive_bayes, 9},
-    {"_viewmastR_naive_bayes_demo", (DL_FUNC) &_viewmastR_naive_bayes_demo, 2},
+    {"_viewmastR_naive_bayes_demo", (DL_FUNC) &_viewmastR_naive_bayes_demo, 3},
     {"_viewmastR_af_nn", (DL_FUNC) &_viewmastR_af_nn, 16},
-    {"_viewmastR_ann_demo", (DL_FUNC) &_viewmastR_ann_demo, 5},
+    {"_viewmastR_ann_demo", (DL_FUNC) &_viewmastR_ann_demo, 6},
     {"_viewmastR_perceptron", (DL_FUNC) &_viewmastR_perceptron, 8},
-    {"_viewmastR_perceptron_demo", (DL_FUNC) &_viewmastR_perceptron_demo, 3},
+    {"_viewmastR_perceptron_demo", (DL_FUNC) &_viewmastR_perceptron_demo, 4},
     {"_viewmastR_smr", (DL_FUNC) &_viewmastR_smr, 14},
-    {"_viewmastR_smr_demo", (DL_FUNC) &_viewmastR_smr_demo, 2},
+    {"_viewmastR_smr_demo_helper", (DL_FUNC) &_viewmastR_smr_demo_helper, 3},
     {"_viewmastR_computeSparseRowVariances", (DL_FUNC) &_viewmastR_computeSparseRowVariances, 4},
     {"_viewmastR_get_sigmoid", (DL_FUNC) &_viewmastR_get_sigmoid, 1},
     {"_viewmastR_get_relu", (DL_FUNC) &_viewmastR_get_relu, 1},
-    {"_viewmastR_get_mnist", (DL_FUNC) &_viewmastR_get_mnist, 2},
+    {"_viewmastR_get_mnist", (DL_FUNC) &_viewmastR_get_mnist, 3},
     {"_viewmastR_test_backends", (DL_FUNC) &_viewmastR_test_backends, 0},
     {NULL, NULL, 0}
 };
