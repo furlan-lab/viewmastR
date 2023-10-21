@@ -7,7 +7,8 @@
 vm_demo(
   perc = 80,
   FUNC = c("naive_bayes", "neural_network", "softmax_regression", "deep_belief_nn",
-    "logistic_regression", "bagging", "perceptron")
+    "logistic_regression", "bagging", "perceptron", "keras"),
+  device = 0
 )
 }
 \arguments{

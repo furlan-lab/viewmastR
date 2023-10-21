@@ -4,10 +4,10 @@ roxygen2::roxygenize(".")
 test_backends()
 
 library(viewmastR)
-vm_demo(FUNC="softmax_regression", device = 1)
-
-
-
+library(tidyr)
+library(keras)
+vm_demo(FUNC="softmax_regression", device = 0)
+vm_demo(FUNC="keras", device = 1)
 
 Rcpp::sourceCpp("~/Desktop/test.cpp")
 get_env()

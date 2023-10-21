@@ -867,7 +867,8 @@ vm_demo<-function(perc = 80,
                       "deep_belief_nn", 
                       "logistic_regression",
                       "bagging", 
-                      "perceptron"), device = 0)
+                      "perceptron",
+                      "keras"), device = 0)
   {
   d<-session_info()
   lib_path <- as.character(d$packages$library[d$packages$package=="viewmastR"])
@@ -880,9 +881,41 @@ vm_demo<-function(perc = 80,
          logistic_regression={FUNC = lr_demo},
          bagging={FUNC = bagging_demo},
          perceptron={FUNC = perceptron_demo},
-         # keras_nn={FUNC = keras_helper},
+         keras={FUNC = keras_demo},
          # xgboost={FUNC = xgboost_helper},
          # lasso={FUNC = lasso_helper},
   )
   FUNC(lib_path, perc=perc, device = device)
+}
+
+
+keras_demo<-function(lib_path, perc = 80, device){
+  model <- keras_model_sequential() %>%
+    layer_dense(units = 256, activation = "relu", input_shape = c(784)) %>%
+    layer_dropout(rate = 0.25) %>% 
+    layer_dense(units = 128, activation = "relu") %>%
+    layer_dropout(rate = 0.25) %>% 
+    layer_dense(units = 64, activation = "relu") %>%
+    layer_dropout(rate = 0.25) %>%
+    layer_dense(units = 10, activation = "softmax")
+  summary(model)
+  
+  model %>% compile(
+    loss = "categorical_crossentropy",
+    optimizer = optimizer_adam(),
+    metrics = c("accuracy")
+  )
+  
+  l<-get_mnist(lib_path = lib_path, perc = perc)
+  
+  X_train <- t(l[[1]])
+  X_test <- t(l[[2]])
+  y_train <-to_categorical(l[[3]], num_classes = 10)
+  y_test <- to_categorical(l[[4]], num_classes = 10)
+  
+  time1 <- Sys.time()
+  history <- model %>% 
+    fit(X_train, y_train, epochs = 50, batch_size = 128, validation_split = 0.15)
+  time2 <- Sys.time()
+  time2 - time1
 }
