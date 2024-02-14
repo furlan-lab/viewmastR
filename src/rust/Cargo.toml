@@ -1,0 +1,24 @@
+[package]
+name = 'viewmastR'
+publish = false
+version = '0.2.0'
+edition = '2021'
+
+[lib]
+crate-type = [ 'staticlib' ]
+name = 'viewmastR'
+
+[dependencies]
+extendr-api = "0.6"
+extendr-macros = "0.6"
+burn = { version =  "0.11.1" , features = ["wgpu",  "train", "ndarray", "candle"] }
+image = {version = "0.24.7", features = ["png"]}
+byteorder = "1.5.0"
+serde_json = "1.0"
+rand = "0.8.5"
+flate2 = "1.0.28"
+# indicatif = {version = "*", features = ["rayon"]}
+# simple_bar = {version = "0.2.2"}
+
+# Serialization
+serde = "1"

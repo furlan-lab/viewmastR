@@ -1,0 +1,135 @@
+---
+title: "How to augment data using viewmastR"
+output: html_document
+date: "2024-01-23"
+always_allow_html: true
+editor_options: 
+  
+  chunk_output_type: console
+---
+
+## Installing Rust
+
+First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
+
+
+## Installing viewmastR
+
+You will need to have the devtools package installed...
+
+```{r, eval=F}
+devtools::install_github("furlan-lab/viewmastR")
+```
+
+
+## Load a dataset
+
+```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
+suppressPackageStartupMessages({
+library(viewmastR)
+library(Seurat)
+library(ggplot2)
+library(scCustomize)
+library(magrittr)
+})
+
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+
+#query dataset
+seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
+
+```
+
+## Let's first fix this dataset and label with Tregs 
+
+Tregs are located in cluster 9 (as evidenced by FOXP3 expression), but don't have the correct label.  Let's fix that.
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot_scCustom(seu, group.by = "celltype")
+Idents(seu)<-seu$celltype
+Cluster_Highlight_Plot(seu, cluster_name = "Treg")
+DimPlot_scCustom(seu, group.by = "seurat_clusters")
+FeaturePlot_scCustom(seu, features = "FOXP3")
+```
+
+```{r}
+seu$celltype[seu$seurat_clusters %in% "9"]<-"Treg"
+DimPlot_scCustom(seu, group.by = "celltype")
+Idents(seu)<-seu$celltype
+Cluster_Highlight_Plot(seu, cluster_name = "Treg")
+table(seu$celltype)
+```
+
+Better...
+
+## Let's augment rare celltypes for better learning but bringing any celltype to a minimum of 1500 cells.  use the prune option to downsample any celltypes present above the norm_number down to that number.
+
+```{r}
+
+seuA<-augment_data(seu, "celltype", norm_number = 500, prune = T)
+seuA <- FindVariableFeatures(seuA, selection.method = "vst", nfeatures = 3000) %>% NormalizeData() %>% ScaleData()
+seuA <- RunPCA(seuA, features = VariableFeatures(object = seuA), npcs = 50)
+ElbowPlot(seuA, 50) 
+seuA<- FindNeighbors(seuA, dims = 1:40) %>% FindClusters(resolution = 2) %>% RunUMAP(dims = 1:40, n.components = 2)
+DimPlot_scCustom(seuA, group.by = "celltype")
+FeaturePlot_scCustom(seuA, features = "FOXP3")
+
+```
+
+
+## Now we train another PBMC dataset with labels for tregs that are questionable and see if we can find them
+```{r}
+
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR3<-"/fh/fast/furlan_s/experiments/LRPBMC/cds"
+} else {
+  ROOT_DIR3<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/LRPBMC/cds"
+}
+
+cds<-readRDS(file.path(ROOT_DIR3, "210330_5p_cds.RDS"))
+rownames(cds)<-SingleCellExperiment::rowData(cds)$gene_short_name
+seu<-monocle3_to_seurat(cds)
+
+
+seu<-calculate_gene_dispersion(seu)
+seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_genes(seu)
+
+seuA<-calculate_gene_dispersion(seuA)
+seuA<-select_genes(seuA, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_genes(seuA)
+
+vg<-intersect(vgq, vgr)
+
+seu<-viewmastR(seu, seuA, ref_celldata_col = "celltype", selected_genes = vg)
+
+DimPlot_scCustom(seu, group.by = "mCelltype")
+#need to fix spelling error
+#seu$mCelltype[seu$mCelltype=="Jeutrophils"]<-"Neutrophils"
+DimPlot_scCustom(seu, group.by = "viewmastR_smr")
+```
+
+
+## A confusion matrix showing prediction vs ground truth
+```{r, dpi=300, fig.height=6, fig.width=10}
+co<-as.character(pals::polychrome(length(levels(factor(c(seu$mCelltype, seu$viewmastR_smr))))))
+names(co)<-levels(factor(c(seu$mCelltype, seu$viewmastR_smr)))
+confusion_matrix(pred = factor(seu$viewmastR_smr), gt = factor(seu$mCelltype), cols = co)
+Idents(seu)<-seu$viewmastR_smr
+VlnPlot_scCustom(seu, features = "FOXP3")
+Idents(seu)<-seu$mCelltype
+VlnPlot_scCustom(seu, features = "FOXP3")
+```
+
+
+
+## Appendix
+```{r Appendix}
+sessionInfo()
+getwd()
+```

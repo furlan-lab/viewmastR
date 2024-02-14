@@ -1,0 +1,208 @@
+---
+title: "How to use a bulk dataset as a reference for viewmastR"
+output: html_document
+date: "2024-01-26"
+always_allow_html: true
+editor_options: 
+  
+  chunk_output_type: console
+---
+
+## Installing Rust
+
+First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
+
+
+## Installing viewmastR
+
+You will need to have the devtools package installed...
+
+```{r, eval=F}
+devtools::install_github("furlan-lab/viewmastR")
+```
+
+
+## Load a few datasets
+
+```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
+suppressPackageStartupMessages({
+library(viewmastR)
+library(Seurat)
+  library(SeuratObject)
+library(ggplot2)
+library(scCustomize)
+library(magrittr)
+library(SummarizedExperiment)
+})
+
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/datasets/AML/LOR_classifier/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+  ROOT_DIR3<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/AML/LOR_classifier/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/patient_marrows/aggr/cds/indy"
+  ROOT_DIR3<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+
+#malignant ref (bulk)
+seuMR<-readRDS(file.path(ROOT_DIR1, "240126_AML_object.RDS"))
+seMR<-readRDS(file.path(ROOT_DIR1, "240126_Combined_SE_Object.RDS"))
+
+#healthy ref (sc)
+seuHR <- readRDS(file.path(ROOT_DIR3, "230329_rnaAugmented_seurat.RDS"))
+
+#query dataset
+seuP<-readRDS(file.path(ROOT_DIR2, "220831_WC1.RDS"))
+
+
+```
+
+
+## Make a bulk classifier
+
+We can then see how this classifies cells from a scRNAseq experiment.  This is first done by loading the data and creating a [Summarized Experiment] (https://bioconductor.org/packages/release/bioc/html/SummarizedExperiment.html).  We remove a few malignant/modified cells from the reference.  The function "splat_bulk_reference" takes a SummarizedExperiment and returns a Seurat object made by generating pseudo-single-cell data which can then be used as a reference for viewmastR.  We invoke viewmastR.  Although it is not necessary, we can then visualize a UMAP of the single-cellified bulk reference using a standard Seurat workflow.  Finally, we can visualize the bulk viewmastR classification result compared to the published cell labels.  While, we see fairly faithful overlap, the bulk reference does not contain samples for all the celltypes, so cells such as plasma cells and cDCs are called other celltypes.
+
+```{r}
+
+dat<-read.table("/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchinsonCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt", header = T)
+rownames(dat)<-dat$X_TranscriptID
+dat$X_TranscriptID<-NULL
+metad<-data.frame(sample = strsplit(colnames(dat), "\\.") %>% sapply("[[", 1), celltype = strsplit(colnames(dat), "\\.") %>% sapply("[[", 2))
+rowd<-DataFrame(gene_short_name = rownames(dat), row.names = rownames(dat))
+obj<-SummarizedExperiment::SummarizedExperiment(assays = list(counts=dat), rowData = rowd, colData = metad)
+
+
+#remove samples we don't want
+obj<-obj[,!grepl("^Blast", obj$celltype)] #blasts
+obj<-obj[,!grepl("^rHSC", obj$celltype)] #recombinant HSCs
+obj<-obj[,!grepl("^LSC", obj$celltype)] #leukemia stem cells
+#obj<-obj[,obj$sample %in% c("X5852", "X5483")] #two donors
+
+#undebug(splat_bulk_reference)
+seuF<-splat_bulk_reference(seuHR, obj, N=200)
+
+seuF<-NormalizeData(seuF)
+seuF <- FindVariableFeatures(seuF,  nfeatures = 1000, assay = "RNA")
+seuF <- ScaleData(seuF) %>% RunPCA(features = VariableFeatures(object = seuF), npcs = 100)
+ElbowPlot(seuF, 100) 
+seuF<- FindNeighbors(seuF, dims = 1:20)
+seuF <- FindClusters(seuF, resolution = 1.1)
+seuF <- RunUMAP(seuF, dims = 1:20, n.components = 2, min.dist = 0.6)
+DimPlot(seuF, group.by = "celltype", cols = as.character(pals::polychrome(20)))
+
+DimPlot(seuF, group.by = "sample", cols = as.character(pals::polychrome(20)))
+
+seuF<-calculate_gene_dispersion(seuF)
+seuF<-select_genes(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_genes(seuF)
+seuHR<-calculate_gene_dispersion(seuHR)
+seuHR<-select_genes(seuHR, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_genes(seuHR)
+vg<-intersect(vgq, vgr)
+
+seuHR<-viewmastR::viewmastR(query_cds = seuHR, ref_cds = seuF, ref_celldata_col = "celltype", selected_genes = vg)
+cols<-c(seuHR@misc$colors[c(14,18,20,6,5,3,7,1,5,2,11)], "cyan", seuHR@misc$colors[c(21)])
+names(cols)<-levels(factor(seuF$celltype))
+
+DimPlot_scCustom(seuHR, group.by = "viewmastR_smr", colors_use  = cols, label = T, repel = T, label.box = T, label.color = "white")
+DimPlot_scCustom(seuHR, group.by = "SFClassification", colors_use  = seuHR@misc$colors, label = T, repel = T, label.box = T, label.color = "white")
+
+```
+
+
+## Let's look at a patient
+
+This patient is post transplant with evidence of chimerism.  Let's run viewmastR using a reference of healthy BM on the cells to see how the cells annotate
+
+```{r}
+seuP<-calculate_gene_dispersion(seuP)
+seuP<-select_genes(seuP, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_genes(seuP)
+seuHR<-calculate_gene_dispersion(seuHR)
+seuHR<-select_genes(seuHR, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_genes(seuHR)
+vg<-intersect(vgq, vgr)
+seuP<-viewmastR::viewmastR(query_cds = seuP, ref_cds = seuHR, ref_celldata_col = "SFClassification", selected_genes = vg)
+
+DimPlot_scCustom(seuP, group.by = "viewmastR_smr", colors_use = seuHR@misc$colors)
+```
+
+```{r}
+seuP$geno_label<-seuP$geno
+seuP$geno_label[seuP$geno %in% "0"]<-"Donor"
+seuP$geno_label[seuP$geno %in% "1"]<-"Recipient"
+DimPlot_scCustom(seuP, group.by = "geno_label")
+```
+
+
+## Interesting that we see some lymphoid/B signature in this patient with a RUNX1-RUNX1T1 fusion
+```{r}
+Idents(seuP)<-seuP$viewmastR_smr
+#levels(factor(as.character(seuP$viewmastR_smr)))
+Cluster_Highlight_Plot(seuP, cluster_name = "06_CLP", highlight_color = seuHR@misc$colors)
+Cluster_Highlight_Plot(seuP, cluster_name = "13_Pre.B", highlight_color = seuHR@misc$colors)
+Cluster_Highlight_Plot(seuP, cluster_name = "14_B", highlight_color = seuHR@misc$colors)
+```
+
+
+
+## Let's investigate how the tumor annotates using a bulk reference of leukemia cases
+
+First we will pare down the data into a min of 3 and a max of 20 cases per leukemia subgroup.  We will make 10 cells from each case, then use the resulting reference to classify the patient sample.  There seems to be a Ph signature in this case even though the majority of the tumor cells annotate correctly as RUNX1-RUNX1T1
+
+```{r}
+obj<-seMR
+#rowData(obj)
+sttk<-names(table(obj$final_group))[table(obj$final_group)>3]
+sttk<-sttk[!sttk %in% "Other"]
+case_max<-20
+
+obj<-obj[,obj$final_group %in% sttk]
+ds<-names(table(obj$final_group))[table(obj$final_group)>20]
+ctk<-lapply(names(table(obj$final_group)), function(type){
+  cases<-which(obj$final_group %in% type)
+  if (length(cases)>case_max){
+    cases<-sample(cases, case_max)
+  }
+  cases
+})
+obj<-obj[,unlist(ctk)[order(unlist(ctk))]]
+#table(obj$final_group)
+
+#debug(splat_bulk_reference)
+seuF<-splat_bulk_reference(seuP, obj, N=10)
+
+seuF<-NormalizeData(seuF)
+seuF <- FindVariableFeatures(seuF,  nfeatures = 1000, assay = "RNA")
+seuF <- ScaleData(seuF) %>% RunPCA(features = VariableFeatures(object = seuF), npcs = 100)
+ElbowPlot(seuF, 100) 
+seuF<- FindNeighbors(seuF, dims = 1:20)
+seuF <- FindClusters(seuF, resolution = 1.1)
+seuF <- RunUMAP(seuF, dims = 1:20, n.components = 2, min.dist = 0.2)
+DimPlot(seuF, group.by = "final_group")
+DimPlot(seuF, group.by = "category0")
+seuF<-calculate_gene_dispersion(seuF)
+seuF<-select_genes(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_genes(seuF)
+seuP<-calculate_gene_dispersion(seuP)
+seuP<-select_genes(seuP, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_genes(seuP)
+vg<-intersect(vgq, vgr)
+
+seuP<-viewmastR::viewmastR(query_cds = seuP, ref_cds = seuF, ref_celldata_col = "final_group", selected_genes = vg)
+
+thresh<-100
+seuP$pred_thresh<-seuP$viewmastR_smr
+seuP$pred_thresh[seuP$pred_thresh %in% names(table(seuP$viewmastR_smr))[table(seuP$viewmastR_smr)<thresh]]<-"Other"
+DimPlot_scCustom(seuP, group.by = "pred_thresh")
+
+
+```
+
+
+## Appendix
+```{r Appendix}
+sessionInfo()
+getwd()
+```
