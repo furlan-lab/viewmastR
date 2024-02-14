@@ -3,7 +3,7 @@
 \docType{package}
 \name{viewmastR-package}
 \alias{viewmastR-package}
-\title{viewmastR: Automated single-cell genomic cell type assignment using Rust}
+\title{viewmastR: Automated single-cell genomic cell type assignment}
 \description{
 viewmastR uses machine learning implemented in Rust to perform automated cell type classification for single-cell genomic data. Currently viewmastR is authored to work with scRNAseq data, but more features are coming.
 }

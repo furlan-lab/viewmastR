@@ -16,6 +16,9 @@ library(viewmastR)
 
 roxygen2::roxygenise()
 
+
+rextendr::clean()
+rextendr::use_extendr()
 rextendr::document()
 
 # Run once to configure package to use pkgdown
@@ -31,7 +34,7 @@ pkgdown::build_news()
 
 pkgdown::build_home_index(); pkgdown::init_site()
 
-library(viewmastRust)
+library(viewmastR)
 #remotes::install_github("satijalab/seurat", "seurat5", quiet = TRUE)
 library(Seurat)
 #library(viewmastR2)

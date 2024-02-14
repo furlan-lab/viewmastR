@@ -31,8 +31,8 @@ iterative_LSI(
 \arguments{
 \item{cds}{the cell_data_set upon which to perform this operation.}
 
-\item{num_dim}{Numeric indicating the number of prinicipal components to be 
-in downstream ordering.  Default value is NULL which will result in use 
+\item{num_dim}{Numeric indicating the number of prinicipal components to be
+in downstream ordering.  Default value is NULL which will result in use
 of all PCs}
 
 \item{resolution}{vector of resolution values for leiden clustering}
@@ -48,7 +48,7 @@ of features for different iterations, supply a vector that is the same length as
 
 \item{scale_to}{numeric value to scale data}
 
-\item{return_iterations}{boolean whether to return iterations; funciton will then output a list contianing the final cds and 
+\item{return_iterations}{boolean whether to return iterations; funciton will then output a list contianing the final cds and
 all SVD matrices, clusters and features used in each iteration}
 }
 \value{
@@ -61,8 +61,8 @@ using Monocle3 but takes inspiration from the Granja et. al. reference cited bel
 this function iterates through three main steps: 1) Using TFIDF transformation and SVD
 to normalize data 2) Clustering this normalized data using leiden clustering in high dimensional
 space and 3) identifying those features that are over-represented in the resulting clusters using
-a simple counting method.  These three steps are repeated using features identified in step 3 to subset 
-the normalization matrix in step 1 and repeating through the process.  TFIDF transformation is 
+a simple counting method.  These three steps are repeated using features identified in step 3 to subset
+the normalization matrix in step 1 and repeating through the process.  TFIDF transformation is
 supplied in this package.  SVD is performed using the irilba package.  Leiden clustering is performed using
 the monocle3 implementation and finally the counting per cluster is performed using the edgeR cpm function.  This
 function takes as its input a cell_data_set and will iterate through n number of iterations.  The output of this function
@@ -70,15 +70,16 @@ is then appropriately input into dimensionality reduction methods such as UMAP o
 is set by the number of resolution parameters specified.
 }
 \references{
-Granja, J. M.et al. (2019). Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype 
+Granja, J. M.et al. (2019). Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype
 acute leukemia. Nature Biotechnology, 37(12), 1458–1465.
 
 UMAP: McInnes, L, Healy, J, UMAP: Uniform Manifold Approximation
-  and Projection for Dimension Reduction, ArXiv e-prints 1802.03426, 2018
+and Projection for Dimension Reduction, ArXiv e-prints 1802.03426, 2018
 
 tSNE: Laurens van der Maaten and Geoffrey Hinton. Visualizing
-  data using t-SNE. J. Mach. Learn. Res., 9(Nov):2579– 2605, 2008.
+data using t-SNE. J. Mach. Learn. Res., 9(Nov):2579– 2605, 2008.
 
-Cusanovich, D. A., Reddington, J. P., Garfield, D. A., Daza, R. M., Aghamirzaie, D., Marco-Ferreres, R., et al. (2018). The 
-  cis-regulatory dynamics of embryonic development at single-cell resolution. Nature, 555(7697), 538–542.
+Cusanovich, D. A., Reddington, J. P., Garfield, D. A., Daza, R. M., Aghamirzaie, D., Marco-Ferreres, R., et al. (2018). The
+cis-regulatory dynamics of embryonic development at single-cell resolution. Nature, 555(7697), 538–542.
 }
+\keyword{internal}

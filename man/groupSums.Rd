@@ -10,6 +10,7 @@ groupSums(mat, groups = NULL, na.rm = TRUE, sparse = FALSE)
 Helper function for summing sparse matrix groups
 }
 \references{
-Granja, J. M.et al. (2019). Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype 
+Granja, J. M.et al. (2019). Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype
 acute leukemia. Nature Biotechnology, 37(12), 1458–1465.
 }
+\keyword{internal}

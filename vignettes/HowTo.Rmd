@@ -98,7 +98,7 @@ seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes 
 
 ## A look at the predictions
 ```{r, dpi=300, fig.height=4, fig.width = 6}
-DimPlot(seu, group.by = "viewmastR_smr", cols = seur@misc$colors)
+DimPlot(seu, group.by = "viewmastRust_smr", cols = seur@misc$colors)
 ```
 
 ## A confusion matrix showing prediction vs ground truth
