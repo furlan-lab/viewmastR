@@ -1,109 +1,154 @@
-#' Plot geneset scores as summary plot
-#'
-#' @description Geneset scores are a score calculated for each single cell derived from \
-#' more than one gene.  This function plots geneset scores grouped with a boxplot overlaying a violin\
-#' overlaying a jitter of the raw data.
-#' 
-#' When using method 'totals', the sum of the size-factor corrected, log-normalized gene \
-#' expression for a give set of genes is performed.  When using method 'corrected', single \
-#' cell scores for a give gene set that have been "corrected" using 100X genes with similar \
-#' expression levels.
-
-#' @param cds Input cell_data_set object.
-#' @param marker_set Vector of genes in the gene_metadata DataFrame (fData) that can be found in the column 'fData_col'
-#' @param name Name given to the geneset
-#' @param fData_col Character string denoting the gene_metadata DataFrame (fData) column that contains the genes in marker_set1.  Default = 'gene_short_name'
-#' @param method 'totals' or 'corrected'.  See estimate_score and estimate_corrected_score for more information
-#' @return Plot
-#' @import ggplot2 monocle3
+#' Confusion matrix
+#' @description This function will generate a confusion matrix between two factors; pred (short for prediction) and gt (short for ground truth).  One 
+#' may optionally supply a named vector of colors to annotate the row and column legends.
+#' @param pred factor of predictions
+#' @param gt factor of ground truth
+#' @param cols named vector of colors
+#' @return a confusion matrix plot
+#' @importFrom grDevices colors
+#' @importFrom caret confusionMatrix
+#' @importFrom grid gpar
+#' @importFrom grid grid.text
+#' @import ComplexHeatmap
+#' @importFrom scCustomize viridis_light_high
 #' @export
-#' @references Puram, S. V. et al. Single-Cell Transcriptomic Analysis of Primary and 
-#' Metastatic Tumor Ecosystems in Head and Neck Cancer. Cell 171, 1611.e1–1611.e24 (2017).
 
-
-plot_grouped_geneset<-function(cds, marker_set, name, by, fData_col= "gene_short_name", scale="width", facet=NULL, adjust=1.4, size=0.05, alpha=0.1,
-                               method="totals", overlay_violinandbox=T, box_width=0.3, rotate_x=T, jitter=T, return_values=F){
-  if(method=="totals") pData(cds)[[name]]<-estimate_score(cds, marker_set, fData_col= fData_col)
-  if(method=="corrected") pData(cds)[[name]]<-estimate_corrected_score(cds, marker_set, fData_col= fData_col)
-  scores<-data.frame(pData(cds)[[name]], as.factor(pData(cds)[[by]]), stringsAsFactors = F)
-  if(!is.null(facet)){
-    scores<-cbind(scores, pData(cds)[[facet]])
-    colnames(scores)<-c(name, by, facet)
-  }else{
-    colnames(scores)<-c(name, by)
+confusion_matrix<-function(pred, gt, cols=NULL){
+  mat<-table( pred, gt)
+  labels = union(colnames(mat), rownames(mat))
+  levels(gt)<-c(levels(gt), levels(pred)[!levels(pred) %in% levels(gt)])
+  mat_full<-table( pred, gt)
+  #deal with null colors
+  if(is.null(cols)){
+    cols = sample(colors()[grep('gr(a|e)y', colors(), invert = T)], length(labels))
+    names(cols)<-labels
   }
-  g<- ggplot(scores, aes_string(x=by, y=name, fill=by))
-  if(jitter)g<-g + geom_jitter(size=size, alpha=alpha)
-  if(overlay_violinandbox){
-    g<-g+geom_violin(scale="width")+geom_boxplot(width=box_width, fill="white", outlier.size = 0)
-  }
-  if(!is.null(facet)){
-    g<-g+facet_wrap(as.formula(paste("~", facet)), scales = "free")
-  }
-  if(rotate_x) {
-    g<-g+theme(axis.text.x=element_text(angle=90, hjust=0.95,vjust=0.2))
-  }
-  if(return_values)list(plot=g, scores=scores) else(g)
+  # } else {
+  #   if(length(cols)!=length(labels)) stop("length of color vector provided is incorrect")
+  # }
+  mat_full<-mat_full[,match(rownames(mat_full), colnames(mat_full))]
+  data<-confusionMatrix(mat_full)
+  pmat<-sweep(mat, MARGIN = 2, colSums(mat), "/")*100
+  acc =format(as.numeric(data$overall[1])*100, digits=4)
+  column_ha = HeatmapAnnotation(
+    
+    labels = colnames(mat),
+    col = list(labels=cols),
+    na_col = "black", show_legend = F
+  )
+  row_ha = rowAnnotation(
+    
+    labels = rownames(mat),
+    col = list(labels=cols),
+    na_col = "black"
+  )
+  Heatmap(pmat, col = viridis_light_high, cluster_rows = F, cluster_columns = F, 
+                          row_names_side = "left", row_title = "Predicted Label", column_title = "True Label", 
+                          name = "Percent of Column", column_title_side = "top", column_names_side = "top",
+                          top_annotation = column_ha, left_annotation = row_ha,
+                          heatmap_legend_param = list(
+                            title = paste0("Acc. ", acc, "\nPercent of Row")), 
+                          rect_gp = gpar(col = "white", lwd = 2),
+                          cell_fun = function(j, i, x, y, width, height, fill){
+                            if(is.na(pmat[i,j])){
+                              grid.text("NA", x, y, gp = gpar(col="black", fontsize = 10))
+                            }else{
+                              if(pmat[i,j]>60){
+                                grid.text(sprintf("%.f", mat[i, j]), x, y, gp = gpar(col="black", fontsize = 10))
+                              }else{
+                                grid.text(sprintf("%.f", mat[i, j]), x, y, gp = gpar(col="white", fontsize = 10))
+                              }
+                            }
+                          })
 }
 
-
-
-#' Plot geneset scores as cells
-#'
-#' @description Geneset scores are a score calculated for each single cell derived from \
-#' more than one gene.  This function plots geneset scores using monocle3's 'plot_genes' function.
-#' 
-#' When using method 'totals', the sum of the size-factor corrected, log-normalized gene \
-#' expression for a give set of genes is performed.  When using method 'corrected', single \
-#' cell scores for a give gene set that have been "corrected" using 100X genes with similar \
-#' expression levels.
-
-#' @param cds Input cell_data_set object.
-#' @param marker_set Vector of genes in the gene_metadata DataFrame (fData) that can be found in the column 'fData_col'
-#' @param name Name given to the geneset
-#' @param cell_size size of point on plot
-#' @param fData_col Character string denoting the gene_metadata DataFrame (fData) column that contains the genes in marker_set1.  Default = 'gene_short_name'
-#' @return Plot
-#' @importFrom Matrix colSums
-#' @importFrom Matrix t
+#' Training data plot
+#' @description This function will display a plot of data generated during viewmastR training
+#' @param output_list a list returned from running viewmastR using the return_type = "list" parameter.
+#' @return a plot of training data
+#' @importFrom plotly plot_ly
+#' @importFrom plotly layout
+#' @importFrom plotly subplot
+#' @importFrom magrittr "%>%"
 #' @export
-#' @references Puram, S. V. et al. Single-Cell Transcriptomic Analysis of Primary and 
-#' Metastatic Tumor Ecosystems in Head and Neck Cancer. Cell 171, 1611.e1–1611.e24 (2017).
 
-plot_geneset<-function(cds, marker_set, name, fData_col="gene_short_name", method=c("totals", "corrected"), reduction_method="UMAP", cell_size=0.5){
-  assertthat::assert_that(
-    tryCatch(expr = ifelse(match.arg(method) == "",TRUE, TRUE),
-             error = function(e) FALSE),
-    msg = "method must be one of 'totals' or 'corrected'")
-  method <- match.arg(method)
-  if(method=="totals") pData(cds)[[name]]<-estimate_score(cds, marker_set, fData_col=fData_col)
-  if(method=="corrected") pData(cds)[[name]]<-estimate_corrected_score(cds, marker_set, fData_col=fData_col)
-  nc<-nchar(name)
-  if(nc>50){fontsize<-10}else{fontsize=14}
-  switch(method, totals={loca="log(sums)"}, 
-         corrected={loca="log(corr.)"})
-  plot_cells(cds, color_cells_by = name, label_cell_groups = F, cell_size = cell_size, reduction_method = reduction_method)+ 
-    #theme(legend.position="top", legend.title = element_blank())+
-    theme(legend.position="top")+
-    #ggtitle(paste0(name, ": ", loca))+ 
-    ggtitle(name)+  
-    theme(plot.title = element_text(size = fontsize, face = "bold"), legend.text = element_text(size=9, angle = 90, vjust=0.5, hjust=0.3))+
-    labs(color = loca)+
-    scale_color_gradientn(colors=c( "darkblue","skyblue", "white", "red", "darkred"))
+plot_training_data<-function(output_list) {
+accuracy<-rbind(
+  data.frame(epoch=1:length(output_list$training_output$history$train_acc), 
+             metric=as.numeric(format(output_list$training_output$history$train_acc*100, digits=5)), 
+             label="train_accuracy"),
+  data.frame(epoch=1:length(output_list$training_output$history$test_acc), 
+             metric=as.numeric(format(output_list$training_output$history$test_acc*100, digits=5)), 
+             label="validation_accuracy"))
+loss<-rbind(
+  data.frame(epoch=1:length(output_list$training_output$history$test_loss), 
+             metric=as.numeric(format(output_list$training_output$history$train_loss, digits=5)),
+             label="train_loss"),
+  data.frame(epoch=1:length(output_list$training_output$history$test_loss), 
+             metric=as.numeric(format(output_list$training_output$history$test_loss, digits=5)),
+             label="validation_loss"))
+
+fig1 <- plot_ly(x = accuracy$epoch, y =accuracy$metric, split = accuracy$label, type = 'scatter', mode = 'lines+markers', 
+                marker = list(line = list(width = 3))) %>%
+  layout(plot_bgcolor='#e5ecf6', 
+                 xaxis = list( 
+                   title = 'Epoch',
+                   zerolinecolor = '#ffff', 
+                   zerolinewidth = 2, 
+                   gridcolor = 'ffff'), 
+                 yaxis = list(
+                   title = 'Accuracy (%)',
+                   zerolinecolor = '#ffff', 
+                   zerolinewidth = 2, 
+                   gridcolor = 'ffff')) 
+fig2 <- plot_ly(x = loss$epoch, y =loss$metric, split = loss$label, type = 'scatter', mode = 'lines+markers', 
+                        marker = list(line = list(width = 3))) %>%
+  layout(plot_bgcolor='#e5ecf6', 
+                 xaxis = list( 
+                   title = 'Epoch',
+                   zerolinecolor = '#ffff', 
+                   zerolinewidth = 2, 
+                   gridcolor = 'ffff'), 
+                 yaxis = list(
+                   title = 'Loss',
+                   zerolinecolor = '#ffff', 
+                   zerolinewidth = 2, 
+                   gridcolor = 'ffff')) 
+
+fig <- subplot(fig1, fig2, nrows = 2)
+fig
+
+
+# highcharter::hw_grid(ncol = 1,rowheight = 280,
+#                      hchart(
+#                        tibble::tibble(accuracy),
+#                        "line",
+#                        hcaes(x = epoch , y = metric, group = label),
+#                        color = c(pals::glasbey(2))
+#                      ) |> 
+#                        hc_chart(
+#                          backgroundColor = list(
+#                            linearGradient = c(0, 0, 500, 500),
+#                            stops = list(
+#                              list(0, 'rgb(255, 255, 255)'),
+#                              list(1, 'rgb(170, 230, 255)')
+#                            )
+#                          )
+#                        ),
+#                      hchart(
+#                        tibble::tibble(loss),
+#                        "line",
+#                        hcaes(x = epoch , y = metric, group = label),
+#                        color = c(pals::glasbey(2))
+#                      ) |> 
+#                        hc_chart(
+#                          backgroundColor = list(
+#                            linearGradient = c(0, 0, 500, 500),
+#                            stops = list(
+#                              list(0, 'rgb(255, 255, 255)'),
+#                              list(1, 'rgb(170, 230, 255)')
+#                            )
+#                          )
+#                        )
+# ) %>% htmltools::browsable()
 }
-
-monocle_theme_opts <- function()
-{
-  theme(strip.background = element_rect(colour = 'white', fill = 'white')) +
-    theme(panel.border = element_blank()) +
-    theme(axis.line.x = element_line(size=0.25, color="black")) +
-    theme(axis.line.y = element_line(size=0.25, color="black")) +
-    theme(panel.grid.minor.x = element_blank(),
-          panel.grid.minor.y = element_blank()) +
-    theme(panel.grid.major.x = element_blank(),
-          panel.grid.major.y = element_blank()) +
-    theme(panel.background = element_rect(fill='white')) +
-    theme(legend.key=element_blank())
-}
-
-

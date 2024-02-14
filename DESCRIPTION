@@ -1,31 +1,14 @@
 Package: viewmastR
-Type: R Package
-Title: This package aims annotate scRNAseq data according to a reference
-Version: 1.2
-Date: 2023-03-30
-Author: Scott Furlan
-Maintainer: Scott Furlan <scfurl@users.noreply.github.com>
-Description: Using a variety of tools, this package seeks to annotate cells from one dataset with
-    cell labels from another experiment.  Currently two major methods are included.  The first group of methods use transfer learning algorithms built with
-    the ArrayFire C++ library to annotate cells using an atlas. The second implements an easy interface for UMAP projection, which
-    projects cells onto a reference atlas using the umap transform function and annotates the cells according
-    to the nearest neighbor in the reference.  
-License: MIT
-Imports: Rcpp (>= 1.0.6),
-  monocle3 (>= 0.1.0),
-  Matrix (>= 1.0),
-  ggplot2 (>= 3.0.0),
-  magrittr (> 1.0.0),
-  Seurat (> 4.0.0),
-  biomaRt (> 2.40.0),
-  Hmisc (> 4.3.0),
-  keras (>= 2.9.0),
-  xgboost (>= 1.7),
-  reticulate (>= 1.2),
-  glmnet (>= 4.1),
-  hdf5r (> 1.2.0),
-  doMC (> 1.0.0),
-LinkingTo: Rcpp, RcppArrayFire
-RoxygenNote: 7.2.3
-SystemRequirements: C++11
+Title: Automated single-cell genomic cell type assignment
+Version: 0.2.0
+Authors@R: 
+    person("Scott", "Furlan", , "scottfurlan@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-3007-9840"))
+Description: viewmastR uses machine learning implemented in Rust to perform automated cell type classification for single-cell genomic data.  Currently viewmastR is authored to work with scRNAseq data, but more features are coming.
+License: `use_mit_license()`
 Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Config/rextendr/version: 0.3.1.9000
+SystemRequirements: Cargo (rustc package manager)
+URL: https://furlan-lab.github.io/viewmastR/

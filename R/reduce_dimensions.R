@@ -1,183 +1,50 @@
-#' Compute a projection of a cell_data_set object into a lower dimensional
-#' space with non-linear dimension reduction methods
+#' Finds partitions akin to Monocle3 FindPartition Function but for a Seurat object
 #'
-#' @description Monocle3 aims to learn how cells transition through a
-#' biological program of gene expression changes in an experiment. Each cell
-#' can be viewed as a point in a high-dimensional space, where each dimension
-#' describes the expression of a different gene. Identifying the program of
-#' gene expression changes is equivalent to learning a \emph{trajectory} that
-#' the cells follow through this space. However, the more dimensions there are
-#' in the analysis, the harder the trajectory is to learn. Fortunately, many
-#' genes typically co-vary with one another, and so the dimensionality of the
-#' data can be reduced with a wide variety of different algorithms. Monocle3
-#' provides two different algorithms for dimensionality reduction via
-#' \code{reduce_dimensions} (UMAP and tSNE). The function
-#' \code{reduce_dimensions} is the second step in the trajectory building
-#' process after \code{preprocess_cds}.
-#'
-#' UMAP is implemented from the package uwot.
-#'
-#' @param cds the cell_data_set upon which to perform this operation.
-#' @param max_components the dimensionality of the reduced space. Default is 2.
-#' @param reduction_method A character string specifying the algorithm to use
-#'   for dimensionality reduction. Currently "UMAP", "tSNE", and "PCA" are
-#'   supported.
-#'@param num_dim Numeric indicating the number of prinicipal components to be 
-#'    in downstream ordering.  Default value is NULL which will result in use 
-#'    of all PCs
-#' @param preprocess_method A string indicating the preprocessing method used
-#'   on the data. Options are "PCA" and "LSI". Default is "LSI".
-#' @param umap.metric A string indicating the distance metric to be used when
-#'   calculating UMAP. Default is "cosine". See uwot package's
-#'   \code{\link[umap]{umap}} for details.
-#' @param umap.min_dist Numeric indicating the minimum distance to be passed to
-#'   UMAP function. Default is 0.1.See uwot package's \code{\link[umap]{umap}}
-#'   for details.
-#' @param umap.n_neighbors Integer indicating the number of neighbors to use
-#'   during kNN graph construction. Default is 15L. See uwot package's
-#'   \code{\link[umap]{umap}} for details.
-#' @param umap.fast_sgd Logical indicating whether to use fast SGD. Default is
-#'   TRUE. See uwot package's \code{\link[umap]{umap}} for details.
-#' @param umap.nn_method String indicating the nearest neighbor method to be
-#'   used by UMAP. Default is "annoy". See uwot package's
-#'   \code{\link[umap]{umap}} for details.
-#' @param umap.save_model path to save umap model. Default NULL (don't save a model); See uwot package's \code{\link[umap]{umap}} for details.
-#' @param cores Number of compute cores to use.
-#' @param verbose Logical, whether to emit verbose output.
-#' @param ... additional arguments to pass to the dimensionality reduction
-#'   function.
-#' @return an updated cell_data_set object
-#' @references UMAP: McInnes, L, Healy, J, UMAP: Uniform Manifold Approximation
-#'   and Projection for Dimension Reduction, ArXiv e-prints 1802.03426, 2018
-#' @references tSNE: Laurens van der Maaten and Geoffrey Hinton. Visualizing
-#'   data using t-SNE. J. Mach. Learn. Res., 9(Nov):2579– 2605, 2008.
-#' @references monocle3 - this function only differs from that found in monocle3 in \
-#' that it allows for selection of num_dim
+#' @description Stated differently, low cluster resolution
+#' @param obj Input seurat object.
+#' @param method Louvain or Leiden
+#' @param k nearest number k
+#' @param reduction reduction to find partitions of
+#' @param dims number of dimensions
+#' @param num_iter Number of iterations (leiden only); Default is 1.
+#' @param random_seed seed default 2020
+#' @param resolution_parameter leiden only
+#' @param verbose Default True
+#' @param partition_q_value Louvain only - sets resolution
+#' @import monocle3
 #' @export
-reduce_dimension <- function(cds,
-                             max_components=2,
-                             reduction_method=c("UMAP", 'tSNE', 'PCA'),
-                             preprocess_method=c("PCA", "LSI"),
-                             umap.metric = "cosine",
-                             umap.min_dist = 0.1,
-                             umap.n_neighbors = 15L,
-                             umap.fast_sgd = FALSE,
-                             umap.nn_method = "annoy",
-                             umap.save_model = NULL,
-                             verbose=FALSE,
-                             cores=1,
-                             num_dim=NULL,
-                             seed=2020,
-                             ...){
-  extra_arguments <- list(...)
-  
-  assertthat::assert_that(
-    tryCatch(expr = ifelse(match.arg(reduction_method) == "",TRUE, TRUE),
-             error = function(e) FALSE),
-    msg = "reduction_method must be one of 'UMAP', 'PCA' or 'tSNE'")
-  
-  assertthat::assert_that(
-    tryCatch(expr = ifelse(match.arg(preprocess_method) == "",TRUE, TRUE),
-             error = function(e) FALSE),
-    msg = "preprocess_method must be one of 'PCA' or 'LSI'")
-  
-  reduction_method <- match.arg(reduction_method)
-  preprocess_method <- match.arg(preprocess_method)
-  
-  assertthat::assert_that(assertthat::is.count(max_components))
-  
-  assertthat::assert_that(!is.null(reducedDims(cds)[[preprocess_method]]),
-                          msg = paste("Data has not been preprocessed with",
-                                      "chosen method:", preprocess_method,
-                                      "Please run preprocess_cds with",
-                                      "method =", preprocess_method,
-                                      "before running reduce_dimension."))
-  if(reduction_method == "PCA") {
-    assertthat::assert_that(preprocess_method == "PCA",
-                            msg = paste("preprocess_method must be 'PCA' when",
-                                        "reduction_method = 'PCA'"))
-    assertthat::assert_that(!is.null(reducedDims(cds)[["PCA"]]),
-                            msg = paste("When reduction_method = 'PCA', the",
-                                        "cds must have been preprocessed for",
-                                        "PCA. Please run preprocess_cds with",
-                                        "method = 'PCA' before running",
-                                        "reduce_dimension with",
-                                        "reduction_method = 'PCA'."))
-  }
-  
-  #ensure results from RNG sensitive algorithms are the same on all calls
-  set.seed(seed)
-  
-  if (reduction_method=="UMAP" && (umap.fast_sgd == TRUE || cores > 1)){
-    message(paste("Note: reduce_dimension will produce slightly different",
-                  "output each time you run it unless you set",
-                  "'umap.fast_sgd = FALSE' and 'cores = 1'"))
-  }
-  
-  preprocess_mat <- reducedDims(cds)[[preprocess_method]]
-  if(!is.null(num_dim)){
-    preprocess_mat<-preprocess_mat[,1:num_dim]
-  }else{
-    num_dim<-ncol(preprocess_mat)
-  }
-  
-  if(reduction_method == "PCA") {
-    if (verbose) message("Returning preprocessed PCA matrix")
-  } else if (reduction_method == "tSNE") {
-    if (verbose) message("Reduce dimension by tSNE ...")
-    
-    tsne_res <- Rtsne::Rtsne(as.matrix(preprocess_mat), dims = max_components,
-                             pca = F, check_duplicates=FALSE, ...)
-    
-    tsne_data <- tsne_res$Y[, 1:max_components]
-    row.names(tsne_data) <- colnames(tsne_data)
-    
-    reducedDims(cds)$tSNE <- tsne_data
-    
-  } else if (reduction_method == c("UMAP")) {
-    if (verbose)
-      message("Running Uniform Manifold Approximation and Projection")
-    if(is.null(umap.save_model))
-      {
-        umap.ret_model=F
-        umap.ret_nn = F
-    }else{
-        umap.ret_model=T
-        umap.ret_nn = T
-      }
-    umap_res = uwot::umap(as.matrix(preprocess_mat),
-                          n_components = max_components,
-                          metric = umap.metric,
-                          min_dist = umap.min_dist,
-                          n_neighbors = umap.n_neighbors,
-                          fast_sgd = umap.fast_sgd,
-                          n_threads=cores,
-                          verbose=verbose,
-                          nn_method = umap.nn_method,
-                          ret_model = umap.ret_model,
-                          ret_nn = umap.ret_nn,
-                          ...)
-    
-    
-    if(!umap.ret_model) {
-      row.names(umap_res) <- colnames(cds)
-      reducedDims(cds)$UMAP <- umap_res
-    }else{
-      reducedDims(cds)$UMAP <- umap_res$embedding
-      model_file <- save_umap_model(umap_res, umap.save_model)
-      cds@reduce_dim_aux <-SimpleList(UMAP=SimpleList(scale_info=umap_res$scale_info, model_file=model_file, num_dim=num_dim))
+#' @keywords internal
+
+find_partitions<-function(obj, method = "louvain", k = 20, reduction="umap", dims = NULL, weight = F,  num_iter = 1, resolution_parameter = NULL, random_seed = 2020, 
+                          verbose = T, partition_q_value = 0.05){
+  {
+    if(class(obj)!="Seurat"){stop("This does not appear to be a seurat object")}
+    if(is.null(obj@reductions[[reduction]]@cell.embeddings)){stop("No reduction found")}
+    reduction<-obj@reductions[[reduction]]@cell.embeddings
+    if (is.null(dims)) {
+      dims <- 1:dim(reduction)[2]
     }
+    if (method == "leiden") {
+      cluster_result <- monocle3:::leiden_clustering(data = as.matrix(reduction)[, 
+                                                                                 dims], pd = obj@meta.data, k = k, weight = weight, num_iter = num_iter, 
+                                                     resolution_parameter = resolution_parameter, random_seed = random_seed, 
+                                                     verbose = verbose, nn_control = list(method = "nn2"))
+    }
+    else {
+      cluster_result <- monocle3:::louvain_clustering(data = as.matrix(reduction)[, dims], pd = obj@meta.data, k = k, weight = weight, random_seed = random_seed, verbose = verbose, nn_control = list(method ="nn2"))
+    }
+    cluster_graph_res <- monocle3:::compute_partitions(cluster_result$g, 
+                                                       cluster_result$optim_res, partition_q_value, verbose = t)
+    ps<-as.factor(igraph::components(cluster_graph_res$cluster_g)$membership[cluster_result$optim_res$membership])
+    message(paste0("Found ", length(levels(ps)), " partitions!"))
+    obj@meta.data$partitions<-ps
+    obj
+    # clusters <- factor(igraph::membership(cluster_result$optim_res))
+    # cds@clusters[["UMAP"]] <- list(cluster_result = cluster_result, 
+    #     partitions = partitions, clusters = clusters)
+    # cds
   }
-  
-  ## Clear out any old graphs:
-  cds@principal_graph_aux[[reduction_method]] <- NULL
-  cds@principal_graph[[reduction_method]] <- NULL
-  cds@clusters[[reduction_method]] <- NULL
-  
-  cds
 }
-
-
 
 
 #' Iterative LSI
@@ -219,6 +86,7 @@ reduce_dimension <- function(cds,
 #' @references Cusanovich, D. A., Reddington, J. P., Garfield, D. A., Daza, R. M., Aghamirzaie, D., Marco-Ferreres, R., et al. (2018). The 
 #'   cis-regulatory dynamics of embryonic development at single-cell resolution. Nature, 555(7697), 538–542.
 #' @export
+#' @keywords internal
 iterative_LSI <- function(cds,
                           num_dim=25, starting_features = NULL,
                           resolution=c(1e-4, 3e-4, 5e-4), do_tf_idf=T,
@@ -376,6 +244,7 @@ iterative_LSI <- function(cds,
 #' @references Granja, J. M.et al. (2019). Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype 
 #' acute leukemia. Nature Biotechnology, 37(12), 1458–1465.
 #' @export
+#' @keywords internal
 groupSums <- function (mat, groups = NULL, na.rm = TRUE, sparse = FALSE){
   stopifnot(!is.null(groups))
   stopifnot(length(groups) == ncol(mat))
@@ -396,6 +265,7 @@ groupSums <- function (mat, groups = NULL, na.rm = TRUE, sparse = FALSE){
 #' @references Granja, J. M.et al. (2019). Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype 
 #' acute leukemia. Nature Biotechnology, 37(12), 1458–1465.
 #' @export
+#' @keywords internal
 sparseRowVariances <- function (m){
   rM <- Matrix::rowMeans(m)
   rV <- computeSparseRowVariances(m@i + 1, m@x, rM, ncol(m))
@@ -677,6 +547,7 @@ load_umap_model_depracated<-function(file, num_dim = NULL){
 #' @references Jacob H. Levine and et. al. Data-Driven Phenotypic Dissection of AML Reveals Progenitor-like Cells that 
 #' Correlate with Prognosis. Cell, 2015.
 #' @export
+#' @keywords internal
 cluster_LSI<-function(cds, 
                       k = 20, 
                       weight = F, 

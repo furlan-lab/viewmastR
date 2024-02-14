@@ -90,8 +90,8 @@
 # system.time({ computeSparseRowVariancesCPP(mat@i + 1, mat@x, rM, ncol(mat)) })
 # system.time({ computeSparseRowVariances(mat@i + 1, mat@x, rM, ncol(mat)) })
 # 
-# lp<-installed.packages()[rownames(installed.packages())=="viewmastR"][2]
+# lp<-installed.packages()[rownames(installed.packages())=="viewmastRust"][2]
 # lp
-# list.files(file.path(lp, "viewmastR", "extdata", "mnist"))
+# list.files(file.path(lp, "viewmastRust", "extdata", "mnist"))
 # 
 #            

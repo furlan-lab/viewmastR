@@ -43,7 +43,7 @@ viewmastR <-function(query_cds,
                                         learning_rate = learning_rate, num_epochs = max_epochs, 
                                         directory = dir, verbose = verbose, backend = "wgpu")
   if(is.null(query_celldata_col)){
-    query_celldata_col<-"viewmastR_smr"
+    query_celldata_col<-"viewmastRust_smr"
   }
   query_cds[[query_celldata_col]]<-training_list[["labels"]][export_list$predictions[[1]]+1]
   if (return_type=="object") {
