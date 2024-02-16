@@ -20,7 +20,7 @@ splat_bulk_reference<-function(query=NULL,
   dist<-match.arg(dist)
   if(dist=="sc-mimic" | dist == "sc-direct"){
     message("Finding count distribution of query")
-    sizes <- colSums(viewmastRust:::get_counts_seurat(query))
+    sizes <- colSums(get_counts_seurat(query))
     den <- density(sizes)
     replace_counts<-F
   }else{
