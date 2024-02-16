@@ -93,7 +93,7 @@ DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 
 Note that this is the same invocation used as prior versions of viewmastR but more output can be obtained (read further down)
 ```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/Users/sfurlan/develop/viewmastR/model")
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/Users/sfurlan/develop/viewmastR/model", max_epochs = 3)
 ```
 
 ## A look at the predictions
@@ -105,12 +105,12 @@ DimPlot(seu, group.by = "viewmastR_smr", cols = seur@misc$colors)
 ## Load the model
 ```{r}
 
-
-query = lapply(1:dim(viewmastR:::get_norm_counts(seu))[2], function(idx){
-        list(data = t(viewmastR:::get_norm_counts(seu)[vg,idx])[1,])
+qcounts<-t(as.matrix(viewmastR:::get_norm_counts(seu)[vg,]))
+query = lapply(1:dim(qcounts)[1], function(idx){
+        list(data = as.numeric(qcounts[idx,]))
       })
-
 query
+
 viewmastR:::infer("/Users/sfurlan/develop/viewmastR/model/model.mpk", num_classes = levels(factor(seur$SFClassification)), num_features = length(vg), query = query)
 
 ```

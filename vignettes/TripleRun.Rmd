@@ -146,7 +146,7 @@ levels(seu$ID)<-c("PAUSBA_Dx", #D3_NA
                   "PAUYIB_Dx", #R6D5_0
                   "PAUZPA_EOI", #R6D5_1
                   "PAUZPA_Dx", #R7D6_0
-                  "PAUZTH_EOI" #R7D6
+                  "PAUZTH_EOI" #R7D6_1
                   )
 
 
@@ -168,7 +168,9 @@ light <- sapply(dark, function(d) lighten_darken_color(d, 60)) %>% as.character(
 cols<-c(rbind(dark, light), "grey80")
 DimPlot(seu, group.by = "ID", cols = cols, raster = F)
 
-FeaturePlot_scCustom(seu, features = "percent.mt")
+#FeaturePlot_scCustom(seu, features = "percent.mt")
+DefaultAssay(seu)<-"RNA"
+saveRDS(seu, file.path="/Users/sfurlan/Desktop/20240215MRD8_withcelltypes")
 ```
 
 ## Make a bulk classifier
