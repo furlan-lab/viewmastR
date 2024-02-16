@@ -1,0 +1,405 @@
+---
+title: "How to use viewmastR with saved models"
+output: html_document
+date: "2024-02-14"
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+---
+
+## Installing Rust
+
+First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
+
+
+## Installing viewmastR
+
+You will need to have the devtools package installed...
+
+```{r, eval=F}
+devtools::install_github("furlan-lab/viewmastR")
+```
+
+
+## Running viewmastR
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+rm(list=ls())
+suppressPackageStartupMessages({
+library(viewmastR)
+library(Seurat)
+library(ggplot2)
+})
+
+
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/user/sfurlan/Analysis/AML/LOR_classifier/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+  ROOT_DIR3<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+  ROOT_DIR4<-"/fh/fast/furlan_s/user/sfurlan/Analysis/AML/LOR_classifier/data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/AML/LOR_classifier/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/patient_marrows/aggr/cds/indy"
+  ROOT_DIR3<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+  ROOT_DIR4<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/AML/LOR_classifier/cds"
+}
+
+#malignant ref (bulk)
+seMR<-readRDS(file.path(ROOT_DIR1, "240126_Combined_SE_Object.RDS"))
+
+#healthy ref (sc)
+seuHR <- readRDS(file.path(ROOT_DIR3, "230329_rnaAugmented_seurat.RDS"))
+
+#query dataset
+seu<-readRDS(file.path("/Users/sfurlan/Desktop/20240215MRD8_withcelltypes"))
+```
+
+## Let's plot ground truth
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seu, group.by = "viewmastRust_smr", cols = seuHR@misc$colors)
+```
+
+## match samples to merge path
+```{r}
+library(magrittr)
+library(data.table)
+library(stringr)
+library(scCustomize)
+
+dirs<-paste0("/Volumes/furlan_s/user/rula/MRD/AML_MRD", c(1,3), "/data")
+nmdirs<-lapply(dirs, function(dir) {
+  dirs<-list.files(dir, full.names = T)
+  dirs[!grepl("merge", dirs)]
+})
+
+mdirs<-lapply(dirs, function(dir) {
+  dirs<-list.files(dir, full.names = T)
+  dirs[grepl("merge", dirs)]
+})
+
+
+#create a lookup table of sample and merge files.
+lookup<-data.frame(sample=c(nmdirs[[1]], nmdirs[[2]]), lookup=c(rep(mdirs[[1]][1], 4), rep(mdirs[[2]][1], 3), rep(mdirs[[2]][2], 3), rep(mdirs[[2]][3], 5), rep(mdirs[[2]][4], 1)))
+
+cells<-Cells(seu)
+cells<-gsub("/fh/fast/furlan_s/user/rula/", "", cells)
+cl<-strsplit(cells, "/") 
+cells<-lapply(cl, function(n) n[length(n)]) %>% unlist()
+lookup$sample<-gsub("/Volumes/furlan_s/user/rula/", "", lookup$sample)
+sl<-strsplit(lookup$sample, "/")
+lookup$sample<-lapply(sl, function(n) n[length(n)]) %>% unlist()
+files<-unique(lookup$lookup)
+
+cellsdf<-data.frame(barcode=cells, assignment="NF")
+
+running_assignment<-lapply(files, function(file) {
+  data<-fread(file.path(file, "souporcell_2", "clusters.tsv"))
+  if(file== "/Volumes/furlan_s/user/rula/MRD/AML_MRD3/data/merge_R3D2"){
+    data$barcode<-paste0("AML_MRD_Ex3_R3D2_", data$barcode)
+  }
+  data<-data[data$barcode %in% cellsdf$barcode,]
+  data.frame(barcode=data$barcode, assignment=data$assignment)
+})
+
+
+#table(seu$dataset)
+
+running_assignment<-do.call(rbind, running_assignment)
+
+cellsdf$assignment<-running_assignment$assignment[match(cellsdf$barcode, running_assignment$barcode)]
+
+seu$geno_assignment<-cellsdf$assignment
+seu$geno_assignment[grepl("\\/", seu$geno_assignment)]<-"Multiplet"
+DimPlot(seu, group.by = "geno_assignment")
+DimPlot(seu, group.by = "dataset")
+
+seu$patient_mix<-factor(seu$dataset)
+levels(seu$patient_mix)<-c("D3", "D4","R3","R3","R3","R3","R3","R4","R5D7", "R5D7", "R5D7", "R5D8", "R5D8", "R5D8","R6D5", "R6D5", "R6D5", "R6D5", "R6D5", "R7D6",  "R1D2", "R1D2",  "R1D2", "R2D1")
+
+DimPlot(seu, group.by = "patient_mix")
+seu$sample<-paste0(seu$patient_mix, "_", seu$geno_assignment)
+DimPlot(seu, group.by = "sample")
+
+seu@graphs<-list(NULL)
+seu<-seu[,!grepl( "Multiplet", seu$sample)]
+DimPlot(seu, group.by = "sample")
+
+DefaultAssay(seu)<-"HTO"
+Idents(seu)<-seu$sample
+rownames(seu)
+VlnPlot(seu, features = c( "HTO1", "HTO2", "HTO3", "HTO4"), group.by =  "sample", pt.size = 0, ncol = 2)
+
+seu$ID<-factor(as.character(seu$sample))
+
+levels(seu$ID)<-c("PAUSBA_Dx", #D3_NA
+                  "PAUSFM_Dx", #D4_NA
+                  "PAUNDC_EOI", #R1D2_0,
+                  "PAURRC_Dx", #R1D2_1
+                  "PAUNDC_Dx" ,  #R2D1_0
+                  "PAURRC_EOI", #R2D1_1
+                  "PAUSBA_EOI", #R3_NA
+                  "PAUSFM_EOI", #R4_NA
+                  "PAUZTH_Dx", #R5D7_0
+                  "PAUYIB_EOI", #R5D7_1
+                  "PAVAZT_Dx", #R5D8_0
+                  "PAUYIB_EOI", #R5D8_1
+                  "PAUYIB_Dx", #R6D5_0
+                  "PAUZPA_EOI", #R6D5_1
+                  "PAUZPA_Dx", #R7D6_0
+                  "PAUZTH_EOI" #R7D6
+                  )
+
+
+seu$time<-strsplit(as.character(seu$ID), "_") %>% sapply("[[", 2)
+DimPlot(seu, group.by = "ID", cols = sfc(15), raster = F)
+DimPlot(seu, group.by = "time")
+seu$PID<-strsplit(as.character(seu$ID), "_") %>% sapply("[[", 1)
+seu$ID<-as.character(seu$ID)
+
+dark<-g#plots::col2hex(c("red", "orange", "gold", "green", "blue", "purple", "magenta"))
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+
+dark<-gg_color_hue(8)
+dark <- sapply(dark[c(1:3,5:8)], function(d) lighten_darken_color(d, -40)) %>% as.character()
+light <- sapply(dark, function(d) lighten_darken_color(d, 60)) %>% as.character()
+cols<-c(rbind(dark, light), "grey80")
+DimPlot(seu, group.by = "ID", cols = cols, raster = F)
+
+FeaturePlot_scCustom(seu, features = "percent.mt")
+```
+
+## Make a bulk classifier
+
+We can then see how this classifies cells from a scRNAseq experiment.  This is first done by loading the data and creating a [Summarized Experiment] (https://bioconductor.org/packages/release/bioc/html/SummarizedExperiment.html).  We remove a few malignant/modified cells from the reference.  The function "splat_bulk_reference" takes a SummarizedExperiment and returns a Seurat object made by generating pseudo-single-cell data which can then be used as a reference for viewmastR.  We invoke viewmastR.  Although it is not necessary, we can then visualize a UMAP of the single-cellified bulk reference using a standard Seurat workflow.  Finally, we can visualize the bulk viewmastR classification result compared to the published cell labels.  While, we see fairly faithful overlap, the bulk reference does not contain samples for all the celltypes, so cells such as plasma cells and cDCs are called other celltypes.
+
+```{r}
+library(SummarizedExperiment)
+###make ref from healthy profiles
+dat<-read.table(file.path(ROOT_DIR4, "GSE74246_RNAseq_All_Counts.txt"), header = T)
+rownames(dat)<-dat$X_TranscriptID
+dat$X_TranscriptID<-NULL
+metad<-data.frame(sample = strsplit(colnames(dat), "\\.") %>% sapply("[[", 1), celltype = strsplit(colnames(dat), "\\.") %>% sapply("[[", 2))
+rowd<-DataFrame(gene_short_name = rownames(dat), row.names = rownames(dat))
+obj<-SummarizedExperiment::SummarizedExperiment(assays = list(counts=dat), rowData = rowd, colData = metad)
+
+
+#remove samples we don't want
+obj<-obj[,!grepl("^Blast", obj$celltype)] #blasts
+obj<-obj[,!grepl("^rHSC", obj$celltype)] #recombinant HSCs
+obj<-obj[,!grepl("^LSC", obj$celltype)] #leukemia stem cells
+#obj<-obj[,obj$sample %in% c("X5852", "X5483")] #two donors
+
+#undebug(splat_bulk_reference)
+seuF<-splat_bulk_reference(seu, obj, N=300)
+
+
+### make ref from malignant profiles
+obj<-seMR
+#rowData(obj)
+sttk<-names(table(obj$final_group))[table(obj$final_group)>3]
+sttk<-sttk[!sttk %in% "Other"]
+case_max<-30
+
+obj<-obj[,obj$final_group %in% sttk]
+ds<-names(table(obj$final_group))[table(obj$final_group)>20]
+ctk<-lapply(names(table(obj$final_group)), function(type){
+  cases<-which(obj$final_group %in% type)
+  if (length(cases)>case_max){
+    cases<-sample(cases, case_max)
+  }
+  cases
+})
+obj<-obj[,unlist(ctk)[order(unlist(ctk))]]
+seuF2<-splat_bulk_reference(seu, obj, N=20)
+##merge healthy and malignant refs..
+
+label<-c(seuF$celltype, seuF2$final_group)
+
+ss<-common_features(list(seuF, seuF2))
+cts<-cbind(GetAssayData(ss[[1]], layer = "counts"), GetAssayData(ss[[2]], layer="counts"))
+colnames(cts)<-make.unique(colnames(cts))
+seuF<-CreateSeuratObject(cts, meta.data = data.frame(label=label, row.names = colnames(cts)))
+
+seuF<-NormalizeData(seuF)
+seuF <- FindVariableFeatures(seuF,  nfeatures = 2000, assay = "RNA")
+seuF <- ScaleData(seuF) %>% RunPCA(features = VariableFeatures(object = seuF), npcs = 100)
+ElbowPlot(seuF, 100) 
+seuF<- FindNeighbors(seuF, dims = 1:20)
+seuF <- FindClusters(seuF, resolution = 1.1)
+seuF <- RunUMAP(seuF, dims = 1:20, n.components = 2, min.dist = 0.2)
+DimPlot(seuF, group.by = "label")
+
+seuF<-calculate_gene_dispersion(seuF)
+seuF<-select_genes(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_genes(seuF)
+seu<-calculate_gene_dispersion(seu)
+seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_genes(seu)
+vg<-intersect(vgq, vgr)
+
+
+
+
+seu<-viewmastRust::viewmastR(query_cds = seu, ref_cds = seuF, ref_celldata_col = "label", selected_genes = vg)
+
+mcols<-names(table(label))[names(table(label)) %in% seuF2$final_group]
+hcols<-names(table(label))[!names(table(label)) %in% seuF2$final_group]
+
+hcol<-sfc(length(hcols))
+names(hcol)<-hcols
+
+mcol<-sfc(length(mcols))
+names(mcol)<-mcols
+DimPlot_scCustom(seu, group.by = "viewmastRust_smr", colors_use = hcol)
+
+DimPlot_scCustom(seu, group.by = "viewmastRust_smr", colors_use = mcol)
+
+seu$viewmastRust_smr_og<-seu$viewmastRust_smr
+
+
+
+seu$viewmastRust_smr<-seu$viewmastRust_smr_og
+thresh<-0.01
+seu$viewmastRust_smr[!seu$viewmastRust_smr %in% names(table(seu$viewmastRust_smr))[table(seu$viewmastRust_smr)>dim(seu)[2]*thresh]]<-"rare"
+
+DimPlot_scCustom(seu, group.by = "viewmastRust_smr", colors_use = hcol)+scale_fill_manual(hcol, na.value = "grey90")
+DimPlot_scCustom(seu, group.by = "viewmastRust_smr", colors_use = mcol)
+
+mcole<-mcol[-c(3,10,35)]
+DimPlot_scCustom(seu, group.by = "viewmastRust_smr", colors_use = mcole)
+
+key<-vector()
+for(cluster in levels(factor(seu$seurat_clusters))){
+  t<-table(seu$viewmastRust_smr[(seu$seurat_clusters %in% cluster)])
+  key<-c(key, set_names(cluster, names(which.max(t))))
+}
+
+seu$celltype<-as.character(seu$seurat_clusters)
+seu$celltype<-names(key)[match(seu$celltype, key)]
+
+DimPlot_scCustom(seu, group.by = "celltype", colors_use = hcol)
+DimPlot_scCustom(seu, group.by = "celltype", colors_use = mcol)
+```
+
+
+
+## Find common features
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+seu<-calculate_gene_dispersion(seu)
+plot_gene_dispersion(seu)
+seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+plot_gene_dispersion(seu)
+vgq<-get_selected_genes(seu)
+seur<-calculate_gene_dispersion(seur)
+plot_gene_dispersion(seur)
+seur<-select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+plot_gene_dispersion(seur)
+vgr<-get_selected_genes(seur)
+vg<-intersect(vgq, vgr)
+```
+
+## Here are the reference cell types
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
+```
+
+## Now you run viewmastR
+
+Note that this is the same invocation used as prior versions of viewmastR but more output can be obtained (read further down)
+```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/Users/sfurlan/develop/viewmastR/model")
+```
+
+## A look at the predictions
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seu, group.by = "viewmastR_smr", cols = seur@misc$colors)
+
+```
+
+## Load the model
+```{r}
+
+
+query = lapply(1:dim(viewmastR:::get_norm_counts(seu))[2], function(idx){
+        list(data = t(viewmastR:::get_norm_counts(seu)[vg,idx])[1,])
+      })
+
+query
+viewmastR:::infer("/Users/sfurlan/develop/viewmastR/model/model.mpk", num_classes = levels(factor(seur$SFClassification)), num_features = length(vg), query = query)
+
+```
+
+
+## A confusion matrix showing prediction vs ground truth
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seu$viewmastR_smr), gt = factor(seu$ground_truth), cols = seur@misc$colors)
+```
+
+## A look at the training history
+
+ViewmastR records key learning data generated during training.  This can optionally be returned by setting the 'return_type' parameter to "list".  Using this setting, the function will return a named list containing the following items (1 named 'object') - the query object with the celltype prediction added to the metadata (as above) and (2 named "training output") a set of results obtained during training.  Here's an example of how this may be used.  First we run viewmastR again changing the return type...
+
+```{r, dpi=300, fig.height=4, fig.width=6, warning=F, message=F}
+output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list")
+```
+
+Now we can plot learning data.  We can see that the training loss continues to decrease steadily beyond the 6th epoch, yet the validation loss does not.  This suggests that we are potentially overfitting after 6 epochs.
+```{r, eval = F}
+plot_training_data(output_list)
+
+```
+
+```{r, results='hide', echo=F}
+plt<-plot_training_data(output_list)
+```
+
+```{r results='asis', echo=F}
+plt
+```
+
+
+## Retreiving the model weights
+
+viewmastR writes a small file to the disk with the model weights using [Msgpack] (https://msgpack.org) encoding.  The model weights are saved to a location specified using the 'dir' argument.  We can use the viewmastR command get_model_weights to retrieve a matrix of the weights on the output from viewmastR with the return_type set to 'list' as shown below.
+```{r}
+output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list", max_epochs = 3, dir = "/Users/sfurlan/develop/viewmastR/model")
+install.packages("RcppMsgPack")
+library(RcppMsgPack)
+d<-RcppMsgPack::msgpackRead("/Users/sfurlan/develop/viewmastR/model/model.mpk", simplify = T)
+d
+wm<-matrix(d$item$linear1$weight$param$value, nrow = d$item$linear1$weight$param$shape[1], ncol = d$item$linear1$weight$param$shape[2])
+dim(wm)
+
+
+
+data<-viewmastR:::get_norm_counts(seu[vg,]) %>% as.matrix()
+
+dim(data)
+predictions <- t(data) %*% wm = d$item$linear1$bias$param$value
+dim(predictions)
+predictions[3,]
+seu$preds<-apply(predictions, 1, which.max)
+
+
+
+
+DimPlot(seu, group.by = "preds")
+```
+
+```{python}
+import msgpack
+f = open("/Users/sfurlan/develop/viewmastR/model/model.mpk")
+
+msgpack.load(f)
+
+```
+
+## Appendix
+```{r Appendix}
+sessionInfo()
+getwd()
+```

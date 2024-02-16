@@ -1,0 +1,187 @@
+---
+title: "How to use viewmastR with saved models"
+output: html_document
+date: "2024-02-14"
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+---
+
+## Installing Rust
+
+First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
+
+
+## Installing viewmastR
+
+You will need to have the devtools package installed...
+
+```{r, eval=F}
+devtools::install_github("furlan-lab/viewmastR")
+```
+
+
+## Running viewmastR
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+rm(list=ls())
+suppressPackageStartupMessages({
+library(viewmastR)
+library(Seurat)
+library(ggplot2)
+})
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+#query dataset
+seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
+#reference dataset
+seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
+#harmonize labels
+labels<-levels(factor(seur$SFClassification))
+seu$ground_truth<-factor(seu$seurat_clusters)
+levels(seu$ground_truth)<-c(labels[11], #0
+                            labels[18], #1
+                            labels[11], #2
+                            labels[17], #3
+                            labels[20], #4
+                            labels[21], #5
+                            labels[14], #6
+                            labels[12], #7
+                            labels[16], #8,
+                            labels[18], #9,
+                            labels[14], #10,
+                            labels[19], #11,
+                            labels[10], #12,
+                            labels[11], #13,
+                            labels[11])
+seu$ground_truth<-as.character(seu$ground_truth)
+```
+
+## Let's plot ground truth
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seu, group.by = "ground_truth", cols = seur@misc$colors)
+```
+
+
+## Find common features
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+seu<-calculate_gene_dispersion(seu)
+plot_gene_dispersion(seu)
+seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+plot_gene_dispersion(seu)
+vgq<-get_selected_genes(seu)
+seur<-calculate_gene_dispersion(seur)
+plot_gene_dispersion(seur)
+seur<-select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+plot_gene_dispersion(seur)
+vgr<-get_selected_genes(seur)
+vg<-intersect(vgq, vgr)
+```
+
+## Here are the reference cell types
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
+```
+
+## Now you run viewmastR
+
+Note that this is the same invocation used as prior versions of viewmastR but more output can be obtained (read further down)
+```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/Users/sfurlan/develop/viewmastR/model")
+```
+
+## A look at the predictions
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seu, group.by = "viewmastR_smr", cols = seur@misc$colors)
+
+```
+
+## Load the model
+```{r}
+
+
+query = lapply(1:dim(viewmastR:::get_norm_counts(seu))[2], function(idx){
+        list(data = t(viewmastR:::get_norm_counts(seu)[vg,idx])[1,])
+      })
+
+query
+viewmastR:::infer("/Users/sfurlan/develop/viewmastR/model/model.mpk", num_classes = levels(factor(seur$SFClassification)), num_features = length(vg), query = query)
+
+```
+
+
+## A confusion matrix showing prediction vs ground truth
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seu$viewmastR_smr), gt = factor(seu$ground_truth), cols = seur@misc$colors)
+```
+
+## A look at the training history
+
+ViewmastR records key learning data generated during training.  This can optionally be returned by setting the 'return_type' parameter to "list".  Using this setting, the function will return a named list containing the following items (1 named 'object') - the query object with the celltype prediction added to the metadata (as above) and (2 named "training output") a set of results obtained during training.  Here's an example of how this may be used.  First we run viewmastR again changing the return type...
+
+```{r, dpi=300, fig.height=4, fig.width=6, warning=F, message=F}
+output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list")
+```
+
+Now we can plot learning data.  We can see that the training loss continues to decrease steadily beyond the 6th epoch, yet the validation loss does not.  This suggests that we are potentially overfitting after 6 epochs.
+```{r, eval = F}
+plot_training_data(output_list)
+
+```
+
+```{r, results='hide', echo=F}
+plt<-plot_training_data(output_list)
+```
+
+```{r results='asis', echo=F}
+plt
+```
+
+
+## Retreiving the model weights
+
+viewmastR writes a small file to the disk with the model weights using [Msgpack] (https://msgpack.org) encoding.  The model weights are saved to a location specified using the 'dir' argument.  We can use the viewmastR command get_model_weights to retrieve a matrix of the weights on the output from viewmastR with the return_type set to 'list' as shown below.
+```{r}
+output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list", max_epochs = 3, dir = "/Users/sfurlan/develop/viewmastR/model")
+install.packages("RcppMsgPack")
+library(RcppMsgPack)
+d<-RcppMsgPack::msgpackRead("/Users/sfurlan/develop/viewmastR/model/model.mpk", simplify = T)
+d
+wm<-matrix(d$item$linear1$weight$param$value, nrow = d$item$linear1$weight$param$shape[1], ncol = d$item$linear1$weight$param$shape[2])
+dim(wm)
+
+
+
+data<-viewmastR:::get_norm_counts(seu[vg,]) %>% as.matrix()
+
+dim(data)
+predictions <- t(data) %*% wm = d$item$linear1$bias$param$value
+dim(predictions)
+predictions[3,]
+seu$preds<-apply(predictions, 1, which.max)
+
+
+
+
+DimPlot(seu, group.by = "preds")
+```
+
+```{python}
+import msgpack
+f = open("/Users/sfurlan/develop/viewmastR/model/model.mpk")
+
+msgpack.load(f)
+
+```
+
+## Appendix
+```{r Appendix}
+sessionInfo()
+getwd()
+```
