@@ -109,10 +109,14 @@ qcounts<-t(as.matrix(viewmastR:::get_norm_counts(seu)[vg,]))
 query = lapply(1:dim(qcounts)[1], function(idx){
         list(data = as.numeric(qcounts[idx,]))
       })
-query
+names(query)<-colnames(seu)
 
-viewmastR:::infer("/Users/sfurlan/develop/viewmastR/model/model.mpk", num_classes = levels(factor(seur$SFClassification)), num_features = length(vg), query = query)
+length(query[[1]]$data)
+preds<-viewmastR:::infer_from_model("/Users/sfurlan/develop/viewmastR/model/model.mpk", num_classes = length(levels(factor(seur$SFClassification))), num_features = length(vg), query = query)
 
+
+seu$pred<-levels(factor(seur$SFClassification))[preds$predictions]
+DimPlot(seu, group.by = "pred")
 ```
 
 

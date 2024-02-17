@@ -45,7 +45,7 @@ use burn::{
 
 
 
-pub fn infer_helper(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>){
+pub fn infer_helper(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>) -> Vec<i32>{
     type MyBackend = Wgpu<AutoGraphicsApi, f32>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
     let device = WgpuDevice::default();
@@ -56,10 +56,13 @@ pub fn infer_helper(model_path: String, num_classes: usize, num_features: usize,
     // Directly initialize a new model with the loaded record/weights
     let config_model = ModelConfig::new(num_classes);
     let model: Model<MyAutodiffBackend> = config_model.init_with(num_features, record);
+    let mut prediction: Vec<i32> = Vec::new();
     for item in query {
         let batcher = SCBatcher::new(device.clone());
         let batch = batcher.batch(vec![map_raw(&item)]);
         let output = &model.forward(batch.counts);
-        eprintln!("{:?}", output)
+        //eprintln!("{:?}", output)
+        prediction.push(output.clone().argmax(1).flatten::<1>(0, 1).into_scalar().try_into().unwrap());
     }
+    prediction
 }

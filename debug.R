@@ -18,7 +18,7 @@ roxygen2::roxygenise()
 
 
 rextendr::clean()
-rextendr::use_extendr()
+#rextendr::use_extendr()
 rextendr::document()
 
 # Run once to configure package to use pkgdown
