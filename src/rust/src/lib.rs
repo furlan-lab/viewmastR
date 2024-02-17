@@ -304,7 +304,7 @@ fn test_backend(){
 /// @export
 /// @keywords internal
 #[extendr]
-fn infer(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj){
+fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, return_type: &str) -> List{
   let model_path_tested = match model_path.as_str_vector() {
     Some(string_vec) => string_vec.first().unwrap().to_string(),
     _ => panic!("Cound not parse folder: '{:?}'", model_path)
@@ -313,12 +313,12 @@ fn infer(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj){
     panic!("Could not find folder: '{:?}'", model_path)
   }
   let mut query_raw: Vec<SCItemRaw> =  vec![];
-  let _result = mnist_ann::test_dataset();
   let sc_from_list = query.as_list().unwrap();
-  for (_item_str, item_robj) in sc_from_list{
+  for (item_str, item_robj) in sc_from_list{
     let list_items = item_robj.as_list().unwrap();
     let data = list_items[0].as_real_vector().unwrap();
     // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
+    eprint!("Pushing data {:?}\n", item_str);
     query_raw.push(SCItemRaw{
       data: data,
       target: 0
@@ -326,7 +326,14 @@ fn infer(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj){
   }
   let num_classes = num_classes.as_integer().unwrap() as usize;
   let num_features = num_features.as_integer().unwrap() as usize;
-  infer_helper(model_path_tested, num_classes, num_features, query_raw)
+  let predictions = infer_helper(model_path_tested, num_classes, num_features, query_raw);
+  if return_type == "predictions"{
+    return list!( predictions = predictions)
+  } else {
+    return list!( output = output)
+  }
+
+  
 }
 
 // Macro to generate exports.
@@ -342,5 +349,5 @@ extendr_module! {
   fn process_learning_obj_ann;
   fn process_learning_obj_mlr;
   fn test_backend;
-  fn infer;
+  fn infer_from_model;
 }
