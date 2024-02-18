@@ -1,12 +1,14 @@
-pandoc: 3.1.11.1
+pandoc: 3.1.1
 pkgdown: 2.0.7
 pkgdown_sha: ~
 articles:
   Augment: Augment.html
   BulkReference: BulkReference.html
   HowTo: HowTo.html
-last_built: 2024-02-14T19:42Z
+  SavedModel: SavedModel.html
+  TripleRun: TripleRun.html
+last_built: 2024-02-18T07:30Z
 urls:
-  reference: https://furlan-lab.github.io/viewmastRust/reference
-  article: https://furlan-lab.github.io/viewmastRust/articles
+  reference: https://furlan-lab.github.io/viewmastR/reference
+  article: https://furlan-lab.github.io/viewmastR/articles
 

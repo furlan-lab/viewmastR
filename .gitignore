@@ -3,4 +3,7 @@
 .RData
 .Ruserdata
 src/rust/target
+model/*
 model
+docs
+docs/*
