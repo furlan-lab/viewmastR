@@ -54,7 +54,7 @@ test_backend <- function() invisible(.Call(wrap__test_backend))
 #' infer from saved model
 #' @export
 #' @keywords internal
-infer_from_model <- function(model_path, query, num_classes, num_features) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features)
+infer_from_model <- function(model_path, query, num_classes, num_features, verbose) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, verbose)
 
 
 # nolint end

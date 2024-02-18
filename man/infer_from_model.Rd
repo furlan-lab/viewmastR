@@ -4,7 +4,7 @@
 \alias{infer_from_model}
 \title{infer from saved model}
 \usage{
-infer_from_model(model_path, query, num_classes, num_features)
+infer_from_model(model_path, query, num_classes, num_features, verbose)
 }
 \description{
 infer from saved model

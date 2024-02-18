@@ -304,7 +304,9 @@ fn test_backend(){
 /// @export
 /// @keywords internal
 #[extendr]
-fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, return_type: &str) -> List{
+fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, verbose: Robj) -> List{
+  let verbose =  verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
+  if verbose {eprintln!("Loading model")};
   let model_path_tested = match model_path.as_str_vector() {
     Some(string_vec) => string_vec.first().unwrap().to_string(),
     _ => panic!("Cound not parse folder: '{:?}'", model_path)
@@ -314,11 +316,12 @@ fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_featur
   }
   let mut query_raw: Vec<SCItemRaw> =  vec![];
   let sc_from_list = query.as_list().unwrap();
-  for (item_str, item_robj) in sc_from_list{
+  if verbose {eprintln!("Loading data")};
+  for (_item_str, item_robj) in sc_from_list{
     let list_items = item_robj.as_list().unwrap();
     let data = list_items[0].as_real_vector().unwrap();
     // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-    eprint!("Pushing data {:?}\n", item_str);
+    // eprint!("Pushing data {:?}\n", item_str);
     query_raw.push(SCItemRaw{
       data: data,
       target: 0
@@ -326,12 +329,10 @@ fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_featur
   }
   let num_classes = num_classes.as_integer().unwrap() as usize;
   let num_features = num_features.as_integer().unwrap() as usize;
-  let predictions = infer_helper(model_path_tested, num_classes, num_features, query_raw);
-  if return_type == "predictions"{
-    return list!( predictions = predictions)
-  } else {
-    return list!( output = output)
-  }
+  if verbose {eprintln!("Running inference")};
+  let (predictions, probs) = infer_helper(model_path_tested, num_classes, num_features, query_raw);
+  if verbose {eprintln!("Returning results")};
+  return list!(predictions = predictions, probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
 
   
 }

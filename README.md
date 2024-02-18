@@ -7,7 +7,7 @@ viewmastR is a method for performing unsupervised classification of single cells
 
 ## Acknowledgements
 
-Written by Scott Furlan and Olivia Waltner.
+Written by Scott Furlan.
 
 
 <p align="center"><img src="blob/furlan_lab_logo.png" alt="" width="500"></a></p>

@@ -51,6 +51,7 @@ reference:
   desc: Main functions used in wiewmastR
   contents:
   - viewmastR
+  - viewmasrR_infer
   - augment_data
   - splat_bulk_reference
   - confusion_matrix
@@ -80,3 +81,4 @@ articles:
   contents:
   - Augment
   - BulkReference
+  - SavedModel

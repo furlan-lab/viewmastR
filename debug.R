@@ -500,3 +500,75 @@ hc <- hchart(
 hc
 
 
+library(microbenchmark)
+Rcpp::sourceCpp(
+  code = '
+#include <Rcpp.h>
+using namespace Rcpp;
+// [[Rcpp::export]]
+IntegerVector rcpp_zeros_intvec(int n) {
+    IntegerVector my_vec(n);
+    return my_vec;
+}
+// [[Rcpp::export]]
+IntegerMatrix rcpp_zeros_intmat(int n) {
+    IntegerMatrix my_mat(n, n);
+    return my_mat;
+}
+// [[Rcpp::export]]
+IntegerVector rcpp_zeros_intvec_dimmed(int n) {
+    IntegerVector my_vec(n * n);
+    my_vec.attr("dim") = Dimension(n, n);
+    return my_vec;
+}
+')
+rextendr::rust_source(
+  profile = "release",
+  extendr_deps = list(
+    `extendr-api` = list(git = "https://github.com/extendr/extendr")
+  ),
+  code = '
+/// @export
+#[extendr]
+fn rust_zeros_intvec(n: i32) -> Robj {
+    let my_vec = vec!(0; n as usize);
+    r!(my_vec)
+}
+/// @export
+#[extendr]
+fn rust_zeros_intmat(n: i32) -> Robj {
+    let my_mat = RMatrix::new_matrix(n as usize, n as usize, |_, _| 0);
+    r!(my_mat)
+}
+/// @export
+#[extendr]
+fn rust_zeros_intmat_viavec(n: i32) -> Robj {
+    let my_vec = vec!(0; n as usize * n as usize);
+    let my_mat: RMatrix<i32> = r!(my_vec).as_matrix().unwrap();
+    r!(my_mat)
+}
+extendr_module! {
+    mod rust_wrap;
+    fn rust_zeros_intvec;
+    fn rust_zeros_intmat;
+    fn rust_zeros_intmat_viavec;
+}
+')
+cat("\n************ integer vector\n")
+cat("cpp and rust all.equal? ")
+print(all.equal(rcpp_zeros_intvec(100), rust_zeros_intvec(100)))
+cat("\n************ integer matrix direct\n")
+cat("cpp and rust all.equal? ")
+print(all.equal(rcpp_zeros_intmat(100), rust_zeros_intmat(100)))
+cat("\n************ integer matrix via vec\n")
+cat("cpp and rust all.equal? ")
+cat("No rust solution to compare to yet.")
+cat("\n************ microbench results\n")
+for (N in cumprod(c(10, rep(2, 6)))) {
+  cat("N = ", N, "\n")
+  mb_ziv_out <- microbenchmark(rcpp_zeros_intvec(N), rust_zeros_intvec(N),
+                               rcpp_zeros_intmat(N), rust_zeros_intmat(N),
+                               rcpp_zeros_intvec_dimmed(N), times=1000)
+  print(mb_ziv_out)
+}
+

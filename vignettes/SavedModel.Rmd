@@ -41,30 +41,7 @@ if(grepl("^gizmo", Sys.info()["nodename"])){
 seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
-#harmonize labels
-labels<-levels(factor(seur$SFClassification))
-seu$ground_truth<-factor(seu$seurat_clusters)
-levels(seu$ground_truth)<-c(labels[11], #0
-                            labels[18], #1
-                            labels[11], #2
-                            labels[17], #3
-                            labels[20], #4
-                            labels[21], #5
-                            labels[14], #6
-                            labels[12], #7
-                            labels[16], #8,
-                            labels[18], #9,
-                            labels[14], #10,
-                            labels[19], #11,
-                            labels[10], #12,
-                            labels[11], #13,
-                            labels[11])
-seu$ground_truth<-as.character(seu$ground_truth)
-```
 
-## Let's plot ground truth
-```{r, dpi=300, fig.height=4, fig.width = 6}
-DimPlot(seu, group.by = "ground_truth", cols = seur@misc$colors)
 ```
 
 
@@ -93,91 +70,30 @@ DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 
 The model path is specified using the 'dir' argument
 ```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/Users/sfurlan/develop/viewmastR/model")
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/Users/sfurlan/develop/viewmastR/model", max_epochs = 3)
 ```
 
 ## A look at the predictions
 ```{r, dpi=300, fig.height=4, fig.width = 6}
 DimPlot(seu, group.by = "viewmastR_smr", cols = seur@misc$colors)
-
 ```
 
-## Load the model
+## Run inference
+
+We can use the function viewmastR_infer to run inference a saved model.  We will need to pass the same vector of variable features we used to initially create the model. We can use query_celldata_col to specify the name of the metadata column in the returned object.  An optional vector of labels can be provided.  Additionally, instead of returning the input object with predictions added, you may instead return the probabilities using the return_probs argument.
 ```{r}
 
-qcounts<-t(as.matrix(viewmastR:::get_norm_counts(seu)[vg,]))
-query = lapply(1:dim(qcounts)[1], function(idx){
-        list(data = as.numeric(qcounts[idx,]))
-      })
+seu<-viewmastR_infer(seu, "/Users/sfurlan/develop/viewmastR/model/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
 
-query
-viewmastR:::infer("/Users/sfurlan/develop/viewmastR/model/model.mpk", num_classes = levels(factor(seur$SFClassification)), num_features = length(vg), query = query)
-query[[1]]
+
+DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+
 ```
 
 
-## A confusion matrix showing prediction vs ground truth
+## A confusion matrix comparing the results using viewmastR to viewmastR_infer having saved the model to disc.
 ```{r, dpi=300, fig.height=6, fig.width=10}
-confusion_matrix(pred = factor(seu$viewmastR_smr), gt = factor(seu$ground_truth), cols = seur@misc$colors)
-```
-
-## A look at the training history
-
-ViewmastR records key learning data generated during training.  This can optionally be returned by setting the 'return_type' parameter to "list".  Using this setting, the function will return a named list containing the following items (1 named 'object') - the query object with the celltype prediction added to the metadata (as above) and (2 named "training output") a set of results obtained during training.  Here's an example of how this may be used.  First we run viewmastR again changing the return type...
-
-```{r, dpi=300, fig.height=4, fig.width=6, warning=F, message=F}
-output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list")
-```
-
-Now we can plot learning data.  We can see that the training loss continues to decrease steadily beyond the 6th epoch, yet the validation loss does not.  This suggests that we are potentially overfitting after 6 epochs.
-```{r, eval = F}
-plot_training_data(output_list)
-
-```
-
-```{r, results='hide', echo=F}
-plt<-plot_training_data(output_list)
-```
-
-```{r results='asis', echo=F}
-plt
-```
-
-
-## Retreiving the model weights
-
-viewmastR writes a small file to the disk with the model weights using [Msgpack] (https://msgpack.org) encoding.  The model weights are saved to a location specified using the 'dir' argument.  We can use the viewmastR command get_model_weights to retrieve a matrix of the weights on the output from viewmastR with the return_type set to 'list' as shown below.
-```{r}
-output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list", max_epochs = 3, dir = "/Users/sfurlan/develop/viewmastR/model")
-install.packages("RcppMsgPack")
-library(RcppMsgPack)
-d<-RcppMsgPack::msgpackRead("/Users/sfurlan/develop/viewmastR/model/model.mpk", simplify = T)
-d
-wm<-matrix(d$item$linear1$weight$param$value, nrow = d$item$linear1$weight$param$shape[1], ncol = d$item$linear1$weight$param$shape[2])
-dim(wm)
-
-
-library(magrittr)
-data<-viewmastR:::get_norm_counts(seu[vg,]) %>% as.matrix()
-
-dim(data)
-predictions <- t(data) %*% wm  
-dim(predictions)
-predictions[3,]
-seu$preds<-apply(predictions, 1, which.max)
-
-
-
-
-DimPlot(seu, group.by = "preds")
-```
-
-```{python}
-import msgpack
-f = open("/Users/sfurlan/develop/viewmastR/model/model.mpk")
-
-msgpack.load(f)
-
+confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_smr), cols = seur@misc$colors)
 ```
 
 ## Appendix
