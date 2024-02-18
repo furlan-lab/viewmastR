@@ -1,7 +1,8 @@
+<hr>
 <p align="left"><img src="man/figures/viewmaster.png" alt="" width="300"></a></p>
 <hr>
 
-[![Project Status: Active – The project has reached a stable, usablestate and is being activelydeveloped.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![Project Status: Active – The project has reached a stable, usable state and is being activelydeveloped.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![Lifecycle:stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 
 viewmastR is a **[R](https://cran.r-project.org/)** framework for genomic cell type classification 

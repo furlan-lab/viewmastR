@@ -2,22 +2,22 @@ url: https://furlan-lab.github.io/viewmastR/
 lang: en
 template:
   bootstrap: 5
-  bootswatch: minty
-  bslib:
-    heading_font:
-      google:
-        family: Alegreya Sans SC
-        wght: 400
-    base_font:
-      google:
-        family: IBM Plex Sans
-    code_font:
-      google: Fira Mono
+  bootswatch: yeti
+  # bslib:
+  #   heading_font:
+  #     google:
+  #       family: Alegreya Sans SC
+  #       wght: 400
+  #   base_font:
+  #     google:
+  #       family: IBM Plex Sans
+  #   code_font:
+  #     google: Fira Mono
 authors:
   Scott Furlan:
     href: https://furlan-lab.github.io
 navbar:
-  bg: secondary
+  bg: primary
   structure:
     right:
     - search
@@ -51,12 +51,11 @@ reference:
   desc: Main functions used in wiewmastR
   contents:
   - viewmastR
-  - viewmasrR_infer
+  - viewmastR_infer
   - augment_data
   - splat_bulk_reference
   - confusion_matrix
   - plot_training_data
-  - viewmastR-package
 - title: Additional functions
   desc: Helper functions to add or modify elements
   contents:

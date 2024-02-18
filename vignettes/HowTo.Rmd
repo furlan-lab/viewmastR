@@ -98,7 +98,7 @@ seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes 
 
 ## A look at the predictions
 ```{r, dpi=300, fig.height=4, fig.width = 6}
-DimPlot(seu, group.by = "viewmastRust_smr", cols = seur@misc$colors)
+DimPlot(seu, group.by = "viewmastR_smr", cols = seur@misc$colors)
 ```
 
 ## A confusion matrix showing prediction vs ground truth
@@ -129,33 +129,6 @@ plt
 ```
 
 
-## Retreiving the model weights
-
-viewmastR writes a small file to the disk with the model weights using [Msgpack] (https://msgpack.org) encoding.  The model weights are saved to a location specified using the 'dir' argument.  We can use the viewmastR command get_model_weights to retrieve a matrix of the weights on the output from viewmastR with the return_type set to 'list' as shown below.
-```{r}
-output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list", max_epochs = 3, dir = "/Users/sfurlan/develop/viewmastR/model")
-install.packages("RcppMsgPack")
-library(RcppMsgPack)
-d<-RcppMsgPack::msgpackRead("/Users/sfurlan/develop/viewmastR/model/model.mpk", simplify = T)
-d
-wm<-matrix(d$item$linear1$weight$param$value, nrow = d$item$linear1$weight$param$shape[1], ncol = d$item$linear1$weight$param$shape[2])
-dim(wm)
-
-
-
-data<-viewmastR:::get_norm_counts(seu[vg,]) %>% as.matrix()
-
-dim(data)
-predictions <- t(data) %*% wm = d$item$linear1$bias$param$value
-dim(predictions)
-predictions[3,]
-seu$preds<-apply(predictions, 1, which.max)
-
-
-
-
-DimPlot(seu, group.by = "preds")
-```
 
 ```{python}
 import msgpack
