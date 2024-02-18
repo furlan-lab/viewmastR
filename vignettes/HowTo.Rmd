@@ -130,14 +130,6 @@ plt
 
 
 
-```{python}
-import msgpack
-f = open("/Users/sfurlan/develop/viewmastR/model/model.mpk")
-
-msgpack.load(f)
-
-```
-
 ## Appendix
 ```{r Appendix}
 sessionInfo()
