@@ -1,6 +1,6 @@
 Package: viewmastR
 Title: Automated single-cell genomic cell type assignment
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: 
     person("Scott", "Furlan", , "scottfurlan@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-3007-9840"))
