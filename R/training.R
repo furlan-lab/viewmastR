@@ -1,18 +1,39 @@
 setClass("training_item", slots=c(data="numeric", target="numeric"))
 setClass("training_set", slots=c(name="character", items="list", labels="character"))
 
-#' Running viewmastR using the new Rust implementation
-#' @description see viewmastR
-#' @param query_cds cds to query
-#' @param ref_cds reference cds
-#' @return various forms of training test data and query
+#' Run viewmastR using the new Rust implementation
+#' 
+#' This function runs viewmastR using the new Rust implementation to generate various forms of training and test data from the given query and reference cell data sets.
+#' 
+#' @param query_cds A cell data set (cds) to query.
+#' @param ref_cds A reference cell data set (cds).
+#' @param ref_celldata_col The column in the reference cell data set containing cell data.
+#' @param query_celldata_col The column in the query cell data set containing cell data. Defaults to "viewmastR_pred" if not provided.
+#' @param FUNC The machine learning model to use (multinomial linear regression - 'mlr' or multilayer neural network - 'nn'). Default is "mlr".
+#' @param norm_method The normalization method to use. Options are "log", "binary", "size_only", or "none".
+#' @param selected_genes A vector of pre-selected genes for analysis. If NULL, common features between reference and query are used.
+#' @param train_frac The fraction of data to use for training. Default is 0.8.
+#' @param tf_idf Boolean indicating whether to perform TF-IDF transformation. Default is FALSE.
+#' @param scale Boolean indicating whether to scale the data. Default is FALSE.
+#' @param hidden_layers A vector specifying the number of neurons in hidden layers for neural network models. Default is c(500, 100).  To use one hidden layer supply a vector of length 1.
+#' @param learning_rate The learning rate for training the model. Default is 1e-3.
+#' @param max_epochs The maximum number of epochs for training the model. Default is 10.
+#' @param LSImethod The method for Latent Semantic Indexing. Default is 1.
+#' @param verbose Boolean indicating whether to display verbose output. Default is TRUE.
+#' @param dir The directory to save output files. Default is "/tmp/sc_local".
+#' @param return_probs Boolean indicating whether to return probabilities. Default is FALSE.
+#' @param return_type The type of output to return. Options are "object" or "list". Default is "object".
+#' @param ... Additional arguments.
+#' 
+#' @return If return_type is "object", returns the modified query cell data set or seurat object. If return_type is "list", returns a list containing the query cell data set and training output.
+#' 
 #' @export
 
 viewmastR <-function(query_cds, 
                      ref_cds, 
                      ref_celldata_col, 
                      query_celldata_col=NULL, 
-                     FUNC=c("softmax_regression"),
+                     FUNC=c("mlr", "nn"),
                      norm_method=c("log", "binary", "size_only", "none"),
                      selected_genes=NULL,
                      train_frac = 0.8,
@@ -20,30 +41,51 @@ viewmastR <-function(query_cds,
                      scale=F,
                      hidden_layers = c(500,100),
                      learning_rate = 1e-3,
-                     batch_size = 100,
                      max_epochs = 10,
-                     max_error = 0.5,
-                     lambda = 1.0,
-                     iterations = 1000,
                      LSImethod=1,
                      verbose = T,
                      device = 0,
                      threshold = NULL,
                      keras_model = NULL, 
-                     dir = "/tmp/sc_local", 
+                     dir = "/tmp/sc_local",
+                     return_probs = F,
                      return_type = c("object", "list"), ...){
-  
   return_type <- match.arg(arg = NULL, return_type)
-  training_list<-setup_training(query_cds, ref_cds, ref_celldata_col = ref_celldata_col, selected_genes = selected_genes, verbose=verbose, return_type = "list", use_sparse = F)
-  dir.create(dir)
-  export_list<-process_learning_obj_mlr(train = training_list[["train"]], 
-                                        test = training_list[["test"]], 
-                                        query = training_list[["query"]], 
-                                        labels = training_list[["labels"]], 
-                                        learning_rate = learning_rate, num_epochs = max_epochs, 
-                                        directory = dir, verbose = verbose, backend = "wgpu")
+  FUNC <-match.arg(arg = NULL, FUNC)
+  if(return_type=="object" && return_probs == T) {stop("Cannot return both probabilities and a single cell object; rerun changing return_type to list if probabilities are sought.")}
+  if(!length(hidden_layers) %in% c(1,2)){stop("Only 1 or 2 hidden layers are allowed.")}
+  training_list<-setup_training(query_cds, 
+                                ref_cds, 
+                                tf_idf=tf_idf,
+                                scale=scale,
+                                LSImethod=LSImethod,
+                                ref_celldata_col = ref_celldata_col, 
+                                selected_genes = selected_genes, 
+                                verbose=verbose, 
+                                return_type = "list", 
+                                use_sparse = F)
+  if(!file.exists(dir)){
+    dir.create(dir)
+  }
+  if(FUNC=="mlr"){
+    export_list<-process_learning_obj_mlr(train = training_list[["train"]], 
+                                          test = training_list[["test"]], 
+                                          query = training_list[["query"]], 
+                                          labels = training_list[["labels"]], 
+                                          learning_rate = learning_rate, num_epochs = max_epochs, 
+                                          directory = dir, verbose = verbose, backend = "wgpu", return_probs = return_probs)
+  } else {
+    export_list<-process_learning_obj_ann(train = training_list[["train"]], 
+                                          test = training_list[["test"]], 
+                                          query = training_list[["query"]], 
+                                          labels = training_list[["labels"]],
+                                          hidden_size = hidden_layers,
+                                          learning_rate = learning_rate, num_epochs = max_epochs, 
+                                          directory = dir, verbose = verbose, backend = "wgpu", return_probs = return_probs)
+  }
+
   if(is.null(query_celldata_col)){
-    query_celldata_col<-"viewmastR_smr"
+    query_celldata_col<-"viewmastR_pred"
   }
   query_cds[[query_celldata_col]]<-training_list[["labels"]][export_list$predictions[[1]]+1]
   if (return_type=="object") {
@@ -55,14 +97,29 @@ viewmastR <-function(query_cds,
 
 
 #' Setup training datasets
-#' @description see viewmastR
-#' @param query_cds cds to query
-#' @param ref_cds reference cds
-#' @return various forms of training test data and query
+#' 
+#' This function sets up training datasets for use in machine learning models.
+#' 
+#' @param query_cds A cell data set (cds) to query.
+#' @param ref_cds A reference cell data set (cds).
+#' @param ref_celldata_col The column in the reference cell data set containing cell data.
+#' @param norm_method The normalization method to use. Options are "log", "binary", "size_only", or "none".
+#' @param selected_genes A vector of pre-selected genes for analysis.
+#' @param train_frac The fraction of data to use for training. 
+#' @param tf_idf Boolean indicating whether to perform TF-IDF transformation.
+#' @param scale Boolean indicating whether to scale the data.
+#' @param LSImethod The method for Latent Semantic Indexing.
+#' @param verbose Boolean indicating whether to display verbose output.
+#' @param addbias Boolean indicating whether to add bias.
+#' @param use_sparse Boolean indicating whether to use sparse matrices.
+#' @param return_type The type of output to return. Options are "list", "matrix", or "S4obj".
+#' @param ... Additional arguments.
+#' 
+#' @return A list, matrix, or S4 object containing the training datasets.
+#' 
 #' @importFrom Matrix colSums
 #' @importFrom MatrixExtra t_shallow
 #' @export
-#' @keywords internal
 
 setup_training <-function(query_cds, 
                           ref_cds, 
@@ -433,12 +490,22 @@ get_counts_seurat <- function(cds){
 
 
 #' Common Variant Genes
-#' @description Find common variant genes between two cds objects
-#' @param cds1 cds 
-#' @param cds2 
-#' @return a vector of similarly variant genes
+#' 
+#' This function finds common variant genes between two cell data sets.
+#' 
+#' @param cds1 The first cell data set.
+#' @param cds2 The second cell data set.
+#' @param top_n The number of top genes to consider. Default is 2000.
+#' @param logmean_ul The upper limit for mean expression.
+#' @param logmean_ll The lower limit for mean expression.
+#' @param row_data_column The column in the feature data corresponding to the gene symbol.
+#' @param unique_data_column The column in the feature data corresponding to the unique id.
+#' @param verbose Boolean indicating whether to display verbose output.
+#' @param plot Boolean indicating whether to plot the results.
+#' 
+#' @return A vector of similarly variant genes.
+#' 
 #' @export
-
 
 common_variant_genes <-function(cds1, 
                                 cds2,
@@ -544,34 +611,18 @@ common_variant_m3 <-function(cds1,
 
 
 #' Calculate dispersion genes in a cell_data_set object
-#'
-#' @description Monocle3 aims to learn how cells transition through a
-#' biological program of gene expression changes in an experiment. Each cell
-#' can be viewed as a point in a high-dimensional space, where each dimension
-#' describes the expression of a different gene. Identifying the program of
-#' gene expression changes is equivalent to learning a \emph{trajectory} that
-#' the cells follow through this space. However, the more dimensions there are
-#' in the analysis, the harder the trajectory is to learn. Fortunately, many
-#' genes typically co-vary with one another, and so the dimensionality of the
-#' data can be reduced with a wide variety of different algorithms. Monocle3
-#' provides two different algorithms for dimensionality reduction via
-#' \code{reduce_dimensions} (UMAP and tSNE). The function
-#' \code{calculate_dispersion} is an optional step in the trajectory building
-#' process before \code{preprocess_cds}.  After calculating dispersion for
-#' a cell_data_set using the \code{calculate_gene_dispersion} function, the 
-#' \code{select_genes} function allows the user to identify a set of genes
-#' that will be used in downstream dimensionality reduction methods.  These
-#' genes and their disperion and mean expression can be plotted using the 
-#' \code{plot_gene_dispersion} function.
-#'
-#'
-#' @param cds the cell_data_set upon which to perform this operation.
-#' @param q the polynomial degree; default = 3.
-#' @param id_tag the name of the feature data column corresponding to 
-#' the unique id - typically ENSEMBL id; default = "id".
-#' @param symbol_tag the name of the feature data column corresponding to 
-#' the gene symbol; default = "gene_short_name".
-#' @return an updated cell_data_set object with dispersion and mean expression saved
+#' 
+#' This function calculates dispersion genes in a cell_data_set object for downstream analysis.
+#' 
+#' @param cds The cell data set upon which to perform this operation.
+#' @param q The polynomial degree.
+#' @param id_tag The name of the feature data column corresponding to the unique id.
+#' @param symbol_tag The name of the feature data column corresponding to the gene symbol.
+#' @param upper_lim The upper limit of dispersion to consider.
+#' @param verbose Boolean indicating whether to display verbose output.
+#' 
+#' @return A vector of dispersion genes.
+#' 
 #' @export
 
 calculate_gene_dispersion<-function(cds, q=3, id_tag="id", symbol_tag="gene_short_name", method="m3addon", removeOutliers=T){

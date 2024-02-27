@@ -38,6 +38,7 @@ impl History {
 
 
 #[derive(Debug)]
+
 pub struct ModelRExport {
     pub lr: f64,
     pub hidden_size: Vec<usize>,
@@ -49,6 +50,7 @@ pub struct ModelRExport {
     pub train_history: History,
     pub test_history: History,
     pub training_duration: f64,
+    pub probs: Option<Vec<Vec<f32>>>,
 }
 
 #[derive(Debug)]
