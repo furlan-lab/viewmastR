@@ -7,3 +7,5 @@ model/*
 model
 docs
 docs/*
+src/.DS_Store
+.gitignore
