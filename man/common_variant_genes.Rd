@@ -17,13 +17,27 @@ common_variant_genes(
 )
 }
 \arguments{
-\item{cds1}{cds}
+\item{cds1}{The first cell data set.}
 
-\item{cds2}{}
+\item{cds2}{The second cell data set.}
+
+\item{top_n}{The number of top genes to consider. Default is 2000.}
+
+\item{logmean_ul}{The upper limit for mean expression.}
+
+\item{logmean_ll}{The lower limit for mean expression.}
+
+\item{row_data_column}{The column in the feature data corresponding to the gene symbol.}
+
+\item{unique_data_column}{The column in the feature data corresponding to the unique id.}
+
+\item{verbose}{Boolean indicating whether to display verbose output.}
+
+\item{plot}{Boolean indicating whether to plot the results.}
 }
 \value{
-a vector of similarly variant genes
+A vector of similarly variant genes.
 }
 \description{
-Find common variant genes between two cds objects
+This function finds common variant genes between two cell data sets.
 }

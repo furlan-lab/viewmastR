@@ -119,18 +119,15 @@ fn computeSparseRowVariances(j: Robj, val: Robj, rm: Robj, n: Robj)-> Vec<f64>{
 /// @export
 /// @keywords internal
 #[extendr]
-fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj, return_probs: Robj)-> List {
+fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
   let backend = match backend.as_str_vector(){
     Some(string_vec) => string_vec.first().unwrap().to_string(),
     _ => panic!("Cound not find backend: '{:?}'", backend)
   };
-  // if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
-  //   panic!("Cound not find backend: '{:?}'", backend)
-  // }
-  if ! ["wgpu"].contains(&backend.as_str()){
+  if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
     panic!("Cound not find backend: '{:?}'", backend)
   }
-  let return_probs: bool = return_probs.as_logical_vector().unwrap().first().unwrap().to_bool();
+
   let start = Instant::now();
   let verbose: bool = verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
   let learning_rate = *learning_rate.as_real_vector().unwrap().first().unwrap_or(&0.2) as f64;
@@ -177,26 +174,24 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
       target: 0
     });
   }
-  let model_export= scrna_mlr::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose, return_probs);
-  // if backend == "candle"{
-  //   // model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose, return_probs);
+  let model_export: ModelRExport;
+  if backend == "candle"{
+    model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+  } 
+  else if backend == "wpgu"{
+    model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+  } 
+  else {
+    model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+  }
 
-  // } 
-  // else if backend == "wpgu"{
-  //   model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose, return_probs);
-  // } 
-  // else {
-  //   // model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose, return_probs);
-  // }
-  
   // model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
   let predictions = list!(model_export.predictions);
   let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
   let duration = start.elapsed();
   let duration: List = list!(total_duration = duration.as_secs_f64(), training_duration = model_export.training_duration);
-  let probs: List = list!(model_export.probs.unwrap().iter().map(|x| r!(x)).collect::<Vec<Robj>>());
-  return list!(params = params, predictions = predictions, history = history, duration = duration, probs = probs)
+  return list!(params = params, predictions = predictions, history = history, duration = duration)
 }
 
 
@@ -204,18 +199,14 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
 /// @export
 /// @keywords internal
 #[extendr]
-fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, hidden_size: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj, return_probs: Robj)-> List {
+fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, hidden_size: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
   let backend = match backend.as_str_vector(){
     Some(string_vec) => string_vec.first().unwrap().to_string(),
     _ => panic!("Cound not find backend: '{:?}'", backend)
   };
-  // if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
-  //   panic!("Cound not find backend: '{:?}'", backend)
-  // }
-  if ! ["wgpu"].contains(&backend.as_str()){
+  if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
     panic!("Cound not find backend: '{:?}'", backend)
   }
-  let return_probs: bool = return_probs.as_logical_vector().unwrap().first().unwrap().to_bool();
   let start = Instant::now();
   let verbose: bool = verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
   let learning_rate = *learning_rate.as_real_vector().unwrap().first().unwrap_or(&0.2);
@@ -270,27 +261,25 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
   }
   let model_export: ModelRExport;
   if hidden_size.len() == 1 {
-    model_export = scrna_ann::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose, return_probs);
-    // if backend == "candle"{
-    //   model_export = scrna_ann::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    // } 
-    // else if backend == "wpgu"{
-    //   model_export = scrna_ann::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    // } 
-    // else {
-    //   model_export = scrna_ann::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    // }
+    if backend == "candle"{
+      model_export = scrna_ann::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
+    } 
+    else if backend == "wpgu"{
+      model_export = scrna_ann::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
+    } 
+    else {
+      model_export = scrna_ann::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
+    }
   } else {
-    model_export = scrna_ann2l::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose, return_probs);
-    // if backend == "candle"{
-    //   model_export = scrna_ann2l::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    // } 
-    // else if backend == "wpgu"{
-    //   model_export = scrna_ann2l::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    // } 
-    // else {
-    //   model_export = scrna_ann2l::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    // }
+    if backend == "candle"{
+      model_export = scrna_ann2l::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
+    } 
+    else if backend == "wpgu"{
+      model_export = scrna_ann2l::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
+    } 
+    else {
+      model_export = scrna_ann2l::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
+    }
   }
   
   let params = list!(lr = model_export.lr, hidden_size = model_export.hidden_size, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
@@ -298,13 +287,7 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
   let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
   let duration = start.elapsed();
   let duration: List = list!(total_duration = duration.as_secs_f64(), training_duration = model_export.training_duration);
-  let probs: List;
-  if return_probs {
-    probs = list!(model_export.probs.unwrap().iter().map(|x| r!(x)).collect::<Vec<Robj>>());
-  } else {
-    probs = list!();
-  }
-  return list!(params = params, predictions = predictions, history = history, duration = duration, probs = probs)
+  return list!(params = params, predictions = predictions, history = history, duration = duration)
 }
 
 

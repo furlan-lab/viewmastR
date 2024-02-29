@@ -98,12 +98,12 @@ seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes 
 
 ## A look at the predictions
 ```{r, dpi=300, fig.height=4, fig.width = 6}
-DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
+DimPlot(seu, group.by = "viewmastR_smr", cols = seur@misc$colors)
 ```
 
 ## A confusion matrix showing prediction vs ground truth
 ```{r, dpi=300, fig.height=6, fig.width=10}
-confusion_matrix(pred = factor(seu$viewmastR_pred), gt = factor(seu$ground_truth), cols = seur@misc$colors)
+confusion_matrix(pred = factor(seu$viewmastR_smr), gt = factor(seu$ground_truth), cols = seur@misc$colors)
 ```
 
 ## A look at the training history

@@ -111,16 +111,16 @@ seu<-viewmastR(seu, seuA, ref_celldata_col = "celltype", selected_genes = vg)
 DimPlot_scCustom(seu, group.by = "mCelltype")
 #need to fix spelling error
 #seu$mCelltype[seu$mCelltype=="Jeutrophils"]<-"Neutrophils"
-DimPlot_scCustom(seu, group.by = "viewmastR_pred")
+DimPlot_scCustom(seu, group.by = "viewmastR_smr")
 ```
 
 
 ## A confusion matrix showing prediction vs ground truth
 ```{r, dpi=300, fig.height=6, fig.width=10}
-co<-as.character(pals::polychrome(length(levels(factor(c(seu$mCelltype, seu$viewmastR_pred))))))
-names(co)<-levels(factor(c(seu$mCelltype, seu$viewmastR_pred)))
-confusion_matrix(pred = factor(seu$viewmastR_pred), gt = factor(seu$mCelltype), cols = co)
-Idents(seu)<-seu$viewmastR_pred
+co<-as.character(pals::polychrome(length(levels(factor(c(seu$mCelltype, seu$viewmastR_smr))))))
+names(co)<-levels(factor(c(seu$mCelltype, seu$viewmastR_smr)))
+confusion_matrix(pred = factor(seu$viewmastR_smr), gt = factor(seu$mCelltype), cols = co)
+Idents(seu)<-seu$viewmastR_smr
 VlnPlot_scCustom(seu, features = "FOXP3")
 Idents(seu)<-seu$mCelltype
 VlnPlot_scCustom(seu, features = "FOXP3")

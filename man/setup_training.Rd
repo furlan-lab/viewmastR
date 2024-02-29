@@ -16,20 +16,40 @@ setup_training(
   LSImethod = 1,
   verbose = T,
   addbias = F,
-  use_sparse = F,
   return_type = c("list", "matrix", "S4obj"),
   ...
 )
 }
 \arguments{
-\item{query_cds}{cds to query}
+\item{query_cds}{A cell data set (cds) to query.}
 
-\item{ref_cds}{reference cds}
+\item{ref_cds}{A reference cell data set (cds).}
+
+\item{ref_celldata_col}{The column in the reference cell data set containing cell data.}
+
+\item{norm_method}{The normalization method to use. Options are "log", "binary", "size_only", or "none".}
+
+\item{selected_genes}{A vector of pre-selected genes for analysis.}
+
+\item{train_frac}{The fraction of data to use for training.}
+
+\item{tf_idf}{Boolean indicating whether to perform TF-IDF transformation.}
+
+\item{scale}{Boolean indicating whether to scale the data.}
+
+\item{LSImethod}{The method for Latent Semantic Indexing.}
+
+\item{verbose}{Boolean indicating whether to display verbose output.}
+
+\item{addbias}{Boolean indicating whether to add bias.}
+
+\item{return_type}{The type of output to return. Options are "list", "matrix", or "S4obj".}
+
+\item{...}{Additional arguments.}
 }
 \value{
-various forms of training test data and query
+A list, matrix, or S4 object containing the training datasets.
 }
 \description{
-see viewmastR
+This function sets up training datasets for use in machine learning models.
 }
-\keyword{internal}

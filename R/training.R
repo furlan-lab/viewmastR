@@ -62,8 +62,8 @@ viewmastR <-function(query_cds,
                                 ref_celldata_col = ref_celldata_col, 
                                 selected_genes = selected_genes, 
                                 verbose=verbose, 
-                                return_type = "list", 
-                                use_sparse = F)
+                                return_type = "list")
+  # use_sparse = F)
   if(!file.exists(dir)){
     dir.create(dir)
   }
@@ -83,7 +83,7 @@ viewmastR <-function(query_cds,
                                           learning_rate = learning_rate, num_epochs = max_epochs, 
                                           directory = dir, verbose = verbose, backend = "wgpu", return_probs = return_probs)
   }
-
+  
   if(is.null(query_celldata_col)){
     query_celldata_col<-"viewmastR_pred"
   }
@@ -111,14 +111,12 @@ viewmastR <-function(query_cds,
 #' @param LSImethod The method for Latent Semantic Indexing.
 #' @param verbose Boolean indicating whether to display verbose output.
 #' @param addbias Boolean indicating whether to add bias.
-#' @param use_sparse Boolean indicating whether to use sparse matrices.
 #' @param return_type The type of output to return. Options are "list", "matrix", or "S4obj".
 #' @param ... Additional arguments.
 #' 
 #' @return A list, matrix, or S4 object containing the training datasets.
 #' 
 #' @importFrom Matrix colSums
-#' @importFrom MatrixExtra t_shallow
 #' @export
 
 setup_training <-function(query_cds, 
@@ -132,7 +130,7 @@ setup_training <-function(query_cds,
                           LSImethod=1,
                           verbose = T,
                           addbias = F,
-                          use_sparse = F, 
+                          # use_sparse = F, 
                           return_type = c("list", "matrix", "S4obj"),
                           ...){
   
@@ -218,31 +216,43 @@ setup_training <-function(query_cds,
   }
   
   #densifying adding bias
-  if(!use_sparse){
-    if(verbose){
-      message("Converting to dense matrix :(")
-    }
-    if(addbias){
-      if(verbose){
-        message("Adding bias")
-      }
-      X <-rbind(rep(1, ncol(Xtrain)), X)
-      query <-rbind(rep(1, ncol(query)), query)
-    }
-    X<-as.matrix(X)
-    query<-as.matrix(query)
-  } else {
-    if(addbias){
-      if(verbose){
-        message("Adding bias")
-      }
-      X <-rbind(rep(1, ncol(X)), X)
-      query <-rbind(rep(1, ncol(query)), query)
-    }
-    X<-as(X, "RsparseMatrix")
-    query<-as(query, "RsparseMatrix")
-  }
+  # if(!use_sparse){
+  #   if(verbose){
+  #     message("Converting to dense matrix :(")
+  #   }
+  #   if(addbias){
+  #     if(verbose){
+  #       message("Adding bias")
+  #     }
+  #     X <-rbind(rep(1, ncol(Xtrain)), X)
+  #     query <-rbind(rep(1, ncol(query)), query)
+  #   }
+  #   X<-as.matrix(X)
+  #   query<-as.matrix(query)
+  # } else {
+  #   if(addbias){
+  #     if(verbose){
+  #       message("Adding bias")
+  #     }
+  #     X <-rbind(rep(1, ncol(X)), X)
+  #     query <-rbind(rep(1, ncol(query)), query)
+  #   }
+  #   X<-as(X, "RsparseMatrix")
+  #   query<-as(query, "RsparseMatrix")
+  # }
   
+  if(verbose){
+    message("Converting to dense matrix :(")
+  }
+  if(addbias){
+    if(verbose){
+      message("Adding bias")
+    }
+    X <-rbind(rep(1, ncol(Xtrain)), X)
+    query <-rbind(rep(1, ncol(query)), query)
+  }
+  X<-as.matrix(X)
+  query<-as.matrix(query)
   gc()
   
   
@@ -258,7 +268,8 @@ setup_training <-function(query_cds,
   #create test/train indices
   train_idx<-sample(1:dim(X)[2], round(train_frac*dim(X)[2]))
   test_idx<-which(!1:dim(X)[2] %in% train_idx)
-  if(return_type == "matrices" && !use_sparse){
+  # if(return_type == "matrices" && !use_sparse){
+  if(return_type == "matrices"){
     return(list(Xtrain_data = t(X[,train_idx]), 
                 Xtest_data = t(X[,test_idx]), 
                 Ytrain_label = Y[train_idx,], 
@@ -266,15 +277,16 @@ setup_training <-function(query_cds,
                 query = t(query),
                 label_text = labels,
                 features = features))
-  } else if(return_type == "matrices" && use_sparse){
-    return(list(Xtrain_data = t_shallow(X[,train_idx]), 
-                Xtest_data = t_shallow(X[,test_idx]), 
-                Ytrain_label = Y[train_idx,], 
-                Ytest_label = Y[test_idx,],
-                query = t_shallow(query),
-                label_text = labels,
-                features = features))
-  } else if(return_type == "list" && !use_sparse) {
+    # } else if(return_type == "matrices" && use_sparse){
+    #   return(list(Xtrain_data = t_shallow(X[,train_idx]), 
+    #               Xtest_data = t_shallow(X[,test_idx]), 
+    #               Ytrain_label = Y[train_idx,], 
+    #               Ytest_label = Y[test_idx,],
+    #               query = t_shallow(query),
+    #               label_text = labels,
+    #               features = features))
+  } else if(return_type == "list") {
+    # } else if(return_type == "list" && !use_sparse) {
     return(list(
       train = lapply(train_idx, function(idx){
         list(data= t(X[,idx])[1,], target = Ylab[idx])
@@ -287,27 +299,27 @@ setup_training <-function(query_cds,
       }),
       labels = labels,
       features = features))
-  } else if(return_type == "list" && use_sparse) {
-    return(list(
-      train = lapply(train_idx, function(idx){
-        slice <- X[,idx]
-        indices <- which(!slice == 0)
-        list(values= slice[ indices] , indices=indices,
-             target = Ylab[idx])
-      }),
-      test = lapply(test_idx, function(idx){
-        slice <- X[,idx]
-        indices <- which(!slice == 0)
-        list(values= slice[ indices] , indices=indices,
-             target = Ylab[idx])
-      }),
-      query = lapply(1:dim(query)[2], function(idx){
-        slice <- query[,idx]
-        indices <- which(!slice == 0)
-        list(values= slice[ indices] , indices=indices)
-      }),
-      labels = labels,
-      features = features))
+    # } else if(return_type == "list" && use_sparse) {
+    #   return(list(
+    #     train = lapply(train_idx, function(idx){
+    #       slice <- X[,idx]
+    #       indices <- which(!slice == 0)
+    #       list(values= slice[ indices] , indices=indices,
+    #            target = Ylab[idx])
+    #     }),
+    #     test = lapply(test_idx, function(idx){
+    #       slice <- X[,idx]
+    #       indices <- which(!slice == 0)
+    #       list(values= slice[ indices] , indices=indices,
+    #            target = Ylab[idx])
+    #     }),
+    #     query = lapply(1:dim(query)[2], function(idx){
+    #       slice <- query[,idx]
+    #       indices <- which(!slice == 0)
+    #       list(values= slice[ indices] , indices=indices)
+    #     }),
+    #     labels = labels,
+    #     features = features))
   } else if (return_type == "S4obj") {
     # setClass("training_item", slots=c(data="numeric", target="numeric"))
     # setClass("training_set", slots=c(name="character", items="list", labels="character"))
@@ -326,12 +338,12 @@ setup_training <-function(query_cds,
                   labels=labels,
                   features=features)
     query_set<-new("training_set", 
-                  name="query", 
-                  items=lapply(1:dim(query)[2], function(idx){
-                    new("training_item", data = t(query[,idx])[1,], target = 0)
-                  }),
-                  labels="Unknown",
-                  features=features)
+                   name="query", 
+                   items=lapply(1:dim(query)[2], function(idx){
+                     new("training_item", data = t(query[,idx])[1,], target = 0)
+                   }),
+                   labels="Unknown",
+                   features=features)
     return(list(training_set, test_set, query_set))
   }
 }

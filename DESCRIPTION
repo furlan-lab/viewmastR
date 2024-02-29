@@ -5,9 +5,28 @@ Authors@R:
     person("Scott", "Furlan", , "scottfurlan@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0003-3007-9840"))
 Description: viewmastR uses machine learning implemented in Rust to perform automated cell type classification for single-cell genomic data.  Currently viewmastR is authored to work with scRNAseq data, but more features are coming.
-License: `use_mit_license()`
+License: file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
+Imports:
+  DelayedMatrixStats,
+  Hmisc,
+  Matrix,
+  RcppMsgPack,
+  Seurat,
+  SingleCellExperiment,
+  assertthat,
+  caret,
+  dplyr,
+  grDevices,
+  grid,
+  irlba,
+  magrittr,
+  parallel,
+  pbmcapply,
+  plotly,
+  scCustomize,
+  tibble
 RoxygenNote: 7.3.1
 Config/rextendr/version: 0.3.1.9000
 SystemRequirements: Cargo (rustc package manager)
