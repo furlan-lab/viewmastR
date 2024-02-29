@@ -21,7 +21,6 @@ setClass("training_set", slots=c(name="character", items="list", labels="charact
 #' @param LSImethod The method for Latent Semantic Indexing. Default is 1.
 #' @param verbose Boolean indicating whether to display verbose output. Default is TRUE.
 #' @param dir The directory to save output files. Default is "/tmp/sc_local".
-#' @param return_probs Boolean indicating whether to return probabilities. Default is FALSE.
 #' @param return_type The type of output to return. Options are "object" or "list". Default is "object".
 #' @param ... Additional arguments.
 #' 
@@ -73,7 +72,7 @@ viewmastR <-function(query_cds,
                                           query = training_list[["query"]], 
                                           labels = training_list[["labels"]], 
                                           learning_rate = learning_rate, num_epochs = max_epochs, 
-                                          directory = dir, verbose = verbose, backend = "wgpu", return_probs = return_probs)
+                                          directory = dir, verbose = verbose, backend = "wgpu")
   } else {
     export_list<-process_learning_obj_ann(train = training_list[["train"]], 
                                           test = training_list[["test"]], 
@@ -81,7 +80,7 @@ viewmastR <-function(query_cds,
                                           labels = training_list[["labels"]],
                                           hidden_size = hidden_layers,
                                           learning_rate = learning_rate, num_epochs = max_epochs, 
-                                          directory = dir, verbose = verbose, backend = "wgpu", return_probs = return_probs)
+                                          directory = dir, verbose = verbose, backend = "wgpu")
   }
   
   if(is.null(query_celldata_col)){

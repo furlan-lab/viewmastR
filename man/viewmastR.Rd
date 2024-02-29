@@ -62,8 +62,6 @@ viewmastR(
 
 \item{dir}{The directory to save output files. Default is "/tmp/sc_local".}
 
-\item{return_probs}{Boolean indicating whether to return probabilities. Default is FALSE.}
-
 \item{return_type}{The type of output to return. Options are "object" or "list". Default is "object".}
 
 \item{...}{Additional arguments.}
