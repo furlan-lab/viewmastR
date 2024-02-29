@@ -14,7 +14,8 @@ process_learning_obj_ann(
   num_epochs,
   directory,
   verbose,
-  backend
+  backend,
+  return_probs
 )
 }
 \description{

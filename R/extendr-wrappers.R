@@ -39,12 +39,12 @@ computeSparseRowVariances <- function(j, val, rm, n) .Call(wrap__computeSparseRo
 #' Process Robj learning objects for ANN
 #' @export
 #' @keywords internal
-process_learning_obj_ann <- function(train, test, query, labels, hidden_size, learning_rate, num_epochs, directory, verbose, backend) .Call(wrap__process_learning_obj_ann, train, test, query, labels, hidden_size, learning_rate, num_epochs, directory, verbose, backend)
+process_learning_obj_ann <- function(train, test, query, labels, hidden_size, learning_rate, num_epochs, directory, verbose, backend, return_probs) .Call(wrap__process_learning_obj_ann, train, test, query, labels, hidden_size, learning_rate, num_epochs, directory, verbose, backend, return_probs)
 
 #' Process Robj learning objects for MLR
 #' @export
 #' @keywords internal
-process_learning_obj_mlr <- function(train, test, query, labels, learning_rate, num_epochs, directory, verbose, backend) .Call(wrap__process_learning_obj_mlr, train, test, query, labels, learning_rate, num_epochs, directory, verbose, backend)
+process_learning_obj_mlr <- function(train, test, query, labels, learning_rate, num_epochs, directory, verbose, backend, return_probs) .Call(wrap__process_learning_obj_mlr, train, test, query, labels, learning_rate, num_epochs, directory, verbose, backend, return_probs)
 
 #' Process Robj learning objects for ANN
 #' @export

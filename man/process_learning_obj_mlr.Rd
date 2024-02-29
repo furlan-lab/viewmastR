@@ -13,7 +13,8 @@ process_learning_obj_mlr(
   num_epochs,
   directory,
   verbose,
-  backend
+  backend,
+  return_probs
 )
 }
 \description{

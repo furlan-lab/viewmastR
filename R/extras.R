@@ -57,7 +57,7 @@ add_souporcell_seurat<-function(obj, souporcell_file, prefix=NULL, assay_name="G
   pcv$status<-ctsv$status
   obj[[assay_name]]<-CreateAssayObject(data = t(as.matrix(cs)), )
   DefaultAssay(obj)<-assay_name
-  obj[[rd_label]] <- CreateDimReducObject(embeddings = as.matrix(pcv[,1:ncols(cs)]), key = key, assay = assay_name)
+  obj[[rd_label]] <- CreateDimReducObject(embeddings = as.matrix(pcv[,1:ncol(cs)]), key = key, assay = assay_name)
   obj[[meta_data_label]]<-"Not_Calculated"
   obj@meta.data[pcv$barcode,][[meta_data_label]]<-pcv$fixed_assignment
   obj@meta.data<-obj@meta.data[Cells(obj),]

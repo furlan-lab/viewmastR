@@ -1,8 +1,19 @@
-# viewmastR v0.2.0
+# viewmastR v0.2.2
+
+## New features
+
+* neural networks
+
+## Minor bug fixes and improvements
+
+* removed matrixExtra dependency
+
+# viewmastR v0.2.1
 
 ## New features
 
 * use saved models 
+* minor bugs
 
 # viewmastR v0.1.5
 

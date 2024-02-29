@@ -2,14 +2,14 @@
 % Please edit documentation in R/training.R
 \name{viewmastR}
 \alias{viewmastR}
-\title{Running viewmastR using the new Rust implementation}
+\title{Run viewmastR using the new Rust implementation}
 \usage{
 viewmastR(
   query_cds,
   ref_cds,
   ref_celldata_col,
   query_celldata_col = NULL,
-  FUNC = c("softmax_regression"),
+  FUNC = c("mlr", "nn"),
   norm_method = c("log", "binary", "size_only", "none"),
   selected_genes = NULL,
   train_frac = 0.8,
@@ -17,29 +17,60 @@ viewmastR(
   scale = F,
   hidden_layers = c(500, 100),
   learning_rate = 0.001,
-  batch_size = 100,
   max_epochs = 10,
-  max_error = 0.5,
-  lambda = 1,
-  iterations = 1000,
   LSImethod = 1,
   verbose = T,
   device = 0,
   threshold = NULL,
   keras_model = NULL,
   dir = "/tmp/sc_local",
+  return_probs = F,
   return_type = c("object", "list"),
   ...
 )
 }
 \arguments{
-\item{query_cds}{cds to query}
+\item{query_cds}{A cell data set (cds) to query.}
 
-\item{ref_cds}{reference cds}
+\item{ref_cds}{A reference cell data set (cds).}
+
+\item{ref_celldata_col}{The column in the reference cell data set containing cell data.}
+
+\item{query_celldata_col}{The column in the query cell data set containing cell data. Defaults to "viewmastR_pred" if not provided.}
+
+\item{FUNC}{The machine learning model to use (multinomial linear regression - 'mlr' or multilayer neural network - 'nn'). Default is "mlr".}
+
+\item{norm_method}{The normalization method to use. Options are "log", "binary", "size_only", or "none".}
+
+\item{selected_genes}{A vector of pre-selected genes for analysis. If NULL, common features between reference and query are used.}
+
+\item{train_frac}{The fraction of data to use for training. Default is 0.8.}
+
+\item{tf_idf}{Boolean indicating whether to perform TF-IDF transformation. Default is FALSE.}
+
+\item{scale}{Boolean indicating whether to scale the data. Default is FALSE.}
+
+\item{hidden_layers}{A vector specifying the number of neurons in hidden layers for neural network models. Default is c(500, 100).  To use one hidden layer supply a vector of length 1.}
+
+\item{learning_rate}{The learning rate for training the model. Default is 1e-3.}
+
+\item{max_epochs}{The maximum number of epochs for training the model. Default is 10.}
+
+\item{LSImethod}{The method for Latent Semantic Indexing. Default is 1.}
+
+\item{verbose}{Boolean indicating whether to display verbose output. Default is TRUE.}
+
+\item{dir}{The directory to save output files. Default is "/tmp/sc_local".}
+
+\item{return_probs}{Boolean indicating whether to return probabilities. Default is FALSE.}
+
+\item{return_type}{The type of output to return. Options are "object" or "list". Default is "object".}
+
+\item{...}{Additional arguments.}
 }
 \value{
-various forms of training test data and query
+If return_type is "object", returns the modified query cell data set or seurat object. If return_type is "list", returns a list containing the query cell data set and training output.
 }
 \description{
-see viewmastR
+This function runs viewmastR using the new Rust implementation to generate various forms of training and test data from the given query and reference cell data sets.
 }

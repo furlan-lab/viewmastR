@@ -105,7 +105,7 @@ seuHR<-viewmastR::viewmastR(query_cds = seuHR, ref_cds = seuF, ref_celldata_col 
 cols<-c(seuHR@misc$colors[c(14,18,20,6,5,3,7,1,5,2,11)], "cyan", seuHR@misc$colors[c(21)])
 names(cols)<-levels(factor(seuF$celltype))
 
-DimPlot_scCustom(seuHR, group.by = "viewmastR_smr", colors_use  = cols, label = T, repel = T, label.box = T, label.color = "white")
+DimPlot_scCustom(seuHR, group.by = "viewmastR_pred", colors_use  = cols, label = T, repel = T, label.box = T, label.color = "white")
 DimPlot_scCustom(seuHR, group.by = "SFClassification", colors_use  = seuHR@misc$colors, label = T, repel = T, label.box = T, label.color = "white")
 
 ```
@@ -125,7 +125,7 @@ vgq<-get_selected_genes(seuHR)
 vg<-intersect(vgq, vgr)
 seuP<-viewmastR::viewmastR(query_cds = seuP, ref_cds = seuHR, ref_celldata_col = "SFClassification", selected_genes = vg)
 
-DimPlot_scCustom(seuP, group.by = "viewmastR_smr", colors_use = seuHR@misc$colors)
+DimPlot_scCustom(seuP, group.by = "viewmastR_pred", colors_use = seuHR@misc$colors)
 ```
 
 ```{r}
@@ -138,8 +138,8 @@ DimPlot_scCustom(seuP, group.by = "geno_label")
 
 ## Interesting that we see some lymphoid/B signature in this patient with a RUNX1-RUNX1T1 fusion
 ```{r}
-Idents(seuP)<-seuP$viewmastR_smr
-#levels(factor(as.character(seuP$viewmastR_smr)))
+Idents(seuP)<-seuP$viewmastR_pred
+#levels(factor(as.character(seuP$viewmastR_pred)))
 Cluster_Highlight_Plot(seuP, cluster_name = "06_CLP", highlight_color = seuHR@misc$colors)
 Cluster_Highlight_Plot(seuP, cluster_name = "13_Pre.B", highlight_color = seuHR@misc$colors)
 Cluster_Highlight_Plot(seuP, cluster_name = "14_B", highlight_color = seuHR@misc$colors)
@@ -193,8 +193,8 @@ vg<-intersect(vgq, vgr)
 seuP<-viewmastR::viewmastR(query_cds = seuP, ref_cds = seuF, ref_celldata_col = "final_group", selected_genes = vg)
 
 thresh<-100
-seuP$pred_thresh<-seuP$viewmastR_smr
-seuP$pred_thresh[seuP$pred_thresh %in% names(table(seuP$viewmastR_smr))[table(seuP$viewmastR_smr)<thresh]]<-"Other"
+seuP$pred_thresh<-seuP$viewmastR_pred
+seuP$pred_thresh[seuP$pred_thresh %in% names(table(seuP$viewmastR_pred))[table(seuP$viewmastR_pred)<thresh]]<-"Other"
 DimPlot_scCustom(seuP, group.by = "pred_thresh")
 
 

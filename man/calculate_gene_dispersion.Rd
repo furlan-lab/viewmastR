@@ -23,20 +23,22 @@ calculate_gene_dispersion(
 )
 }
 \arguments{
-\item{cds}{the cell_data_set upon which to perform this operation.}
+\item{cds}{The cell data set upon which to perform this operation.}
 
-\item{q}{the polynomial degree; default = 3.}
+\item{q}{The polynomial degree.}
 
-\item{id_tag}{the name of the feature data column corresponding to
-the unique id - typically ENSEMBL id; default = "id".}
+\item{id_tag}{The name of the feature data column corresponding to the unique id.}
 
-\item{symbol_tag}{the name of the feature data column corresponding to
-the gene symbol; default = "gene_short_name".}
+\item{symbol_tag}{The name of the feature data column corresponding to the gene symbol.}
+
+\item{upper_lim}{The upper limit of dispersion to consider.}
+
+\item{verbose}{Boolean indicating whether to display verbose output.}
 }
 \value{
 an updated cell_data_set object with dispersion and mean expression saved
 
-an updated cell_data_set object with dispersion and mean expression saved
+A vector of dispersion genes.
 }
 \description{
 Monocle3 aims to learn how cells transition through a
@@ -58,22 +60,5 @@ that will be used in downstream dimensionality reduction methods.  These
 genes and their disperion and mean expression can be plotted using the
 \code{plot_gene_dispersion} function.
 
-Monocle3 aims to learn how cells transition through a
-biological program of gene expression changes in an experiment. Each cell
-can be viewed as a point in a high-dimensional space, where each dimension
-describes the expression of a different gene. Identifying the program of
-gene expression changes is equivalent to learning a \emph{trajectory} that
-the cells follow through this space. However, the more dimensions there are
-in the analysis, the harder the trajectory is to learn. Fortunately, many
-genes typically co-vary with one another, and so the dimensionality of the
-data can be reduced with a wide variety of different algorithms. Monocle3
-provides two different algorithms for dimensionality reduction via
-\code{reduce_dimensions} (UMAP and tSNE). The function
-\code{calculate_dispersion} is an optional step in the trajectory building
-process before \code{preprocess_cds}.  After calculating dispersion for
-a cell_data_set using the \code{calculate_gene_dispersion} function, the
-\code{select_genes} function allows the user to identify a set of genes
-that will be used in downstream dimensionality reduction methods.  These
-genes and their disperion and mean expression can be plotted using the
-\code{plot_gene_dispersion} function.
+This function calculates dispersion genes in a cell_data_set object for downstream analysis.
 }

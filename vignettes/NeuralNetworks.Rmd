@@ -1,0 +1,103 @@
+---
+title: "How to use viewmastR with Neural Networks"
+output: html_document
+date: "2024-02-26"
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+---
+
+## Installing Rust
+
+First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
+
+
+## Installing viewmastR
+
+You will need to have the devtools package installed...
+
+```{r, eval=F}
+devtools::install_github("furlan-lab/viewmastR")
+```
+
+
+## Running viewmastR
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+rm(list=ls())
+suppressPackageStartupMessages({
+library(viewmastR)
+library(Seurat)
+library(ggplot2)
+})
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+#query dataset
+seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
+#reference dataset
+seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
+
+```
+
+
+## Find common features
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+seu<-calculate_gene_dispersion(seu)
+plot_gene_dispersion(seu)
+seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+plot_gene_dispersion(seu)
+vgq<-get_selected_genes(seu)
+seur<-calculate_gene_dispersion(seur)
+plot_gene_dispersion(seur)
+seur<-select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+plot_gene_dispersion(seur)
+vgr<-get_selected_genes(seur)
+vg<-intersect(vgq, vgr)
+```
+
+## Here are the reference cell types
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
+```
+
+## Now you run viewmastR
+
+The model path is specified using the 'dir' argument
+```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/Users/sfurlan/develop/viewmastR/model", max_epochs = 3)
+```
+
+## A look at the predictions
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
+```
+
+## Run inference
+
+We can use the function viewmastR_infer to run inference a saved model.  We will need to pass the same vector of variable features we used to initially create the model. We can use query_celldata_col to specify the name of the metadata column in the returned object.  An optional vector of labels can be provided.  Additionally, instead of returning the input object with predictions added, you may instead return the probabilities using the return_probs argument.
+```{r}
+
+seu<-viewmastR_infer(seu, "/Users/sfurlan/develop/viewmastR/model/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
+
+
+DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+
+```
+
+
+## A confusion matrix comparing the results using viewmastR to viewmastR_infer having saved the model to disc.
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_smr), cols = seur@misc$colors)
+```
+
+## Appendix
+```{r Appendix}
+sessionInfo()
+getwd()
+```
