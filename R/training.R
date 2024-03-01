@@ -117,6 +117,7 @@ viewmastR <-function(query_cds,
 #' 
 #' @importFrom Matrix colSums
 #' @export
+#' @keywords internal
 
 setup_training <-function(query_cds, 
                           ref_cds, 

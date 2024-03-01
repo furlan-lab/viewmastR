@@ -70,6 +70,7 @@ reference:
   - common_variant_genes
   - sparseRowVariances
   - sfc
+  - viewmastR-package
 articles:
 - title: Get Started
   navbar: Get Started
