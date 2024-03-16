@@ -1,0 +1,232 @@
+---
+title: "Changing Feature Selection"
+output: html_document
+date: "2024-03-08"
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+---
+
+## Installing Rust
+
+First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
+
+
+## Installing viewmastR
+
+You will need to have the devtools package installed...
+
+```{r, eval=F}
+devtools::install_github("furlan-lab/viewmastR")
+```
+
+
+## Running viewmastR
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+rm(list=ls())
+suppressPackageStartupMessages({
+  library(scrubletR)
+  library(viewmastR)
+  library(Seurat)
+  library(ggplot2)
+})
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+#query dataset
+seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
+#reference dataset
+seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
+#harmonize labels
+labels<-levels(factor(seur$SFClassification))
+seu$ground_truth<-factor(seu$seurat_clusters)
+levels(seu$ground_truth)<-c(labels[11], #0
+                            labels[18], #1
+                            labels[11], #2
+                            labels[17], #3
+                            labels[20], #4
+                            labels[21], #5
+                            labels[14], #6
+                            labels[12], #7
+                            labels[16], #8,
+                            labels[18], #9,
+                            labels[14], #10,
+                            labels[19], #11,
+                            labels[10], #12,
+                            labels[11], #13,
+                            labels[11])
+seu$ground_truth<-as.character(seu$ground_truth)
+```
+
+## Let's plot ground truth
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seu, group.by = "ground_truth", cols = seur@misc$colors)
+```
+
+
+## Find common features
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+seu<-calculate_gene_dispersion(seu)
+plot_gene_dispersion(seu)
+seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+plot_gene_dispersion(seu)
+vgq1<-get_selected_genes(seu)
+
+cts<-Matrix::t(GetAssayData(seu, layer = "counts"))
+total_counts = Matrix::rowSums(cts)
+mean_total_counts <-mean(total_counts)
+norm<-scrubletR:::tot_counts_norm(cts, target_total = mean_total_counts, total_counts = total_counts)
+gene_filter = names(filter_genes(norm,
+                                       min_counts=3,
+                                       min_cells=3,
+                                       min_vscore_pctl=50, plot = T, plot_other = vgq1))
+vgq2 = names(filter_genes(norm,
+                                       min_counts=3,
+                                       min_cells=3,
+                                       min_vscore_pctl=30, plot = T, plot_other = NULL))
+
+
+
+
+filter_genes<-function (E, base_ix = NULL, min_vscore_pctl = 85, min_counts = 3, 
+    min_cells = 3, plot = FALSE, sample_name = "", plot_other=NULL) 
+{
+    if (is.null(base_ix)) {
+        base_ix <- seq_len(nrow(E))
+    }
+    vscores_result <- get_vscores(E[base_ix, , drop = FALSE])
+    Vscores <- vscores_result$v_scores
+    gene_ix <- vscores_result$gene_ix
+    mu_gene <- vscores_result$mu_gene
+    FF_gene <- vscores_result$FF_gene
+    a <- vscores_result$a
+    b <- vscores_result$b
+    ix2 <- Vscores > 0
+    Vscores <- Vscores[ix2]
+    gene_ix <- gene_ix[ix2]
+    mu_gene <- mu_gene[ix2]
+    FF_gene <- FF_gene[ix2]
+    min_vscore <- quantile(Vscores, prob = min_vscore_pctl/100)
+    ix <- ((colSums(E[, gene_ix] >= min_counts) >= min_cells) &
+        (Vscores >= min_vscore))
+    if (plot) {
+        x_min <- 0.5 * min(mu_gene)
+        x_max <- 2 * max(mu_gene)
+        xTh <- x_min * exp(log(x_max/x_min) * seq(0, 1, length.out = 100))
+        yTh <- (1 + a) * (1 + b) + b * xTh
+        line_data <- data.frame(log10_xTh = log10(xTh), log10_yTh = log10(yTh))
+        points_data <- data.frame(log10_mu_gene = log10(mu_gene)[ix],
+            log10_FF_gene = log10(FF_gene)[ix])
+        if(!is.null(plot_other)){
+          points_data2 <- data.frame(log10_mu_gene = log10(mu_gene)[plot_other],
+            log10_FF_gene = log10(FF_gene)[plot_other])
+        }
+        g <- ggplot() + geom_point(aes(x = log10(mu_gene), y = log10(FF_gene)), 
+            col = rgb(0.8, 0.8, 0.8, alpha = 0.3)) +
+          geom_point(data = points_data,
+            aes(x = log10_mu_gene, y = log10_FF_gene), col = "black",
+            alpha = 0.8) +
+          geom_line(data = line_data, aes(x = log10_xTh, 
+            y = log10_yTh), color = "blue") + labs(title = sample_name, 
+            x = "log10(mean)", y = "log10(Fano factor)") + theme_bw()
+        if(!is.null(plot_other)){
+          g<-g+geom_point(data = points_data2, 
+            aes(x = log10_mu_gene, y = log10_FF_gene), col = "red", 
+            alpha = 0.8) 
+        }
+        print(g)
+    }
+    return(gene_ix[ix])
+    #return(gene_ix)
+}
+
+
+seur<-calculate_gene_dispersion(seur)
+plot_gene_dispersion(seur)
+seur<-select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+plot_gene_dispersion(seur)
+vgr1<-get_selected_genes(seur)
+
+cts<-Matrix::t(GetAssayData(seur, layer = "counts"))
+total_counts = Matrix::rowSums(cts)
+mean_total_counts <-mean(total_counts)
+norm<-scrubletR:::tot_counts_norm(cts, target_total = mean_total_counts, total_counts = total_counts)
+gene_filter = names(filter_genes(norm,
+                                       min_counts=3,
+                                       min_cells=3,
+                                       min_vscore_pctl=50, plot = T, plot_other = vgr1))
+vgr2 = names(filter_genes(norm,
+                                       min_counts=3,
+                                       min_cells=3,
+                                       min_vscore_pctl=30, plot = T, plot_other = NULL))
+
+
+
+vg1<-intersect(vgq1, vgr1)
+vg2<-intersect(vgq2, vgr2)
+
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", query_celldata_col = "vmR_pred1", selected_genes = vg1)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", query_celldata_col = "vmR_pred2", selected_genes = vg2)
+
+seu[['orig.ident']][,1]
+seu$orig.ident
+```
+
+## Here are the reference cell types
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
+```
+
+## Now you run viewmastR
+
+Note that this is the same invocation used as prior versions of viewmastR but more output can be obtained (read further down)
+```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
+```
+
+## A look at the predictions
+```{r, dpi=300, fig.height=4, fig.width = 6}
+DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
+```
+
+## A confusion matrix showing prediction vs ground truth
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seu$viewmastR_pred), gt = factor(seu$ground_truth), cols = seur@misc$colors)
+```
+
+## A look at the training history
+
+ViewmastR records key learning data generated during training.  This can optionally be returned by setting the 'return_type' parameter to "list".  Using this setting, the function will return a named list containing the following items (1 named 'object') - the query object with the celltype prediction added to the metadata (as above) and (2 named "training output") a set of results obtained during training.  Here's an example of how this may be used.  First we run viewmastR again changing the return type...
+
+```{r, dpi=300, fig.height=4, fig.width=6, warning=F, message=F}
+output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list")
+```
+
+Now we can plot learning data.  We can see that the training loss continues to decrease steadily beyond the 6th epoch, yet the validation loss does not.  This suggests that we are potentially overfitting after 6 epochs.
+```{r, eval = F}
+plot_training_data(output_list)
+
+```
+
+```{r, results='hide', echo=F}
+plt<-plot_training_data(output_list)
+```
+
+```{r results='asis', echo=F}
+plt
+```
+
+
+
+## Appendix
+```{r Appendix}
+sessionInfo()
+getwd()
+```
