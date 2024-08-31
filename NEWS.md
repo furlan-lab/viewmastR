@@ -1,3 +1,7 @@
+# viewmastR v0.2.2
+
+* minor bugs
+
 # viewmastR v0.2.1
 
 ## New features

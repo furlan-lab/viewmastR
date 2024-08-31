@@ -92,17 +92,19 @@ vg<-intersect(vgq, vgr)
 DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 
 
-seuC<-viewmastRust::viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
+seuC<-viewmastR::viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
 
-DimPlot(seuC, group.by = "viewmastRust_smr", cols = seur@misc$colors)
+DimPlot(seuC, group.by = "viewmastR_pred", cols = seur@misc$colors)
 
 
 # seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
 #                query_celldata_col = "viewmastR", selected_genes = vg,
 #                FUNC = "softmax_regression", verbose=T)
 #DimPlot(seu, group.by = "viewmastR", cols=seur@misc$colors)
-
+undebug(setup_training)
 training_list<-setup_training(seu, seur, ref_celldata_col = "SFClassification",selected_genes = vg, verbose=T, return_type = "list", use_sparse = F)
+training_mats<-setup_training(seu, seur, ref_celldata_col = "SFClassification",selected_genes = vg, verbose=T, return_type = "matrix", use_sparse = F)
+training_s4s<-setup_training(seu, seur, ref_celldata_col = "SFClassification",selected_genes = vg, verbose=T, return_type = "S4obj", use_sparse = F)
 training_list$features
 names(training_list)
 training_list$labels

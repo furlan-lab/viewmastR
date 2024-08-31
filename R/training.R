@@ -1,5 +1,5 @@
 setClass("training_item", slots=c(data="numeric", target="numeric"))
-setClass("training_set", slots=c(name="character", items="list", labels="character"))
+setClass("training_set", slots=c(name="character", items="list", labels="character", features="character"))
 
 #' Run viewmastR using the new Rust implementation
 #' 
@@ -269,7 +269,7 @@ setup_training <-function(query_cds,
   train_idx<-sample(1:dim(X)[2], round(train_frac*dim(X)[2]))
   test_idx<-which(!1:dim(X)[2] %in% train_idx)
   # if(return_type == "matrices" && !use_sparse){
-  if(return_type == "matrices"){
+  if(return_type == "matrix"){
     return(list(Xtrain_data = t(X[,train_idx]), 
                 Xtest_data = t(X[,test_idx]), 
                 Ytrain_label = Y[train_idx,], 
