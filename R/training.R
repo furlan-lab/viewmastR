@@ -1,6 +1,30 @@
 setClass("training_item", slots=c(data="numeric", target="numeric"))
 setClass("training_set", slots=c(name="character", items="list", labels="character", features="character"))
 
+dimension_check <- function (obj){
+  nm <-deparse(substitute(obj))
+  if(is.null(dim(obj))){
+    if(class(obj)=="list"){
+      llen <- sapply(obj, length)
+      if(!is.null(var(llen))){
+        if (var(llen)==0){
+          paste0(nm, "-dim1: ", llen[1], " non-ragged")
+        } else {
+          paste0(nm, "-dim1: ", mean(llen), " (mean) ragged")
+        }
+      } else {
+        message("not numeric")
+      }
+    } else {
+      paste0(nm, "-dim1: ", length(obj))
+    }
+  } else {
+    nd <- length(dim(obj))
+    dv <- paste0("-dim", 1:nd, ": ")
+    paste0(nm, paste0(dv, dim(obj)))
+  }
+}
+
 #' Run viewmastR using the new Rust implementation
 #' 
 #' This function runs viewmastR using the new Rust implementation to generate various forms of training and test data from the given query and reference cell data sets.
@@ -22,6 +46,7 @@ setClass("training_set", slots=c(name="character", items="list", labels="charact
 #' @param verbose Boolean indicating whether to display verbose output. Default is TRUE.
 #' @param dir The directory to save output files. Default is "/tmp/sc_local".
 #' @param return_type The type of output to return. Options are "object" or "list". Default is "object".
+#' @param debug Run in debug mode
 #' @param ... Additional arguments.
 #' 
 #' @return If return_type is "object", returns the modified query cell data set or seurat object. If return_type is "list", returns a list containing the query cell data set and training output.
@@ -48,11 +73,18 @@ viewmastR <-function(query_cds,
                      keras_model = NULL, 
                      dir = "/tmp/sc_local",
                      return_probs = F,
-                     return_type = c("object", "list"), ...){
+                     return_type = c("object", "list"), 
+                     debug = F, ...){
   return_type <- match.arg(arg = NULL, return_type)
   FUNC <-match.arg(arg = NULL, FUNC)
   if(return_type=="object" && return_probs == T) {stop("Cannot return both probabilities and a single cell object; rerun changing return_type to list if probabilities are sought.")}
   if(!length(hidden_layers) %in% c(1,2)){stop("Only 1 or 2 hidden layers are allowed.")}
+  if (debug){
+    message("Dimension check:")
+    message(paste0("\t", dimension_check(query_cds)))
+    message(paste0("\t", dimension_check(ref_cds)))
+    message(paste0("\t", dimension_check(selected_genes)))
+  }
   training_list<-setup_training(query_cds, 
                                 ref_cds, 
                                 tf_idf=tf_idf,
@@ -63,6 +95,13 @@ viewmastR <-function(query_cds,
                                 verbose=verbose, 
                                 return_type = "list")
   # use_sparse = F)
+  if (debug){
+    message("Dimension check:")
+    message(paste0("\t", dimension_check(training_list[["train"]][[1]])))
+    message(paste0("\t", dimension_check(training_list[["test"]][[1]])))
+    message(paste0("\t", dimension_check(training_list[["query"]][[1]])))
+    message(paste0("\t", dimension_check(training_list[["labels"]])))
+  }
   if(!file.exists(dir)){
     dir.create(dir)
   }
@@ -132,12 +171,19 @@ setup_training <-function(query_cds,
                           addbias = F,
                           # use_sparse = F, 
                           return_type = c("list", "matrix", "S4obj"),
+                          debug = F,
                           ...){
   
   if(verbose){
     message("Checking arguments and input")
   }
-  
+  if (debug){
+    message("Dimension check:")
+    message(paste0("\t", dimension_check(training_list[["train"]][[1]])))
+    message(paste0("\t", dimension_check(training_list[["test"]][[1]])))
+    message(paste0("\t", dimension_check(training_list[["query"]][[1]])))
+    message(paste0("\t", dimension_check(training_list[["labels"]])))
+  }
   #capture args for specific fxns
   argg <- c(as.list(environment()), list(...))
   layers=F

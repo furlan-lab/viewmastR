@@ -26,9 +26,9 @@ devtools::install_github("furlan-lab/viewmastR")
 ```{r, dpi=300, fig.height=4, fig.width = 6}
 rm(list=ls())
 suppressPackageStartupMessages({
-library(viewmastR)
-library(Seurat)
-library(ggplot2)
+  library(viewmastR)
+  library(Seurat)
+  library(ggplot2)
 })
 if(grepl("^gizmo", Sys.info()["nodename"])){
   ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
@@ -128,6 +128,63 @@ plt<-plot_training_data(output_list)
 plt
 ```
 
+
+## If you want to see the training subsets...
+```{r}
+ti<-setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
+
+```
+
+## If you want to see the model...
+```{r}
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
+probs<-viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = TRUE)
+
+log_odds <- probs$probs[[1]]
+odds <- exp(log_odds)
+p = plogis(log_odds)
+p2 = odds/(1 + odds)
+sum(d$p2)
+
+q=1-p
+d = data.frame(log_odds, odds, p, p2, q)
+d
+
+probmat <- sapply(probs$probs, rbind)
+probmat <- t(probmat)
+colnames(probmat)<-paste0("prob_", ti$labels)
+probmat <- plogis (probmat)
+seu@meta.data <- cbind(seu@meta.data, probmat)
+# seu@meta.data[,grep("^prob_", colnames(seu@meta.data))] <- NULL
+ti$labels
+scCustomize::FeaturePlot_scCustom(seu, features = "prob_14_B")
+
+library(RcppMsgPack)
+mod <- msgpack_read("/tmp/sc_local/model.mpk", simplify = T)
+weights <-mod$item$linear1$weight$param$value
+length(weights)
+shape <- mod$item$linear1$weight$param$shape
+
+wmat <- matrix(weights, nrow = shape[2])
+wmat <- t(wmat)
+rownames(wmat) <- ti$features
+colnames(wmat) <- ti$labels
+
+
+hits <- rownames(wmat)[wmat[,21]>0.4]
+
+seu <- AddModuleScore(seu, features = list("21"=hits))
+#colnames(seu@meta.data)
+scCustomize::FeaturePlot_scCustom(seu, features = "Cluster1")
+
+library(nnet)
+library(marginaleffects)
+
+mod <- multinom(factor(cyl) ~ hp + mpg, data = mtcars, quiet = true)
+mfx <- slopes(mod, type = "probs")
+
+```
 
 
 ## Appendix

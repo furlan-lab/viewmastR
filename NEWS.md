@@ -1,6 +1,9 @@
 # viewmastR v0.2.2
 
-* minor bugs
+* performance improvement - improved sparse variance function efficiency
+* minor bug - fixed return type 'matrix' in training function
+* minor bug - fixed tf_idf function
+* enhancement - added debug function that enables tracking dimensions across learning steps
 
 # viewmastR v0.2.1
 
