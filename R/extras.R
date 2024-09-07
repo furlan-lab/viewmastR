@@ -138,6 +138,7 @@ common_features <- function(cds_list){
 #' @importFrom Matrix rowSums
 #' @importFrom Matrix colSums
 #' @importFrom Matrix Diagonal
+#' @importFrom Matrix t
 #' @export
 #' @keywords internal
 tf_idf_transform <- function(input, method=1, verbose=T){
@@ -155,7 +156,7 @@ tf_idf_transform <- function(input, method=1, verbose=T){
   col_sums <- colSums(mat)
   
   #column normalize
-  mat <- t(t(mat)/col_sums)
+  mat <-Matrix::t(Matrix::t(mat)/col_sums)
   
   
   if (method == 1) {
