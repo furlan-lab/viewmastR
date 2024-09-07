@@ -9,3 +9,4 @@ docs
 docs/*
 src/.DS_Store
 .gitignore
+src/rust/Cargo.lock
