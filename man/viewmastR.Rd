@@ -26,6 +26,7 @@ viewmastR(
   dir = "/tmp/sc_local",
   return_probs = F,
   return_type = c("object", "list"),
+  debug = F,
   ...
 )
 }
@@ -63,6 +64,8 @@ viewmastR(
 \item{dir}{The directory to save output files. Default is "/tmp/sc_local".}
 
 \item{return_type}{The type of output to return. Options are "object" or "list". Default is "object".}
+
+\item{debug}{Run in debug mode}
 
 \item{...}{Additional arguments.}
 }

@@ -17,6 +17,7 @@ setup_training(
   verbose = T,
   addbias = F,
   return_type = c("list", "matrix", "S4obj"),
+  debug = F,
   ...
 )
 }

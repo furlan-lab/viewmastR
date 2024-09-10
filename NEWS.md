@@ -1,5 +1,6 @@
 # viewmastR v0.2.2
 
+* new feature - make3file function for easy exporting Seurat objects
 * performance improvement - improved sparse variance function efficiency
 * minor bug - fixed return type 'matrix' in training function
 * minor bug - fixed tf_idf function
