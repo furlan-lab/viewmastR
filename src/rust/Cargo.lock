@@ -3014,6 +3014,7 @@ dependencies = [
  "extendr-macros",
  "flate2",
  "image",
+ "ndarray",
  "rand",
  "serde",
  "serde_json",

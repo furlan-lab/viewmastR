@@ -56,5 +56,10 @@ test_backend <- function() invisible(.Call(wrap__test_backend))
 #' @keywords internal
 infer_from_model <- function(model_path, query, num_classes, num_features, verbose) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, verbose)
 
+#' Run test nb training
+#' @export
+#' @keywords internal
+run_nb_test <- function() invisible(.Call(wrap__run_nb_test))
+
 
 # nolint end

@@ -1,5 +1,11 @@
 #![allow(non_snake_case)]
 
+use burn::backend::Autodiff;
+use burn::backend::Wgpu;
+use burn::tensor::Shape;
+use burn::train;
+use burn::tensor::Tensor;
+use burn::tensor::Data;
 use extendr_api::prelude::*;
 mod mnist_conv;
 mod scrna_ann;
@@ -11,6 +17,7 @@ mod mnist_ann;
 mod pb;
 mod common;
 mod inference;
+mod nb;
 
 // use core::num;
 use std::path::Path;
@@ -18,6 +25,85 @@ use std::time::Instant;
 use crate::common::{SCItemRaw, ModelRExport};
 use crate::inference::infer_helper;
 
+/// Run test nb training
+/// @export
+/// @keywords internal
+#[extendr]
+fn run_nb_test(){
+  let result = nb::tests::test();
+  eprint!("{:?}", result);
+}
+
+/// Process Robj learning objects for MLR
+/// @export
+/// @keywords internal
+#[extendr]
+fn process_learning_obj_nb(train: Robj, test: Robj, query: Robj)-> List {
+  let start = Instant::now();
+  let mut test_raw: Vec<SCItemRaw> =  vec![];
+  let mut train_raw: Vec<SCItemRaw> =  vec![];
+  let mut query_raw: Vec<SCItemRaw> =  vec![];
+  let device = Default::default();
+  let sc_from_list = test.as_list().unwrap();
+  let test_data: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
+    let list_items = item_robj.as_list().unwrap();
+    list_items[0].as_real_vector().unwrap()}).collect();
+  let sc_from_list = train.as_list().unwrap();
+  let test_y: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
+    let list_items = item_robj.as_list().unwrap();
+    list_items[1].as_real().unwrap()}).collect();
+  let sc_from_list = train.as_list().unwrap();
+  let train_data: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
+      let list_items = item_robj.as_list().unwrap();
+      list_items[0].as_real_vector().unwrap()}).collect();
+  let train_y: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
+        let list_items = item_robj.as_list().unwrap();
+        list_items[1].as_real().unwrap()}).collect();
+  let sc_from_list = query.as_list().unwrap();
+  let query: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
+          let list_items = item_robj.as_list().unwrap();
+          list_items[1].as_real().unwrap()}).collect();
+
+  let train_data = Tensor::<Wgpu, 1>::from_data(&Data::new(test_data.into_iter().flatten().collect(), Shape::from(vec![test_data.len() as i64, test_data[0].len() as i64])));
+  // let sc_from_list = train.as_list().unwrap();
+  // for (_item_str, item_robj) in sc_from_list{
+  //   let list_items = item_robj.as_list().unwrap();
+  //   let data = list_items[0].as_real_vector().unwrap();
+  //   // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
+  //   train_raw.push(SCItemRaw{
+  //     data: data,
+  //     target: (list_items[1].as_real().unwrap() as i32)
+  //   });
+  // }
+  // let sc_from_list = query.as_list().unwrap();
+  // for (_item_str, item_robj) in sc_from_list{
+  //   let list_items = item_robj.as_list().unwrap();
+  //   let data = list_items[0].as_real_vector().unwrap();
+  //   // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
+  //   query_raw.push(SCItemRaw{
+  //     data: data,
+  //     target: 0
+  //   });
+  // }
+  // let model_export: ModelRExport;
+  // if backend == "candle"{
+  //   model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+  // } 
+  // else if backend == "wpgu"{
+  //   model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+  // } 
+  // else {
+  //   model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+  // }
+
+  // // model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+  // let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
+  // let predictions = list!(model_export.predictions);
+  // let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
+  // let duration = start.elapsed();
+  // let duration: List = list!(total_duration = duration.as_secs_f64(), training_duration = model_export.training_duration);
+  return list!()
+}
 
 /// Run full mnist training in R
 /// @export
@@ -351,4 +437,6 @@ extendr_module! {
   fn process_learning_obj_mlr;
   fn test_backend;
   fn infer_from_model;
+  fn run_nb_test;
+  fn process_learning_obj_nb;
 }
