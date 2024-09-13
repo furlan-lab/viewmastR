@@ -1,4 +1,7 @@
 #![allow(non_snake_case)]
+// #![allow(dead_code)]
+// #![allow(unused_imports)]
+// #![allow(unused_variables)]
 
 use extendr_api::prelude::*;
 mod mnist_conv;
@@ -16,18 +19,36 @@ mod nb;
 // use core::num;
 use std::path::Path;
 use std::time::Instant;
-use crate::common::{ModelRExport, extract_vectors, extract_scalars, create_tensor, extract_scitemraw};
+// use crate::common::{ModelRExport, extract_vectors, extract_scalars, create_tensor, extract_scitemraw};
+use crate::common::{ModelRExport, extract_vectors, extract_scalars, extract_scitemraw};
 use crate::inference::infer_helper;
-use nb::MultinomialNB;
+// use linfa::prelude::Predict;
+// use nb::MultinomialNB;
+// use std::io;
+// use std::io::prelude::*;
+
+
+// fn pause() {
+//     let mut stdin = io::stdin();
+//     let mut stdout = io::stdout();
+
+//     // We want the cursor to stay at the end of the line, so we print without a newline and flush manually.
+//     write!(stdout, "Press any key to continue...").unwrap();
+//     stdout.flush().unwrap();
+
+//     // Read a single byte and discard
+//     let _ = stdin.read(&mut [0u8]).unwrap();
+// }
+
 
 /// Run test nb training
 /// @export
 /// @keywords internal
-#[extendr]
-fn run_nb_test(){
-  let result = nb::tests::test();
-  eprint!("{:?}", result);
-}
+// #[extendr]
+// fn run_nb_test(){
+//   let result = nb::tests::test();
+//   eprint!("{:?}", result);
+// }
 
 /// Process Robj learning objects for MLR
 /// @export
@@ -35,46 +56,66 @@ fn run_nb_test(){
 #[extendr]
 fn process_learning_obj_nb(train: Robj, test: Robj, query: Robj) -> List {
   let start = Instant::now();
-  
+  let verbose =true;
   // Extracting data
+  if verbose {eprint!("Extracting data\n");}
   let test_data = extract_vectors(&test, 0);
   let test_y = extract_scalars(&test, 1); // Actual test labels
   let train_data = extract_vectors(&train, 0);
   let train_y = extract_scalars(&train, 1);
   let query = extract_vectors(&query, 0);
 
+  // let mut train_arr = Array2::<bool>::default((train_sampleno, train_featureno));
+  // for (i, mut row) in train_arr.axis_iter_mut(Axis(0)).enumerate() {
+  //     for (j, col) in row.iter_mut().enumerate() {
+  //         *col = train_data[i][j];
+  //     }
+  // }
+
   // Convert data to tensors
-  let test_data = create_tensor(test_data);
-  let train_data = create_tensor(train_data);
-  let query = create_tensor(query);
+  // if verbose {eprint!("Converting to tensors\n");}
+  // let test_data = create_tensor(test_data);
+  // let train_data = create_tensor(train_data);
+  // let query = create_tensor(query);
+
 
   // Initialize and train the Naive Bayes model
-  let mut nb = MultinomialNB::new();
-  nb.fit(&train_data, &train_y);
+  // let mut nb = MultinomialNB::new();
+  if verbose {eprint!("Training model\n");}
+  let (query_pred, _model) = nb::multinomial_nb(train_data, train_y, test_data, test_y, query).unwrap();
+  // let query_predictions = model.predict(query);
+  // nb.fit(&train_data, &train_y);
 
-  fn compare_predictions(pred: Vec<u64>, actual: Vec<u64>, data_type: String) -> f64 {
-    // Compare predictions to actual test_y values
-    let correct: usize = pred.iter()
-      .zip(actual.iter()) // Zip predictions with actual labels
-      .filter(|(pred, actual)| **pred == **actual as u64) // Compare prediction with actual
-      .count();
-    // Print the results
-    let accuracy = correct as f64 / actual.len() as f64 * 100.0;
-    println!("Accuracy on {} data: {:.3}%", data_type, accuracy);
-    accuracy
-  }
 
-  let train_acc = compare_predictions(nb.predict(train_data), train_y, String::from("training"));
-  let test_acc = compare_predictions(nb.predict(test_data), test_y, String::from("validation"));
+  if verbose {eprint!("Evaluating model\n");}
+  // fn compare_predictions(pred: Vec<u64>, actual: Vec<u64>, data_type: String) -> f64 {
+  //   // Compare predictions to actual test_y values
+  //   let correct: usize = pred.iter()
+  //     .zip(actual.iter()) // Zip predictions with actual labels
+  //     .filter(|(pred, actual)| **pred == **actual as u64) // Compare prediction with actual
+  //     .count();
+  //   // Print the results
+  //   let accuracy = correct as f64 / actual.len() as f64 * 100.0;
+  //   println!("Accuracy on {} data: {:.3}%", data_type, accuracy);
+  //   accuracy
+  // }
+
+  // let train_acc = compare_predictions(nb.predict(train_data), train_y, String::from("training"));
+  // let test_acc = compare_predictions(nb.predict(test_data), test_y, String::from("validation"));
 
   // Measure and return the elapsed time
   let duration = start.elapsed();
   let duration_r: List = list!(total_duration = duration.as_secs_f64());
-  let query_predictions_r: Vec<Robj> = nb.predict(query).iter().map(|x| r!(x)).collect();
-  let params = list!(num_classes = nb.num_classes_, num_features = nb.num_features_);
-  let history: List = list!(train_acc = train_acc, test_acc = test_acc);
+  // let query_predictions_r: Vec<Robj> = nb.predict(query).iter().map(|x| r!(x)).collect();
+  
+  // let params = list!(num_classes = nb.num_classes_, num_features = nb.num_features_);
+
+  let history: List = list!(train_acc = "ND", test_acc = "ND");
+  // let history: List = list!(train_acc = train_acc, test_acc = test_acc);
   // Return the list of predictions, duration, and accuracy
-  return list!(params = params, predictions = query_predictions_r, history = history, duration = duration_r)
+  // pause();
+  let params = list!();
+  return list!(params = params, predictions = list!(query_pred), history = history, duration = duration_r)
   // list!(duration = duration_r, acc_r = acc_r, query_predictions = query_predictions_r)
 }
 
@@ -157,8 +198,11 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
   let labelvec = labels.as_str_vector().unwrap();
 
   // Refactored code
+  if verbose {eprint!("Loading train\n");}
   let test_raw = extract_scitemraw(&test, None);   // No default target, extract from list
+  if verbose {eprint!("Loading test\n");}
   let train_raw = extract_scitemraw(&train, None); // No default target, extract from list
+  if verbose {eprint!("Loading query\n");}
   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
 
   let model_export: ModelRExport;
@@ -300,6 +344,6 @@ extendr_module! {
   fn process_learning_obj_mlr;
   fn test_backend;
   fn infer_from_model;
-  fn run_nb_test;
+  // fn run_nb_test;
   fn process_learning_obj_nb;
 }

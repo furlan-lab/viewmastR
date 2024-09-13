@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use serde::Deserialize;
 use burn::tensor::{Shape, Tensor, Data};
 use burn::backend::wgpu::Wgpu;
@@ -116,12 +118,12 @@ pub fn extract_vectors(data: &Robj, index: usize) -> Vec<Vec<f64>> {
 }
 
 // Function to extract scalar values from the R list
-pub fn extract_scalars(data: &Robj, index: usize) -> Vec<u64> {
+pub fn extract_scalars(data: &Robj, index: usize) -> Vec<usize> {
     let list = data.as_list().unwrap();
     list.iter()
         .map(|(_, item_robj)| {
             let list_items = item_robj.as_list().unwrap();
-            list_items[index].as_real().unwrap() as u64
+            list_items[index].as_real().unwrap() as usize
         })
         .collect()
 }
@@ -141,56 +143,14 @@ pub fn extract_scitemraw(data: &Robj, target_value: Option<i32>) -> Vec<SCItemRa
         .map(|(_, item_robj)| {
             let list_items = item_robj.as_list().unwrap();
             let data = list_items[0].as_real_vector().unwrap();
-            let target = target_value.unwrap_or(list_items[1].as_real().unwrap() as i32);
+            // Check and compute target per iteration, fall back to list_items[1] safely
+            let target = target_value.unwrap_or_else(|| {
+                list_items.get(1)
+                    .and_then(|item| item.as_real_vector())
+                    .map(|vec| vec[0] as i32)
+                    .unwrap_or_default() // fallback if index 1 or conversion fails
+            });
             SCItemRaw { data, target }
         })
         .collect()
-  }
-
-// #[derive(Config)]
-// pub struct SCTrainingConfig {
-//     pub num_epochs: usize,
-//     #[config(default = 64)]
-//     pub batch_size: usize,
-//     #[config(default = 4)]
-//     pub num_workers: usize,
-//     #[config(default = 42)]
-//     pub seed: u64,
-//     pub lr: f64,
-//     pub model: ModelConfig,
-//     pub optimizer: AdamConfig,
-// }
-
-// #[derive(Config, Debug)]
-// pub struct ModelConfig {
-//     num_classes: usize,
-//     num_epochs: usize,
-//     hidden_size: usize,
-//     #[config(default = "0.5")]
-//     dropout: f64,
-//     learning_rate: f64,
-// }
-
-
-// impl ModelConfig {
-//     // Returns the initialized model using the recorded weights.
-//     // pub fn init_with<B: Backend>(&self, record: ModelRecord<B>) -> Model<B> {
-//     //     Model {
-//     //         conv1: Conv2dConfig::new([1, 8], [3, 3]).init_with(record.conv1),
-//     //         conv2: Conv2dConfig::new([8, 16], [3, 3]).init_with(record.conv2),
-//     //         pool: AdaptiveAvgPool2dConfig::new([8, 8]).init(),
-//     //         activation: ReLU::new(),
-//     //         linear1: LinearConfig::new(16 * 8 * 8, self.hidden_size).init_with(record.linear1),
-//     //         linear2: LinearConfig::new(self.hidden_size, self.num_classes)
-//     //             .init_with(record.linear2),
-//     //         dropout: DropoutConfig::new(self.dropout).init(),
-//     //     }
-//     // }
-//     pub fn init<B: Backend>(&self, no_features: usize) -> Model<B> {
-//         Model {
-//             activation: ReLU::new(),
-//             linear1: LinearConfig::new(no_features, self.hidden_size).init(),
-//             linear2: LinearConfig::new(self.hidden_size, self.num_classes).init(),
-//         }
-//     }
-// }
+}

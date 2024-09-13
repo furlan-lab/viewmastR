@@ -204,9 +204,41 @@ make3file(seur, dir = f3d)
 
 ```{r}
 run_nb_test()
+roxygen2::roxygenise()
 
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", selected_genes = vg)
+rm(list=ls())
+suppressPackageStartupMessages({
+  library(viewmastR)
+  library(Seurat)
+  library(ggplot2)
+})
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
 
+#query dataset
+seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
+vg <- get_selected_genes(seu)
+#reference dataset
+seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
+
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", query_celldata_col = "nb_pred", selected_genes = vg)
+
+DimPlot(seu, group.by = "mlr_pred", cols = seur@misc$colors)
+DimPlot(seu, group.by = "nb_pred", cols = seur@misc$colors)
+
+length(which(seu$mlr_pred==seu$ground_truth))/dim(seu)[2]
+length(which(seu$nb_pred==seu$ground_truth))/dim(seu)[2]
+
+seu$incorrect <- seu$mlr_pred!=seu$ground_truth | seu$nb_pred !=seu$ground_truth
+DimPlot(seu, group.by = "incorrect")
+library(scCustomize)
+VlnPlot_scCustom(seu, features="doublet_scores", group.by="incorrect")
 ```
 
 

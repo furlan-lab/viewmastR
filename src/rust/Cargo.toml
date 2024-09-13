@@ -18,6 +18,9 @@ serde_json = "1.0"
 rand = "0.8.5"
 flate2 = "1.0.28"
 ndarray = "0.15"
+linfa-bayes = "0.7.0"
+linfa = "0.7.0"
+# anyhow = "1.0.88"
 # indicatif = {version = "*", features = ["rayon"]}
 # simple_bar = {version = "0.2.2"}
 
