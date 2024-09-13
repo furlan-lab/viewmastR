@@ -1,5 +1,8 @@
 use serde::Deserialize;
-
+use burn::tensor::{Shape, Tensor, Data};
+use burn::backend::wgpu::Wgpu;
+use extendr_api::Robj;
+use extendr_api::Conversions;
 
 pub fn mean(numbers: &Vec<f64>) -> f64 {
     numbers.iter().sum::<f64>() as f64 / numbers.len() as f64
@@ -99,6 +102,50 @@ pub fn emit_metrics(train_accuracy: &ModelAccuracy, test_accuracy: &ModelAccurac
         test_accuracy.num_correct as f32 / test_accuracy.num_predictions as f32 * 100.0
     );
 }
+
+
+// Function to extract vectors from the R list
+pub fn extract_vectors(data: &Robj, index: usize) -> Vec<Vec<f64>> {
+    let list = data.as_list().unwrap();
+    list.iter()
+        .map(|(_, item_robj)| {
+            let list_items = item_robj.as_list().unwrap();
+            list_items[index].as_real_vector().unwrap()
+        })
+        .collect()
+}
+
+// Function to extract scalar values from the R list
+pub fn extract_scalars(data: &Robj, index: usize) -> Vec<u64> {
+    let list = data.as_list().unwrap();
+    list.iter()
+        .map(|(_, item_robj)| {
+            let list_items = item_robj.as_list().unwrap();
+            list_items[index].as_real().unwrap() as u64
+        })
+        .collect()
+}
+
+// Function to flatten data and create a Tensor
+pub fn create_tensor(data: Vec<Vec<f64>>) -> Tensor<Wgpu, 2> {
+    let flattened_data: Vec<f32> = data.iter().flatten().map(|&x| x as f32).collect();
+    let shape = Shape::from(vec![data.len() as i64, data[0].len() as i64]);
+    Tensor::<Wgpu, 2>::from_data(Data::new(flattened_data, shape))
+}
+
+
+pub fn extract_scitemraw(data: &Robj, target_value: Option<i32>) -> Vec<SCItemRaw> {
+    let sc_from_list = data.as_list().unwrap();
+    sc_from_list
+        .iter()
+        .map(|(_, item_robj)| {
+            let list_items = item_robj.as_list().unwrap();
+            let data = list_items[0].as_real_vector().unwrap();
+            let target = target_value.unwrap_or(list_items[1].as_real().unwrap() as i32);
+            SCItemRaw { data, target }
+        })
+        .collect()
+  }
 
 // #[derive(Config)]
 // pub struct SCTrainingConfig {

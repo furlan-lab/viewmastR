@@ -1,11 +1,5 @@
 #![allow(non_snake_case)]
 
-use burn::backend::Autodiff;
-use burn::backend::Wgpu;
-use burn::tensor::Shape;
-use burn::train;
-use burn::tensor::Tensor;
-use burn::tensor::Data;
 use extendr_api::prelude::*;
 mod mnist_conv;
 mod scrna_ann;
@@ -22,8 +16,9 @@ mod nb;
 // use core::num;
 use std::path::Path;
 use std::time::Instant;
-use crate::common::{SCItemRaw, ModelRExport};
+use crate::common::{ModelRExport, extract_vectors, extract_scalars, create_tensor, extract_scitemraw};
 use crate::inference::infer_helper;
+use nb::MultinomialNB;
 
 /// Run test nb training
 /// @export
@@ -38,73 +33,52 @@ fn run_nb_test(){
 /// @export
 /// @keywords internal
 #[extendr]
-fn process_learning_obj_nb(train: Robj, test: Robj, query: Robj)-> List {
+fn process_learning_obj_nb(train: Robj, test: Robj, query: Robj) -> List {
   let start = Instant::now();
-  let mut test_raw: Vec<SCItemRaw> =  vec![];
-  let mut train_raw: Vec<SCItemRaw> =  vec![];
-  let mut query_raw: Vec<SCItemRaw> =  vec![];
-  let device = Default::default();
-  let sc_from_list = test.as_list().unwrap();
-  let test_data: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
-    let list_items = item_robj.as_list().unwrap();
-    list_items[0].as_real_vector().unwrap()}).collect();
-  let sc_from_list = train.as_list().unwrap();
-  let test_y: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
-    let list_items = item_robj.as_list().unwrap();
-    list_items[1].as_real().unwrap()}).collect();
-  let sc_from_list = train.as_list().unwrap();
-  let train_data: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
-      let list_items = item_robj.as_list().unwrap();
-      list_items[0].as_real_vector().unwrap()}).collect();
-  let train_y: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
-        let list_items = item_robj.as_list().unwrap();
-        list_items[1].as_real().unwrap()}).collect();
-  let sc_from_list = query.as_list().unwrap();
-  let query: Vec<_> = sc_from_list.iter().map(|(item_str, item_robj)| {
-          let list_items = item_robj.as_list().unwrap();
-          list_items[1].as_real().unwrap()}).collect();
+  
+  // Extracting data
+  let test_data = extract_vectors(&test, 0);
+  let test_y = extract_scalars(&test, 1); // Actual test labels
+  let train_data = extract_vectors(&train, 0);
+  let train_y = extract_scalars(&train, 1);
+  let query = extract_vectors(&query, 0);
 
-  let train_data = Tensor::<Wgpu, 1>::from_data(&Data::new(test_data.into_iter().flatten().collect(), Shape::from(vec![test_data.len() as i64, test_data[0].len() as i64])));
-  // let sc_from_list = train.as_list().unwrap();
-  // for (_item_str, item_robj) in sc_from_list{
-  //   let list_items = item_robj.as_list().unwrap();
-  //   let data = list_items[0].as_real_vector().unwrap();
-  //   // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-  //   train_raw.push(SCItemRaw{
-  //     data: data,
-  //     target: (list_items[1].as_real().unwrap() as i32)
-  //   });
-  // }
-  // let sc_from_list = query.as_list().unwrap();
-  // for (_item_str, item_robj) in sc_from_list{
-  //   let list_items = item_robj.as_list().unwrap();
-  //   let data = list_items[0].as_real_vector().unwrap();
-  //   // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-  //   query_raw.push(SCItemRaw{
-  //     data: data,
-  //     target: 0
-  //   });
-  // }
-  // let model_export: ModelRExport;
-  // if backend == "candle"{
-  //   model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  // } 
-  // else if backend == "wpgu"{
-  //   model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  // } 
-  // else {
-  //   model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  // }
+  // Convert data to tensors
+  let test_data = create_tensor(test_data);
+  let train_data = create_tensor(train_data);
+  let query = create_tensor(query);
 
-  // // model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  // let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
-  // let predictions = list!(model_export.predictions);
-  // let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
-  // let duration = start.elapsed();
-  // let duration: List = list!(total_duration = duration.as_secs_f64(), training_duration = model_export.training_duration);
-  return list!()
+  // Initialize and train the Naive Bayes model
+  let mut nb = MultinomialNB::new();
+  nb.fit(&train_data, &train_y);
+
+  fn compare_predictions(pred: Vec<u64>, actual: Vec<u64>, data_type: String) -> f64 {
+    // Compare predictions to actual test_y values
+    let correct: usize = pred.iter()
+      .zip(actual.iter()) // Zip predictions with actual labels
+      .filter(|(pred, actual)| **pred == **actual as u64) // Compare prediction with actual
+      .count();
+    // Print the results
+    let accuracy = correct as f64 / actual.len() as f64 * 100.0;
+    println!("Accuracy on {} data: {:.3}%", data_type, accuracy);
+    accuracy
+  }
+
+  let train_acc = compare_predictions(nb.predict(train_data), train_y, String::from("training"));
+  let test_acc = compare_predictions(nb.predict(test_data), test_y, String::from("validation"));
+
+  // Measure and return the elapsed time
+  let duration = start.elapsed();
+  let duration_r: List = list!(total_duration = duration.as_secs_f64());
+  let query_predictions_r: Vec<Robj> = nb.predict(query).iter().map(|x| r!(x)).collect();
+  let params = list!(num_classes = nb.num_classes_, num_features = nb.num_features_);
+  let history: List = list!(train_acc = train_acc, test_acc = test_acc);
+  // Return the list of predictions, duration, and accuracy
+  return list!(params = params, predictions = query_predictions_r, history = history, duration = duration_r)
+  // list!(duration = duration_r, acc_r = acc_r, query_predictions = query_predictions_r)
 }
 
+  
 /// Run full mnist training in R
 /// @export
 /// @keywords internal
@@ -156,50 +130,6 @@ fn computeSparseRowVariances(j: Robj, val: Robj, rm: Robj, n: Robj)-> Vec<f64>{
   utils::sparse_row_variances(j_usize, val.as_real_vector().unwrap(), rm.as_real_vector().unwrap(), n.as_integer().unwrap() as usize)
 }
 
-// /// Process Robj learning objects
-// /// @export
-// #[extendr]
-// fn process_learning_obj(train: Robj, test: Robj, query: Robj, labels: Robj, hidden_layers: Robj)-> Robj {
-//   let hidden_layers = hidden_layers.as_integer().unwrap() as usize;
-//   let labelvec = labels.as_str_vector().unwrap();
-//   let mut test_raw: Vec<SCItemRaw> =  vec![];
-//   let mut train_raw: Vec<SCItemRaw> =  vec![];
-//   let mut query_raw: Vec<SCItemRaw> =  vec![];
-
-//   let sc_from_list = test.as_list().unwrap();
-//   for (_item_str, item_robj) in sc_from_list{
-//     let list_items = item_robj.as_list().unwrap();
-//     let data = list_items[0].as_real_vector().unwrap();
-//     // let datain: Vec<f64> = data.iter().map(|n| *n as f32).collect();
-//     test_raw.push(SCItemRaw{
-//       data: data,
-//       target: (list_items[1].as_real().unwrap() as i32)
-//     });
-//   }
-//   let sc_from_list = train.as_list().unwrap();
-//   for (_item_str, item_robj) in sc_from_list{
-//     let list_items = item_robj.as_list().unwrap();
-//     let data = list_items[0].as_real_vector().unwrap();
-//     // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-//     train_raw.push(SCItemRaw{
-//       data: data,
-//       target: (list_items[1].as_real().unwrap() as i32)
-//     });
-//   }
-//   let sc_from_list = query.as_list().unwrap();
-//   for (_item_str, item_robj) in sc_from_list{
-//     let list_items = item_robj.as_list().unwrap();
-//     let data = list_items[0].as_real_vector().unwrap();
-//     // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-//     query_raw.push(SCItemRaw{
-//       data: data,
-//       target: 0
-//     });
-//   }
-//   let predictions = scrna_conv::run_custom(train_raw, test_raw, query_raw, labelvec.len(), hidden_layers);
-//   return r!(predictions)
-// }
-
 
 /// Process Robj learning objects for MLR
 /// @export
@@ -213,7 +143,6 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
   if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
     panic!("Cound not find backend: '{:?}'", backend)
   }
-
   let start = Instant::now();
   let verbose: bool = verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
   let learning_rate = *learning_rate.as_real_vector().unwrap().first().unwrap_or(&0.2) as f64;
@@ -226,40 +155,12 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
     panic!("Could not find folder: '{:?}'", artifact_dir)
   }
   let labelvec = labels.as_str_vector().unwrap();
-  let mut test_raw: Vec<SCItemRaw> =  vec![];
-  let mut train_raw: Vec<SCItemRaw> =  vec![];
-  let mut query_raw: Vec<SCItemRaw> =  vec![];
 
-  let sc_from_list = test.as_list().unwrap();
-  for (_item_str, item_robj) in sc_from_list{
-    let list_items = item_robj.as_list().unwrap();
-    let data = list_items[0].as_real_vector().unwrap();
-    // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-    test_raw.push(SCItemRaw{
-      data: data,
-      target: (list_items[1].as_real().unwrap() as i32)
-    });
-  }
-  let sc_from_list = train.as_list().unwrap();
-  for (_item_str, item_robj) in sc_from_list{
-    let list_items = item_robj.as_list().unwrap();
-    let data = list_items[0].as_real_vector().unwrap();
-    // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-    train_raw.push(SCItemRaw{
-      data: data,
-      target: (list_items[1].as_real().unwrap() as i32)
-    });
-  }
-  let sc_from_list = query.as_list().unwrap();
-  for (_item_str, item_robj) in sc_from_list{
-    let list_items = item_robj.as_list().unwrap();
-    let data = list_items[0].as_real_vector().unwrap();
-    // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-    query_raw.push(SCItemRaw{
-      data: data,
-      target: 0
-    });
-  }
+  // Refactored code
+  let test_raw = extract_scitemraw(&test, None);   // No default target, extract from list
+  let train_raw = extract_scitemraw(&train, None); // No default target, extract from list
+  let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
+
   let model_export: ModelRExport;
   if backend == "candle"{
     model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
@@ -311,40 +212,13 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
     panic!("Could not find folder: '{:?}'", artifact_dir)
   }
   let labelvec = labels.as_str_vector().unwrap();
-  let mut test_raw: Vec<SCItemRaw> =  vec![];
-  let mut train_raw: Vec<SCItemRaw> =  vec![];
-  let mut query_raw: Vec<SCItemRaw> =  vec![];
 
-  let sc_from_list = test.as_list().unwrap();
-  for (_item_str, item_robj) in sc_from_list{
-    let list_items = item_robj.as_list().unwrap();
-    let data = list_items[0].as_real_vector().unwrap();
-    // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-    test_raw.push(SCItemRaw{
-      data: data,
-      target: (list_items[1].as_real().unwrap() as i32)
-    });
-  }
-  let sc_from_list = train.as_list().unwrap();
-  for (_item_str, item_robj) in sc_from_list{
-    let list_items = item_robj.as_list().unwrap();
-    let data = list_items[0].as_real_vector().unwrap();
-    // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-    train_raw.push(SCItemRaw{
-      data: data,
-      target: (list_items[1].as_real().unwrap() as i32)
-    });
-  }
-  let sc_from_list = query.as_list().unwrap();
-  for (_item_str, item_robj) in sc_from_list{
-    let list_items = item_robj.as_list().unwrap();
-    let data = list_items[0].as_real_vector().unwrap();
-    // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-    query_raw.push(SCItemRaw{
-      data: data,
-      target: 0
-    });
-  }
+  // Refactored code
+  let test_raw = extract_scitemraw(&test, None);   // No default target, extract from list
+  let train_raw = extract_scitemraw(&train, None); // No default target, extract from list
+  let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
+
+    
   let model_export: ModelRExport;
   if hidden_size.len() == 1 {
     if backend == "candle"{
@@ -400,19 +274,8 @@ fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_featur
   if !Path::new(&model_path_tested).exists(){
     panic!("Could not find folder: '{:?}'", model_path)
   }
-  let mut query_raw: Vec<SCItemRaw> =  vec![];
-  let sc_from_list = query.as_list().unwrap();
   if verbose {eprintln!("Loading data")};
-  for (_item_str, item_robj) in sc_from_list{
-    let list_items = item_robj.as_list().unwrap();
-    let data = list_items[0].as_real_vector().unwrap();
-    // let datain: Vec<f32> = data.iter().map(|n| *n as f32).collect();
-    // eprint!("Pushing data {:?}\n", item_str);
-    query_raw.push(SCItemRaw{
-      data: data,
-      target: 0
-    });
-  }
+  let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
   let num_classes = num_classes.as_integer().unwrap() as usize;
   let num_features = num_features.as_integer().unwrap() as usize;
   if verbose {eprintln!("Running inference")};

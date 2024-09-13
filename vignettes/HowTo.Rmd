@@ -203,8 +203,9 @@ make3file(seur, dir = f3d)
 
 
 ```{r}
-run_nb()
+run_nb_test()
 
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", selected_genes = vg)
 
 ```
 

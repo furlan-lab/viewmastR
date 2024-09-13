@@ -1,25 +1,35 @@
-// use burn::tensor::Tensor;
-use ndarray::Array2;
+use burn::{backend::Wgpu, tensor::Tensor};
 use std::collections::HashMap;
 
 #[derive(Debug)]
-struct MultinomialNB {
+pub struct MultinomialNB {
     class_log_prior_: Vec<f64>,
     feature_log_prob_: Vec<Vec<f64>>,
+    pub num_classes_: usize,
+    pub num_features_: usize,
+    pub num_samples_: usize,
 }
 
 impl MultinomialNB {
-    fn new() -> Self {
+    pub fn new() -> Self {
         MultinomialNB {
             class_log_prior_: vec![],
             feature_log_prob_: vec![],
+            num_classes_: 0,
+            num_features_: 0,
+            num_samples_: 0,
         }
     }
 
-    fn fit(&mut self, x_train: Array2<u64>, y_train: Vec<u64>) {
-        let n_samples = x_train.nrows();
-        let n_features = x_train.ncols();
+    pub fn fit(&mut self, x_train: &Tensor<Wgpu, 2>, y_train: &Vec<u64>) {
+        let shape = x_train.shape();
+        self.num_samples_ = shape.dims[0];
+        self.num_features_ = shape.dims[1];
         let classes: Vec<u64> = y_train.iter().cloned().collect();
+        self.num_classes_ = classes.iter().cloned().collect::<Vec<_>>().len();
+
+        // Get the data from the tensor as a Vec<f64>
+        let x_train_data = x_train.to_data().convert::<f64>().value;
 
         // Count class frequencies
         let class_count = self.class_count(&y_train);
@@ -27,15 +37,15 @@ impl MultinomialNB {
         // Calculate class prior (log probabilities of each class)
         self.class_log_prior_ = classes
             .iter()
-            .map(|&class| (class_count[&class] as f64).ln() - (n_samples as f64).ln())
+            .map(|&class| (class_count[&class] as f64).ln() - (self.num_samples_ as f64).ln())
             .collect();
 
         // Calculate feature counts by class
-        let mut feature_count = vec![vec![0u64; n_features]; classes.len()];
+        let mut feature_count = vec![vec![0u64; self.num_features_]; classes.len()];
 
         for (i, class) in y_train.iter().enumerate() {
-            for j in 0..n_features {
-                feature_count[*class as usize][j] += x_train[[i, j]];
+            for j in 0..self.num_features_ {
+                feature_count[*class as usize][j] += x_train_data[i * self.num_features_ + j] as u64;
             }
         }
 
@@ -46,23 +56,27 @@ impl MultinomialNB {
                 let total_count: u64 = counts.iter().sum();
                 counts
                     .iter()
-                    .map(|&count| ((count + 1) as f64).ln() - ((total_count + n_features as u64) as f64).ln())
+                    .map(|&count| ((count + 1) as f64).ln() - ((total_count + self.num_features_ as u64) as f64).ln())
                     .collect()
             })
             .collect();
     }
 
-    fn predict(&self, x_test: Array2<u64>) -> Vec<u64> {
+    pub fn predict(&self, x_test: Tensor<Wgpu, 2>) -> Vec<u64> {
         let mut predictions = Vec::new();
-        let n_features = x_test.ncols();
+        let shape = x_test.shape();
+        let n_features = shape.dims[1];
 
-        for i in 0..x_test.nrows() {
+        // Get the data from the tensor as a Vec<f64>
+        let x_test_data = x_test.to_data().convert::<f64>().value;
+
+        for i in 0..shape.dims[0] {
             let mut log_probs: Vec<f64> = Vec::new();
 
             for (class_index, class_log_prior) in self.class_log_prior_.iter().enumerate() {
                 let mut log_prob = *class_log_prior;
                 for j in 0..n_features {
-                    log_prob += self.feature_log_prob_[class_index][j] * (x_test[[i, j]] as f64);
+                    log_prob += self.feature_log_prob_[class_index][j] * x_test_data[i * n_features + j];
                 }
                 log_probs.push(log_prob);
             }
@@ -89,24 +103,34 @@ impl MultinomialNB {
     }
 }
 
-
-pub mod tests{
+// Testing
+pub mod tests {
     use super::*;
+    use burn::tensor::{Shape, Data};
+
     pub fn test() {
         // Example training data (term frequencies or counts per document)
-        let x_train = Array2::from_shape_vec((4, 3), vec![2, 1, 0, 3, 0, 1, 0, 2, 3, 4, 0, 1]).unwrap();
+        let x_train = Tensor::<Wgpu, 2>::from_data(Data::new(vec![
+            2.0, 1.0, 0.0,
+            3.0, 0.0, 1.0,
+            0.0, 2.0, 3.0,
+            4.0, 0.0, 1.0,
+        ], Shape::from([4, 3])));
+
         let y_train = vec![0, 1, 0, 1];  // Labels
-    
+
         // Example test data
-        let x_test = Array2::from_shape_vec((2, 3), vec![1, 0, 1, 3, 2, 1]).unwrap();
-    
+        let x_test = Tensor::<Wgpu, 2>::from_data(Data::new(vec![
+            1.0, 0.0, 1.0,
+            3.0, 2.0, 1.0,
+        ], Shape::from([2, 3])));
+
         // Train Multinomial Naive Bayes
         let mut nb = MultinomialNB::new();
-        nb.fit(x_train, y_train);
-    
+        nb.fit(&x_train, &y_train);
+
         // Predict classes
         let predictions = nb.predict(x_test);
         assert_eq!(predictions, vec![0, 1]);
     }
 }
-

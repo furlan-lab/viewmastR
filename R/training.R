@@ -112,7 +112,8 @@ viewmastR <-function(query_cds,
                                           labels = training_list[["labels"]], 
                                           learning_rate = learning_rate, num_epochs = max_epochs, 
                                           directory = dir, verbose = verbose, backend = "wgpu")
-  } else {
+  } 
+  if(FUNC=="nn"){
     export_list<-process_learning_obj_ann(train = training_list[["train"]], 
                                           test = training_list[["test"]], 
                                           query = training_list[["query"]], 
@@ -120,6 +121,11 @@ viewmastR <-function(query_cds,
                                           hidden_size = hidden_layers,
                                           learning_rate = learning_rate, num_epochs = max_epochs, 
                                           directory = dir, verbose = verbose, backend = "wgpu")
+  }
+  if(FUNC=="nb"){
+    export_list<-process_learning_obj_nb(train = training_list[["train"]], 
+                                          test = training_list[["test"]], 
+                                          query = training_list[["query"]])
   }
   
   if(is.null(query_celldata_col)){
