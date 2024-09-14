@@ -227,8 +227,13 @@ vg <- get_selected_genes(seu)
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend="candle")
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", query_celldata_col = "nb_pred", selected_genes = vg)
+cl<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend="candle", return_type = "list")
+cl$training_output$duration
+wl<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend="wgpu", return_type = "list")
+wl$training_output$duration
+nl<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend="nd", return_type = "list")
+nl$training_output$duration
+wln<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nb_pred", selected_genes = vg, backend="wgpu", hidden_layers = c(1000, 100), return_type = "list")
 
 DimPlot(seu, group.by = "mlr_pred", cols = seur@misc$colors)
 DimPlot(seu, group.by = "nb_pred", cols = seur@misc$colors)
