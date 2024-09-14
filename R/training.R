@@ -57,7 +57,7 @@ viewmastR <-function(query_cds,
                      ref_cds, 
                      ref_celldata_col, 
                      query_celldata_col=NULL, 
-                     FUNC=c("mlr", "nn"),
+                     FUNC=c("mlr", "nn", 'nb'),
                      norm_method=c("log", "binary", "size_only", "none"),
                      selected_genes=NULL,
                      train_frac = 0.8,
@@ -68,7 +68,7 @@ viewmastR <-function(query_cds,
                      max_epochs = 10,
                      LSImethod=1,
                      verbose = T,
-                     device = 0,
+                     backend = c("wgpu", "nd", "candle"),
                      threshold = NULL,
                      keras_model = NULL, 
                      dir = "/tmp/sc_local",
@@ -76,6 +76,7 @@ viewmastR <-function(query_cds,
                      return_type = c("object", "list"), 
                      debug = F, ...){
   return_type <- match.arg(arg = NULL, return_type)
+  backend <- match.arg(arg = NULL, backend)
   FUNC <-match.arg(arg = NULL, FUNC)
   if(return_type=="object" && return_probs == T) {stop("Cannot return both probabilities and a single cell object; rerun changing return_type to list if probabilities are sought.")}
   if(!length(hidden_layers) %in% c(1,2)){stop("Only 1 or 2 hidden layers are allowed.")}
@@ -111,7 +112,7 @@ viewmastR <-function(query_cds,
                                           query = training_list[["query"]], 
                                           labels = training_list[["labels"]], 
                                           learning_rate = learning_rate, num_epochs = max_epochs, 
-                                          directory = dir, verbose = verbose, backend = "wgpu")
+                                          directory = dir, verbose = verbose, backend = backend)
   } 
   if(FUNC=="nn"){
     export_list<-process_learning_obj_ann(train = training_list[["train"]], 
@@ -120,7 +121,7 @@ viewmastR <-function(query_cds,
                                           labels = training_list[["labels"]],
                                           hidden_size = hidden_layers,
                                           learning_rate = learning_rate, num_epochs = max_epochs, 
-                                          directory = dir, verbose = verbose, backend = "wgpu")
+                                          directory = dir, verbose = verbose, backend = backend)
   }
   if(FUNC=="nb"){
     export_list<-process_learning_obj_nb(train = training_list[["train"]], 
