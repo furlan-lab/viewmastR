@@ -17,6 +17,7 @@ First you need to have an updated Rust installation. Go to this [site](https://w
 You will need to have the devtools package installed...
 
 ```{r, eval=F}
+devtools::install_github("furlan-lab/viewmastR", ref="develop")
 devtools::install_github("furlan-lab/viewmastR")
 ```
 
@@ -226,7 +227,7 @@ vg <- get_selected_genes(seu)
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend="candle")
 seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", query_celldata_col = "nb_pred", selected_genes = vg)
 
 DimPlot(seu, group.by = "mlr_pred", cols = seur@misc$colors)
