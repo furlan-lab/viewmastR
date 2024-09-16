@@ -79,6 +79,7 @@ articles:
 - title: Advanced
   navbar: Advanced
   contents:
-  - Augment
+  - InDepth
   - BulkReference
+  - Augment
   - SavedModel

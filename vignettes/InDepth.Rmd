@@ -1,0 +1,175 @@
+---
+title: "A deeper look at viewmastR"
+output: html_document
+date: "2024-01-23"
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+---
+
+# A Deeper Look at `viewmastR`
+
+Before diving into how `viewmastR` works, let’s first set up the necessary environment and go through essential functions to streamline your training and analysis workflow.
+
+## **1. Installing Rust**
+
+Before using `viewmastR`, you’ll need an updated installation of **Rust**, as it’s a core dependency. Follow the instructions on the official [Rust installation page](https://www.rust-lang.org/tools/install) to set up Rust on your system.
+
+## **2. Installing `viewmastR`**
+
+Once Rust is installed, you can install `viewmastR` directly from GitHub. Ensure you have the `devtools` package installed, and then use the following command:
+
+```{r}
+devtools::install_github("furlan-lab/viewmastR")
+```
+
+## **3. Viewing the Training History**
+
+`viewmastR` tracks key data during the training process, which can be accessed by setting the `return_type` parameter to `"list"`. This returns:
+1. The query object with predicted cell types.
+2. The training results.
+
+Here’s how you can retrieve and visualize the training data:
+
+```{r}
+rm(list = ls())
+suppressPackageStartupMessages({
+  library(viewmastR)
+  library(Seurat)
+  library(ggplot2)
+  library(scCustomize)
+})
+
+if (grepl("^gizmo", Sys.info()["nodename"])) {
+  ROOT_DIR1 <- "/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+
+# Load query and reference datasets
+seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
+vg <- get_selected_genes(seu)
+seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
+
+# View training history
+output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list")
+```
+
+### Visualizing Training Data
+
+To plot training vs validation loss, you can use the following:
+
+```{r}
+plot_training_data(output_list)
+```
+
+For rendering the plot without details:
+
+```{r}
+plt <- plot_training_data(output_list)
+plt
+```
+
+> **Tip**: If the training loss decreases while the validation loss plateaus, it may indicate **overfitting**.
+
+## **4. Tuning for Speed**
+
+`viewmastR` runs with 3 available backends (see [Burn](https://burn.dev/burn-book/basic-workflow/backend.html) for more details). The `candle` backend tends to run faster on Apple M1/M2 processors. Here’s how you can compare the performance of different backends:
+
+```{r}
+run1 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "candle", return_type = "list")
+run2 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "wgpu", return_type = "list")
+run3 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "nd", return_type = "list")
+
+# Compare training times
+ggplot(data.frame(training_times = c(run1$training_output$duration$training_duration,
+                                    run2$training_output$duration$training_duration,
+                                    run3$training_output$duration$training_duration), 
+                  backend = c("candle", "wgpu", "nd")),
+       aes(x = backend, y = training_times, fill = backend)) + 
+  geom_col() + 
+  theme_bw() + 
+  labs(x = "Backend", y = "Training Time (s)") + 
+  NoLegend()
+```
+
+## **5. Inspecting Training Subsets**
+
+To inspect the training and test data used by `viewmastR`:
+
+```{r}
+ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix")
+
+# Convert labels to max class and save them
+train_label <- apply(ti$Ytrain_label, 1, which.max)
+test_label <- apply(ti$Ytest_label, 1, which.max)
+
+# Save training data and labels
+writeMMgz(as(ti$Xtrain_data, "dgCMatrix"), "/path/to/train.mm.gz")
+writeMMgz(as(ti$Xtest_data, "dgCMatrix"), "/path/to/test.mm.gz")
+writeMMgz(as(ti$query, "dgCMatrix"), "/path/to/query.mm.gz")
+data.table::fwrite(data.frame(train = train_label), "/path/to/train_labels.tsv.gz", compress = "gzip")
+data.table::fwrite(data.frame(test = test_label), "/path/to/test_labels.tsv.gz", compress = "gzip")
+```
+
+## **6. Analyzing Probabilities**
+
+Run inference to obtain prediction probabilities:
+
+```{r}
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "candle")
+
+# Obtain prediction probabilities
+probs <- viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = TRUE)
+probmat <- t(sapply(probs$probs, rbind))
+probmat <- plogis(probmat)
+colnames(probmat) <- paste0("prob_", unique(seur$SFClassification)[order(unique(seur$SFClassification))])
+
+# Add probabilities to query object metadata
+seu@meta.data <- cbind(seu@meta.data, probmat)
+scCustomize::FeaturePlot_scCustom(seu, features = "prob_14_B")
+```
+
+## **7. Evaluating Model Weights**
+
+To inspect model weights:
+
+```{r}
+mod <- RcppMsgPack::msgpack_read("/tmp/sc_local/model.mpk", simplify = TRUE)
+weights <- mod$item$linear1$weight$param$value
+shape <- mod$item$linear1$weight$param$shape
+wmat <- t(matrix(weights, nrow = shape[2]))
+rownames(wmat) <- ti$features
+colnames(wmat) <- ti$label_text
+```
+
+## **8. Comparing Different Algorithms**
+
+`viewmastR` supports various algorithms, such as **multinomial logistic regression (mlr)**, **multinomial naive bayes (nb)**, and a **multi-layer perceptron (nn)**. Here’s how you can run and compare these methods:
+
+```{r}
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend = "candle")
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", query_celldata_col = "nb_pred", selected_genes = vg, backend = "candle")
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn_pred", selected_genes = vg, hidden_layers = c(200), backend = "candle")
+
+# Visualize predictions
+DimPlot(seu, group.by = "mlr_pred")
+DimPlot(seu, group.by = "nb_pred")
+DimPlot(seu, group.by = "nn_pred")
+
+# Evaluate accuracy
+accuracy_mlr <- length(which(seu$mlr_pred == seu$ground_truth)) / dim(seu)[2]
+accuracy_nb <- length(which(seu$nb_pred == seu$ground_truth)) / dim(seu)[2]
+accuracy_nn <- length(which(seu$nn_pred == seu$ground_truth)) / dim(seu)[2]
+```
+
+## **Appendix: Session Information**
+
+To ensure reproducibility, here’s how you can capture session information:
+
+```{r}
+sessionInfo()
+getwd()
+```

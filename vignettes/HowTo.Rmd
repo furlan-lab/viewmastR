@@ -7,249 +7,159 @@ editor_options:
   chunk_output_type: console
 ---
 
-## Installing Rust
 
-First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
+ViewmastR is a tool designed to predict cell type assignments in a query dataset based on reference data. In this tutorial, you'll learn how to install and use viewmastR, load data, and evaluate its predictions. 
 
+## **Prerequisites**
 
-## Installing viewmastR
+Before we begin, ensure you have an updated Rust installation, as it’s a core dependency. You can follow the instructions provided on the official [Rust installation page](https://www.rust-lang.org/tools/install).
 
-You will need to have the devtools package installed...
+## **Installing viewmastR**
 
-```{r, eval=F}
-devtools::install_github("furlan-lab/viewmastR", ref="develop")
+First, ensure you have the `devtools` R package installed, which allows you to install packages from GitHub. If `devtools` is installed, you can easily install viewmastR using the following command:
+
+```{r}
 devtools::install_github("furlan-lab/viewmastR")
 ```
 
+This will fetch the latest version of viewmastR from GitHub and install it.
 
-## Running viewmastR
+## **Running viewmastR**
 
-```{r, dpi=300, fig.height=4, fig.width = 6}
+In this section, we’ll load two Seurat objects:  
+- **Query dataset (`seu`)**: Contains the data you want to classify.  
+- **Reference dataset (`seur`)**: Contains known cell type labels used to train the model.
+
+ViewmastR predicts the cell types of your query dataset by leveraging the features associated with cell type labels in the reference data.
+
+```{r}
+# Load required packages
 rm(list=ls())
 suppressPackageStartupMessages({
   library(viewmastR)
   library(Seurat)
   library(ggplot2)
 })
-if(grepl("^gizmo", Sys.info()["nodename"])){
-  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+
+# Define dataset paths depending on your machine
+if (grepl("^gizmo", Sys.info()["nodename"])) {
+  ROOT_DIR1 <- "/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/fh/fast/furlan_s/grp/data/ddata/BM_data"
 } else {
-  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+  ROOT_DIR1 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
 }
-#query dataset
-seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
-#reference dataset
-seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
-#harmonize labels
-labels<-levels(factor(seur$SFClassification))
-seu$ground_truth<-factor(seu$seurat_clusters)
-levels(seu$ground_truth)<-c(labels[11], #0
-                            labels[18], #1
-                            labels[11], #2
-                            labels[17], #3
-                            labels[20], #4
-                            labels[21], #5
-                            labels[14], #6
-                            labels[12], #7
-                            labels[16], #8,
-                            labels[18], #9,
-                            labels[14], #10,
-                            labels[19], #11,
-                            labels[10], #12,
-                            labels[11], #13,
-                            labels[11])
-seu$ground_truth<-as.character(seu$ground_truth)
+
+# Load query and reference datasets
+seu <- readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
+seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 ```
 
-## Let's plot ground truth
-```{r, dpi=300, fig.height=4, fig.width = 6}
+## **Defining "Ground Truth" in the Query Dataset**
+
+Although we don’t know the cell type labels for the query dataset a priori, we can approximate the ground truth by using cluster-based cell type assignments. This approximation will help us evaluate the accuracy of viewmastR's predictions.
+
+```{r}
+# Harmonize labels
+labels <- levels(factor(seur$SFClassification))
+seu$ground_truth <- factor(seu$seurat_clusters)
+levels(seu$ground_truth) <- c(
+  labels[11], labels[18], labels[11], labels[17], labels[20],
+  labels[21], labels[14], labels[12], labels[16], labels[18],
+  labels[14], labels[19], labels[10], labels[11], labels[11]
+)
+seu$ground_truth <- as.character(seu$ground_truth)
+```
+
+## **Visualizing the Ground Truth**
+
+We can visualize the query dataset with its ground truth labels to get an initial idea of the cell types we’re working with.
+
+```{r}
 DimPlot(seu, group.by = "ground_truth", cols = seur@misc$colors)
 ```
 
+## **Finding Common Features**
 
-## Find common features
+The performance of viewmastR is enhanced when the features (genes) are consistent between the query and reference datasets. We’ll now identify and select highly variable genes in both datasets and find the common genes to use for training the model.
 
-```{r, dpi=300, fig.height=4, fig.width = 6}
-seu<-calculate_gene_dispersion(seu)
+```{r}
+# Calculate and plot gene dispersion in query dataset
+seu <- calculate_gene_dispersion(seu)
 plot_gene_dispersion(seu)
-seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+seu <- select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
 plot_gene_dispersion(seu)
-vgq<-get_selected_genes(seu)
-seur<-calculate_gene_dispersion(seur)
+vgq <- get_selected_genes(seu)
+
+# Repeat the process for the reference dataset
+seur <- calculate_gene_dispersion(seur)
 plot_gene_dispersion(seur)
-seur<-select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+seur <- select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
 plot_gene_dispersion(seur)
-vgr<-get_selected_genes(seur)
-vg<-intersect(vgq, vgr)
+vgr <- get_selected_genes(seur)
+
+# Find common genes
+vg <- intersect(vgq, vgr)
 ```
 
-## Here are the reference cell types
-```{r, dpi=300, fig.height=4, fig.width = 6}
+## **Visualizing Reference Cell Types**
+
+Next, we visualize the reference dataset to see the known cell type classifications that viewmastR will use to train its model.
+
+```{r}
 DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 ```
 
-## Now you run viewmastR
+## **Running viewmastR**
 
-Note that this is the same invocation used as prior versions of viewmastR but more output can be obtained (read further down)
-```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
+Now we run viewmastR to predict cell types in the query dataset. This function will learn from the reference dataset's cell type annotations and apply its knowledge to classify the query cells.
+
+```{r}
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
 ```
 
-## A look at the predictions
-```{r, dpi=300, fig.height=4, fig.width = 6}
+## **Visualizing Predictions**
+
+After running viewmastR, we can visualize the predicted cell types for the query dataset.
+
+```r
 DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
 ```
 
-## A confusion matrix showing prediction vs ground truth
-```{r, dpi=300, fig.height=6, fig.width=10}
+## **Evaluating Model Accuracy with a Confusion Matrix**
+
+We can further evaluate the accuracy of viewmastR's predictions by comparing them to the ground truth labels (approximated earlier) using a confusion matrix.
+
+```r
 confusion_matrix(pred = factor(seu$viewmastR_pred), gt = factor(seu$ground_truth), cols = seur@misc$colors)
 ```
 
-## A look at the training history
+## **Analyzing Training Performance**
 
-ViewmastR records key learning data generated during training.  This can optionally be returned by setting the 'return_type' parameter to "list".  Using this setting, the function will return a named list containing the following items (1 named 'object') - the query object with the celltype prediction added to the metadata (as above) and (2 named "training output") a set of results obtained during training.  Here's an example of how this may be used.  First we run viewmastR again changing the return type...
+ViewmastR can also return a detailed training history, including metrics like training loss and validation loss over time. This helps diagnose overfitting or underfitting during model training.
 
-```{r, dpi=300, fig.height=4, fig.width=6, warning=F, message=F}
-output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list")
-```
+To access these metrics, you need to set the `return_type` parameter to `"list"`. Here's an example of how to retrieve and plot the training data:
 
-Now we can plot learning data.  We can see that the training loss continues to decrease steadily beyond the 6th epoch, yet the validation loss does not.  This suggests that we are potentially overfitting after 6 epochs.
-```{r, eval = F}
+```{r}
+# Run viewmastR with return_type = "list"
+output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list")
+
+# Plot training data
 plot_training_data(output_list)
-
 ```
 
-```{r, results='hide', echo=F}
-plt<-plot_training_data(output_list)
-```
+We can now visualize how the training and validation losses change over the epochs. If the training loss keeps decreasing while the validation loss plateaus or increases, it may indicate overfitting.
 
-```{r results='asis', echo=F}
+```{r}
+plt <- plot_training_data(output_list)
 plt
 ```
 
+## **Appendix**
 
-## If you want to see the training subsets...
-```{r}
-ti<-setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix")
-
-
-
-train_label<-apply(ti$Ytrain_label, 1, which.max)
-test_label<-apply(ti$Ytest_label, 1, which.max)
-writeMMgz(as(ti$Xtrain_data, "dgCMatrix"), file.path("/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/train.mm.gz"))
-writeMMgz(as(ti$Xtest_data, "dgCMatrix"), file.path("/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/test.mm.gz"))
-writeMMgz(as(ti$query, "dgCMatrix"), file.path("/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/query.mm.gz"))
-data.table::fwrite(data.frame(train=train_label), "/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/train_labels.tsv.gz", compress = "gzip")
-data.table::fwrite(data.frame(test=test_label), "/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/test_labels.tsv.gz", compress = "gzip")
-data.table::fwrite(data.frame(features=ti$features), "/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/features.tsv.gz", compress = "gzip")
-data.table::fwrite(data.frame(labels=ti$label_text), "/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/labels.tsv.gz", compress = "gzip")
-data.table::fwrite(data.frame(colors=as.character(seur@misc$colors), labels= names(seur@misc$colors)), "/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/colors.tsv.gz", compress = "gzip")
-```
-
-## If you want to see the model...
-```{r}
-
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
-probs<-viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = TRUE)
-probmat <- sapply(probs$probs, rbind)
-probmat <- t(probmat)
-colnames(probmat)<-paste0("prob_", ti$label_text)
-probmat <- plogis (probmat)
-som <- seu@meta.data
-seu@meta.data <- cbind(seu@meta.data, probmat)
-scCustomize::FeaturePlot_scCustom(seu, features = "prob_14_B")
-
-library(RcppMsgPack)
-mod <- msgpack_read("/tmp/sc_local/model.mpk", simplify = T)
-weights <-mod$item$linear1$weight$param$value
-shape <- mod$item$linear1$weight$param$shape
-wmat <- matrix(weights, nrow = shape[2])
-wmat <- t(wmat)
-```
-
-## Marginal effects
-```{r}
-
-rownames(wmat) <- ti$features
-colnames(wmat) <- ti$label_text
-hits <- rownames(wmat)[wmat[,21]>0.4]
-
-seu <- AddModuleScore(seu, features = list("21"=hits))
-#colnames(seu@meta.data)
-scCustomize::FeaturePlot_scCustom(seu, features = "Cluster1")
-
-library(nnet)
-library(marginaleffects)
-
-
-
-```
-
-## Using the 3file function
-```{f}
-
-
-f3d <-file.path("/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/query")
-dir.create(f3d)
-make3file(seu, dir = f3d)
-f3d <-file.path("/Users/sfurlan/develop/viewmastR/inst/extdata/scrna/ref")
-dir.create(f3d)
-VariableFeatures(seur)<-rownames(seur)
-make3file(seur, dir = f3d)
-
-
-```
-
+Finally, let’s include some session information for reproducibility.
 
 ```{r}
-run_nb_test()
-roxygen2::roxygenise()
-
-rm(list=ls())
-suppressPackageStartupMessages({
-  library(viewmastR)
-  library(Seurat)
-  library(ggplot2)
-})
-if(grepl("^gizmo", Sys.info()["nodename"])){
-  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
-} else {
-  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
-}
-
-#query dataset
-seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
-vg <- get_selected_genes(seu)
-#reference dataset
-seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
-
-cl<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend="candle", return_type = "list")
-cl$training_output$duration
-wl<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend="wgpu", return_type = "list")
-wl$training_output$duration
-nl<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend="nd", return_type = "list")
-nl$training_output$duration
-wln<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nb_pred", selected_genes = vg, backend="wgpu", hidden_layers = c(1000, 100), return_type = "list")
-
-DimPlot(seu, group.by = "mlr_pred", cols = seur@misc$colors)
-DimPlot(seu, group.by = "nb_pred", cols = seur@misc$colors)
-
-length(which(seu$mlr_pred==seu$ground_truth))/dim(seu)[2]
-length(which(seu$nb_pred==seu$ground_truth))/dim(seu)[2]
-
-seu$incorrect <- seu$mlr_pred!=seu$ground_truth | seu$nb_pred !=seu$ground_truth
-DimPlot(seu, group.by = "incorrect")
-library(scCustomize)
-VlnPlot_scCustom(seu, features="doublet_scores", group.by="incorrect")
-```
-
-
-## Appendix
-```{r Appendix}
 sessionInfo()
 getwd()
 ```
