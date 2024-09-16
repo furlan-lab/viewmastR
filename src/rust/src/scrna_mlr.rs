@@ -675,3 +675,233 @@ pub fn run_custom_nd(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCI
 
 //     training::run::<Autodiff<LibTorch<f32>>>(device);
 // }
+
+// use burn::{
+//     backend::{Autodiff, Backend},
+//     backend::ndarray::{NdArray, NdArrayDevice},
+//     backend::wgpu::{WgpuDevice, Wgpu, AutoGraphicsApi},
+//     backend::candle::Candle,
+//     config::Config,
+//     data::{
+//         dataloader::{DataLoaderBuilder, Dataset, batcher::Batcher},
+//         dataset::{InMemDataset, transform::{Mapper, MapperDataset}},
+//     },
+//     module::{Module, AutodiffModule},
+//     nn::{loss::CrossEntropyLoss, Linear, LinearConfig, ReLU},
+//     optim::{Optimizer, AdamConfig, GradientsParams},
+//     record::{NamedMpkFileRecorder, FullPrecisionSettings},
+//     tensor::{Data, ElementConversion, Int, Tensor},
+//     train::{ClassificationOutput, TrainStep, ValidStep, TrainOutput},
+// };
+// use std::{convert::TryInto, time::Instant};
+// use crate::common::{SCItemRaw, History, ModelRExport, ModelAccuracy, emit_metrics, SCItem};
+// use crate::pb::ProgressBar;
+
+// pub struct SCBatcher<B: Backend> {
+//     device: B::Device,
+// }
+
+// impl<B: Backend> SCBatcher<B> {
+//     pub fn new(device: B::Device) -> Self {
+//         Self { device }
+//     }
+// }
+
+// #[derive(Clone, Debug)]
+// pub struct SCBatch<B: Backend> {
+//     pub counts: Tensor<B, 2>,
+//     pub targets: Tensor<B, 1, Int>,
+// }
+
+// impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B> {
+//     fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
+//         let n: usize = items.first().unwrap().counts.len();
+//         let counts = items.iter()
+//             .map(|item| Tensor::<B, 1>::from_data(Data::<f64, 1>::from(&item.counts[0..n]).convert()).reshape([1, n]))
+//             .collect();
+//         let targets = items.iter()
+//             .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()])))
+//             .collect();
+
+//         SCBatch {
+//             counts: Tensor::cat(counts, 0).to_device(&self.device),
+//             targets: Tensor::cat(targets, 0).to_device(&self.device),
+//         }
+//     }
+// }
+
+// #[derive(Module, Debug)]
+// pub struct Model<B: Backend> {
+//     linear1: Linear<B>,
+//     activation: ReLU,
+// }
+
+// #[derive(Config, Debug)]
+// pub struct ModelConfig {
+//     num_classes: usize,
+// }
+
+// impl ModelConfig {
+//     pub fn init<B: Backend>(&self, no_features: usize) -> Model<B> {
+//         Model {
+//             linear1: LinearConfig::new(no_features, self.num_classes).init(),
+//             activation: ReLU::new(),
+//         }
+//     }
+// }
+
+// impl<B: Backend> Model<B> {
+//     pub fn forward(&self, images: Tensor<B, 2>) -> Tensor<B, 2> {
+//         let [batch_size, dim] = images.dims();
+//         self.linear1.forward(images.reshape([batch_size, dim]))
+//     }
+
+//     pub fn forward_classification(
+//         &self,
+//         images: Tensor<B, 2>,
+//         targets: Tensor<B, 1, Int>,
+//     ) -> ClassificationOutput<B> {
+//         let output = self.forward(images);
+//         let loss = CrossEntropyLoss::new(None).forward(output.clone(), targets.clone());
+//         ClassificationOutput::new(loss, output, targets)
+//     }
+// }
+
+// impl<B: Backend + burn::tensor::backend::AutodiffBackend> TrainStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
+//     fn step(&self, batch: SCBatch<B>) -> TrainOutput<ClassificationOutput<B>> {
+//         let item = self.forward_classification(batch.counts, batch.targets);
+//         TrainOutput::new(self, item.loss.backward(), item)
+//     }
+// }
+
+// impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
+//     fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
+//         self.forward_classification(batch.counts, batch.targets)
+//     }
+// }
+
+// pub struct LocalCountstoMatrix;
+
+// impl Mapper<SCItemRaw, SCItem> for LocalCountstoMatrix {
+//     fn map(&self, item: &SCItemRaw) -> SCItem {
+//         SCItem {
+//             counts: item.data.to_vec(),
+//             label: item.target,
+//         }
+//     }
+// }
+
+// pub fn map_raw(item: &SCItemRaw) -> SCItem {
+//     SCItem {
+//         counts: item.data.to_vec(),
+//         label: item.target,
+//     }
+// }
+
+// pub struct SCLocalDataset {
+//     pub dataset: dyn Dataset<SCItem>,
+// }
+
+// impl Dataset<SCItem> for SCLocalDataset {
+//     fn get(&self, index: usize) -> Option<SCItem> {
+//         self.dataset.get(index)
+//     }
+
+//     fn len(&self) -> usize {
+//         self.dataset.len()
+//     }
+// }
+
+// #[derive(Config)]
+// struct SCTrainingConfig {
+//     pub num_epochs: usize,
+//     #[config(default = 64)]
+//     pub batch_size: usize,
+//     #[config(default = 4)]
+//     pub num_workers: usize,
+//     #[config(default = 42)]
+//     pub seed: u64,
+//     pub lr: f64,
+//     pub model: ModelConfig,
+//     pub optimizer: AdamConfig,
+// }
+
+// fn run_training<B: Backend + burn::tensor::backend::AutodiffBackend>(
+//     train: Vec<SCItemRaw>,
+//     test: Vec<SCItemRaw>,
+//     query: Vec<SCItemRaw>,
+//     num_classes: usize,
+//     config: SCTrainingConfig,
+//     device: B::Device,
+//     verbose: bool,
+//     artifact_dir: String,
+// ) -> ModelRExport {
+//     let train_dataset = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
+//     let test_dataset = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
+//     let no_features = train_dataset.first().unwrap().counts.len();
+
+//     let mut model: Model<B> = config.model.init(no_features);
+//     let mut optim = config.optimizer.init::<B, Model<B>>();
+//     let batcher_train = SCBatcher::<B>::new(device.clone());
+//     let batcher_valid = SCBatcher::<B>::new(device.clone());
+
+//     let dataloader_train = DataLoaderBuilder::new(batcher_train)
+//         .batch_size(config.batch_size)
+//         .num_workers(config.num_workers)
+//         .build(train_dataset);
+
+//     let dataloader_test = DataLoaderBuilder::new(batcher_valid)
+//         .batch_size(config.batch_size)
+//         .num_workers(config.num_workers)
+//         .build(test_dataset);
+
+//     let mut train_accuracy = ModelAccuracy::new();
+//     let mut test_accuracy = ModelAccuracy::new();
+//     let start = Instant::now();
+
+//     for epoch in 1..=config.num_epochs {
+//         train_accuracy.epoch_reset(epoch);
+//         test_accuracy.epoch_reset(epoch);
+
+//         for batch in dataloader_train.iter() {
+//             let output = model.forward_classification(batch.counts, batch.targets);
+//             let grads = output.loss.backward();
+//             let grads = GradientsParams::from_grads(grads, &model);
+//             model = optim.step(config.lr, model, grads);
+//         }
+
+//         // Validation loop
+//         for batch in dataloader_test.iter() {
+//             let _ = model.valid().forward_classification(batch.counts, batch.targets);
+//         }
+
+//         if verbose {
+//             emit_metrics(&train_accuracy, &test_accuracy);
+//         }
+//     }
+
+//     let tduration = start.elapsed().as_secs_f64();
+
+//     ModelRExport {
+//         lr: config.lr,
+//         hidden_size: vec![0],
+//         batch_size: config.batch_size,
+//         num_epochs: config.num_epochs,
+//         num_workers: config.num_workers,
+//         seed: config.seed,
+//         predictions: vec![],
+//         train_history: History::new(),
+//         test_history: History::new(),
+//         training_duration: tduration,
+//     }
+// }
+
+// pub fn run_custom(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCItemRaw>, num_classes: usize, config: SCTrainingConfig, device: &str, verbose: bool) -> ModelRExport {
+//     let directory = "output";
+//     match device {
+//         "candle" => run_training::<Candle<f64, i64>>(train, test, query, num_classes, config, Candle::default(), verbose, directory.to_string()),
+//         "wgpu" => run_training::<Wgpu<AutoGraphicsApi, f32>>(train, test, query, num_classes, config, WgpuDevice::default(), verbose, directory.to_string()),
+//         "ndarray" => run_training::<NdArray<f64>>(train, test, query, num_classes, config, NdArrayDevice::default(), verbose, directory.to_string()),
+//         _ => panic!("Unsupported device"),
+//     }
+// }

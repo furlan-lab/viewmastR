@@ -59,8 +59,6 @@ infer_from_model <- function(model_path, query, num_classes, num_features, verbo
 #' Run test nb training
 #' @export
 #' @keywords internal
-run_nb_test <- function() invisible(.Call(wrap__run_nb_test))
-
 #' Process Robj learning objects for MLR
 #' @export
 #' @keywords internal

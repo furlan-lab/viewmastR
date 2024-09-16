@@ -2,11 +2,17 @@
 % Please edit documentation in R/extendr-wrappers.R
 \name{process_learning_obj_nb}
 \alias{process_learning_obj_nb}
-\title{Process Robj learning objects for MLR}
+\title{Run test nb training}
 \usage{
 process_learning_obj_nb(train, test, query)
 }
 \description{
-Process Robj learning objects for MLR
+Run test nb training
 }
+\keyword{MLR}
+\keyword{Process}
+\keyword{Robj}
+\keyword{for}
 \keyword{internal}
+\keyword{learning}
+\keyword{objects}

@@ -216,6 +216,8 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
     model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   }
 
+  // let model_export = scrna_mlr::run_custom(train_raw, test_raw, query_raw, labelvec.len(), Some(artifact_dir), &backend, verbose);
+
   // model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
   let predictions = list!(model_export.predictions);
