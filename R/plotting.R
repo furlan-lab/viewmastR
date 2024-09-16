@@ -1,154 +1,187 @@
-#' Confusion matrix
-#' @description This function will generate a confusion matrix between two factors; pred (short for prediction) and gt (short for ground truth).  One 
-#' may optionally supply a named vector of colors to annotate the row and column legends.
-#' @param pred factor of predictions
-#' @param gt factor of ground truth
-#' @param cols named vector of colors
-#' @return a confusion matrix plot
-#' @importFrom grDevices colors
-#' @importFrom caret confusionMatrix
-#' @importFrom grid gpar
-#' @importFrom grid grid.text
-#' @import ComplexHeatmap
-#' @importFrom scCustomize viridis_light_high
+#' @title Plot Training and Validation Metrics from viewmastR Output
+#'
+#' @description
+#' Displays plots of training and validation accuracy and loss over epochs from the output of the \code{viewmastR} training process.
+#'
+#' @param output_list A list returned from running \code{viewmastR} with the parameter \code{return_type = "list"}.
+#'
+#' @return A \code{plotly} object showing the training and validation accuracy and loss over epochs.
+#'
+#' @details
+#' This function extracts training and validation accuracy and loss from the \code{output_list} and creates interactive plots using \code{plotly}.
+#'
+#' @importFrom plotly plot_ly layout subplot
+#' @importFrom magrittr %>%
+#' @importFrom reshape2 melt
 #' @export
-
-confusion_matrix<-function(pred, gt, cols=NULL){
-  mat<-table( pred, gt)
-  labels = union(colnames(mat), rownames(mat))
-  levels(gt)<-c(levels(gt), levels(pred)[!levels(pred) %in% levels(gt)])
-  mat_full<-table( pred, gt)
-  #deal with null colors
-  if(is.null(cols)){
-    cols = sample(colors()[grep('gr(a|e)y', colors(), invert = T)], length(labels))
-    names(cols)<-labels
-  }
-  # } else {
-  #   if(length(cols)!=length(labels)) stop("length of color vector provided is incorrect")
-  # }
-  mat_full<-mat_full[,match(rownames(mat_full), colnames(mat_full))]
-  data<-confusionMatrix(mat_full)
-  pmat<-sweep(mat, MARGIN = 2, colSums(mat), "/")*100
-  acc =format(as.numeric(data$overall[1])*100, digits=4)
-  column_ha = HeatmapAnnotation(
-    
-    labels = colnames(mat),
-    col = list(labels=cols),
-    na_col = "black", show_legend = F
+#'
+#' @examples
+#' \dontrun{
+#' # Assuming 'output' is the result from viewmastR with return_type = "list"
+#' plot_training_data(output)
+#' }
+plot_training_data <- function(output_list) {
+  # Extract training history
+  history <- output_list$training_output$history
+  epochs <- seq_along(history$train_acc)
+  
+  # Create data frames for accuracy and loss
+  accuracy_df <- data.frame(
+    Epoch = epochs,
+    Train = history$train_acc * 100,
+    Validation = history$test_acc * 100
   )
-  row_ha = rowAnnotation(
-    
-    labels = rownames(mat),
-    col = list(labels=cols),
-    na_col = "black"
+  loss_df <- data.frame(
+    Epoch = epochs,
+    Train = history$train_loss,
+    Validation = history$test_loss
   )
-  Heatmap(pmat, col = viridis_light_high, cluster_rows = F, cluster_columns = F, 
-                          row_names_side = "left", row_title = "Predicted Label", column_title = "True Label", 
-                          name = "Percent of Column", column_title_side = "top", column_names_side = "top",
-                          top_annotation = column_ha, left_annotation = row_ha,
-                          heatmap_legend_param = list(
-                            title = paste0("Acc. ", acc, "\nPercent of Row")), 
-                          rect_gp = gpar(col = "white", lwd = 2),
-                          cell_fun = function(j, i, x, y, width, height, fill){
-                            if(is.na(pmat[i,j])){
-                              grid.text("NA", x, y, gp = gpar(col="black", fontsize = 10))
-                            }else{
-                              if(pmat[i,j]>60){
-                                grid.text(sprintf("%.f", mat[i, j]), x, y, gp = gpar(col="black", fontsize = 10))
-                              }else{
-                                grid.text(sprintf("%.f", mat[i, j]), x, y, gp = gpar(col="white", fontsize = 10))
-                              }
-                            }
-                          })
+  
+  # Reshape data for plotting
+  accuracy_long <- reshape2::melt(accuracy_df, id.vars = "Epoch", variable.name = "Set", value.name = "Accuracy")
+  loss_long <- reshape2::melt(loss_df, id.vars = "Epoch", variable.name = "Set", value.name = "Loss")
+  
+  # Create accuracy plot
+  fig_acc <- plot_ly(
+    data = accuracy_long,
+    x = ~Epoch,
+    y = ~Accuracy,
+    color = ~Set,
+    type = 'scatter',
+    mode = 'lines+markers',
+    colors = c("Train" = "blue", "Validation" = "orange")
+  ) %>%
+    layout(
+      title = "Training and Validation Accuracy",
+      xaxis = list(title = 'Epoch'),
+      yaxis = list(title = 'Accuracy (%)')
+    )
+  
+  # Create loss plot
+  fig_loss <- plot_ly(
+    data = loss_long,
+    x = ~Epoch,
+    y = ~Loss,
+    color = ~Set,
+    type = 'scatter',
+    mode = 'lines+markers',
+    colors = c("Train" = "blue", "Validation" = "orange")
+  ) %>%
+    layout(
+      title = "Training and Validation Loss",
+      xaxis = list(title = 'Epoch'),
+      yaxis = list(title = 'Loss')
+    )
+  
+  # Combine plots
+  fig <- subplot(fig_acc, fig_loss, nrows = 2, shareX = TRUE, titleY = TRUE)
+  fig
 }
 
-#' Training data plot
-#' @description This function will display a plot of data generated during viewmastR training
-#' @param output_list a list returned from running viewmastR using the return_type = "list" parameter.
-#' @return a plot of training data
-#' @importFrom plotly plot_ly
-#' @importFrom plotly layout
-#' @importFrom plotly subplot
-#' @importFrom magrittr "%>%"
+
+#' @title Plot Confusion Matrix
+#'
+#' @description
+#' Generates a confusion matrix plot between two factors: predictions and ground truth. Optionally, a named vector of colors can be provided to annotate the row and column labels.
+#'
+#' @param pred A factor of predicted labels.
+#' @param gt A factor of ground truth labels.
+#' @param cols An optional named vector of colors for the labels. Names should correspond to the levels of \code{pred} and \code{gt}.
+#'
+#' @return A confusion matrix plot generated using the \code{ComplexHeatmap} package.
+#'
+#' @details
+#' This function creates a confusion matrix heatmap showing the percentage of each true label predicted as each predicted label. It includes annotations for the labels and displays the counts within each cell. The overall accuracy is calculated and displayed in the legend.
+#'
+#' @importFrom grDevices colors
+#' @importFrom caret confusionMatrix
+#' @importFrom grid gpar grid.text
+#' @importFrom ComplexHeatmap Heatmap HeatmapAnnotation rowAnnotation
+#' @importFrom viridis viridis
 #' @export
-
-plot_training_data<-function(output_list) {
-accuracy<-rbind(
-  data.frame(epoch=1:length(output_list$training_output$history$train_acc), 
-             metric=as.numeric(format(output_list$training_output$history$train_acc*100, digits=5)), 
-             label="train_accuracy"),
-  data.frame(epoch=1:length(output_list$training_output$history$test_acc), 
-             metric=as.numeric(format(output_list$training_output$history$test_acc*100, digits=5)), 
-             label="validation_accuracy"))
-loss<-rbind(
-  data.frame(epoch=1:length(output_list$training_output$history$test_loss), 
-             metric=as.numeric(format(output_list$training_output$history$train_loss, digits=5)),
-             label="train_loss"),
-  data.frame(epoch=1:length(output_list$training_output$history$test_loss), 
-             metric=as.numeric(format(output_list$training_output$history$test_loss, digits=5)),
-             label="validation_loss"))
-
-fig1 <- plot_ly(x = accuracy$epoch, y =accuracy$metric, split = accuracy$label, type = 'scatter', mode = 'lines+markers', 
-                marker = list(line = list(width = 3))) %>%
-  layout(plot_bgcolor='#e5ecf6', 
-                 xaxis = list( 
-                   title = 'Epoch',
-                   zerolinecolor = '#ffff', 
-                   zerolinewidth = 2, 
-                   gridcolor = 'ffff'), 
-                 yaxis = list(
-                   title = 'Accuracy (%)',
-                   zerolinecolor = '#ffff', 
-                   zerolinewidth = 2, 
-                   gridcolor = 'ffff')) 
-fig2 <- plot_ly(x = loss$epoch, y =loss$metric, split = loss$label, type = 'scatter', mode = 'lines+markers', 
-                        marker = list(line = list(width = 3))) %>%
-  layout(plot_bgcolor='#e5ecf6', 
-                 xaxis = list( 
-                   title = 'Epoch',
-                   zerolinecolor = '#ffff', 
-                   zerolinewidth = 2, 
-                   gridcolor = 'ffff'), 
-                 yaxis = list(
-                   title = 'Loss',
-                   zerolinecolor = '#ffff', 
-                   zerolinewidth = 2, 
-                   gridcolor = 'ffff')) 
-
-fig <- subplot(fig1, fig2, nrows = 2)
-fig
-
-
-# highcharter::hw_grid(ncol = 1,rowheight = 280,
-#                      hchart(
-#                        tibble::tibble(accuracy),
-#                        "line",
-#                        hcaes(x = epoch , y = metric, group = label),
-#                        color = c(pals::glasbey(2))
-#                      ) |> 
-#                        hc_chart(
-#                          backgroundColor = list(
-#                            linearGradient = c(0, 0, 500, 500),
-#                            stops = list(
-#                              list(0, 'rgb(255, 255, 255)'),
-#                              list(1, 'rgb(170, 230, 255)')
-#                            )
-#                          )
-#                        ),
-#                      hchart(
-#                        tibble::tibble(loss),
-#                        "line",
-#                        hcaes(x = epoch , y = metric, group = label),
-#                        color = c(pals::glasbey(2))
-#                      ) |> 
-#                        hc_chart(
-#                          backgroundColor = list(
-#                            linearGradient = c(0, 0, 500, 500),
-#                            stops = list(
-#                              list(0, 'rgb(255, 255, 255)'),
-#                              list(1, 'rgb(170, 230, 255)')
-#                            )
-#                          )
-#                        )
-# ) %>% htmltools::browsable()
+#'
+#' @examples
+#' \dontrun{
+#' pred <- factor(sample(c("A", "B", "C"), 100, replace = TRUE))
+#' gt <- factor(sample(c("A", "B", "C"), 100, replace = TRUE))
+#' confusion_matrix(pred, gt)
+#' }
+confusion_matrix <- function(pred, gt, cols = NULL) {
+  # Ensure inputs are factors
+  if (!is.factor(pred)) pred <- factor(pred)
+  if (!is.factor(gt)) gt <- factor(gt)
+  
+  # Combine levels to ensure all are represented
+  all_labels <- union(levels(pred), levels(gt))
+  pred <- factor(pred, levels = all_labels)
+  gt <- factor(gt, levels = all_labels)
+  
+  # Create confusion matrix
+  mat <- table(pred, gt)
+  
+  # Handle colors
+  if (is.null(cols)) {
+    available_colors <- colors()[grep('gr(a|e)y', colors(), invert = TRUE)]
+    set.seed(123)  # For reproducibility
+    cols <- setNames(sample(available_colors, length(all_labels), replace = FALSE), all_labels)
+  } else {
+    # Check that cols has names matching all_labels
+    if (!all(all_labels %in% names(cols))) {
+      stop("The 'cols' vector must have names matching all levels of 'pred' and 'gt'.")
+    }
+  }
+  
+  # Calculate overall accuracy using caret::confusionMatrix
+  cm <- confusionMatrix(mat)
+  acc <- formatC(cm$overall['Accuracy'] * 100, format = "f", digits = 2)
+  
+  # Calculate percentages for heatmap
+  pmat <- prop.table(mat, margin = 2) * 100  # Percentage of each column (true label)
+  
+  # Create annotations
+  column_ha <- HeatmapAnnotation(
+    labels = colnames(mat),
+    col = list(labels = cols),
+    show_annotation_name = FALSE,
+    show_legend = FALSE
+  )
+  row_ha <- rowAnnotation(
+    labels = rownames(mat),
+    col = list(labels = cols),
+    show_annotation_name = FALSE,
+    show_legend = FALSE
+  )
+  
+  # Create heatmap
+  heatmap <- Heatmap(
+    pmat,
+    name = "Percentage",
+    col = viridis::viridis(100),
+    cluster_rows = FALSE,
+    cluster_columns = FALSE,
+    row_names_side = "left",
+    row_title = "Predicted Label",
+    column_title = "True Label",
+    top_annotation = column_ha,
+    left_annotation = row_ha,
+    heatmap_legend_param = list(
+      title = paste0("Accuracy: ", acc, "%\nPercentage of True Label")
+    ),
+    rect_gp = gpar(col = "white", lwd = 1),
+    cell_fun = function(j, i, x, y, width, height, fill) {
+      grid.text(
+        sprintf("%d", mat[i, j]),
+        x,
+        y,
+        gp = gpar(
+          col = ifelse(pmat[i, j] > 50, "black", "white"),
+          fontsize = 10,
+          fontface = "bold"
+        )
+      )
+    }
+  )
+  
+  # Draw heatmap
+  draw(heatmap)
 }
