@@ -58,7 +58,7 @@ impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
             .iter()
             .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
             // .map(|item| Data::item))
-            .map(|data| Tensor::<B, 1>::from_data(data.convert()))
+            // .map(|data| Tensor::<B, 1>::from_data(data.convert(), 0).reshape([1, n]))
             .map(|tensor| tensor.reshape([1, n]))
             // Normalize: make between [0,1] and make the mean=0 and std=1
             // values mean=0.1307,std=0.3081 are from the PyTorch MNIST example
@@ -68,7 +68,7 @@ impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
 
         let targets = items
             .iter()
-            .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()])))
+            .map(|item| Tensor::<B, 1, Int>::from_data(TensorData::from([(item.label as i32).elem(), 1]), Backend))
             .collect();
 
         let counts = Tensor::cat(counts, 0).to_device(&self.device);
@@ -109,7 +109,7 @@ impl ModelConfig {
     pub fn init<B: Backend>(&self, no_features: usize) -> Model<B> {
         Model {
             activation: ReLU::new(),
-            linear1: LinearConfig::new(no_features, self.num_classes).init(),
+            linear1: LinearConfig::new(no_features, self.num_classes).init(0),
         }
     }
 }
@@ -134,7 +134,7 @@ impl<B: Backend> Model<B> {
         targets: Tensor<B, 1, Int>,
     ) -> ClassificationOutput<B> {
         let output = self.forward(images);
-        let loss = CrossEntropyLoss::new(None).forward(output.clone(), targets.clone());
+        let loss = CrossEntropyLoss::new(None, 0).forward(output.clone(), targets.clone());
 
         ClassificationOutput::new(loss, output, targets)
     }
@@ -301,7 +301,7 @@ pub fn run_custom_candle(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec
             if verbose {bar.update()}
             // bar.inc(1);
             let output = model.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
+            let loss = CrossEntropyLoss::new(None, Backend).forward(output.clone(), batch.targets.clone());
             // let accuracy = accuracy(output, batch.targets);
             let loss_scalar = loss.clone().into_scalar();
             let predictions = output.argmax(1).squeeze(1);
@@ -325,7 +325,7 @@ pub fn run_custom_candle(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec
         // Implement our validation loop.
         for (_iteration, batch) in dataloader_test.iter().enumerate() {
             let output = model_valid.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
+            let loss = CrossEntropyLoss::new(None, Backend).forward(output.clone(), batch.targets.clone());
             let loss_scalar = &loss.into_scalar();
             // if iteration == test_len {
             //     last_epoch_loss = loss.into_scalar();
@@ -448,7 +448,7 @@ pub fn run_custom_wgpu(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<S
             if verbose {bar.update()}
             // bar.inc(1);
             let output = model.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
+            let loss = CrossEntropyLoss::new(None, Backend).forward(output.clone(), batch.targets.clone());
             // let accuracy = accuracy(output, batch.targets);
             let loss_scalar = loss.clone().into_scalar();
             let predictions = output.argmax(1).squeeze(1);
@@ -472,7 +472,7 @@ pub fn run_custom_wgpu(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<S
         // Implement our validation loop.
         for (_iteration, batch) in dataloader_test.iter().enumerate() {
             let output = model_valid.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
+            let loss = CrossEntropyLoss::new(None, Backend).forward(output.clone(), batch.targets.clone());
             let loss_scalar = &loss.into_scalar();
             // if iteration == test_len {
             //     last_epoch_loss = loss.into_scalar();
@@ -599,7 +599,7 @@ pub fn run_custom_nd(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCI
             if verbose {bar.update()}
             // bar.inc(1);
             let output = model.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
+            let loss = CrossEntropyLoss::new(None, Backend).forward(output.clone(), batch.targets.clone());
             // let accuracy = accuracy(output, batch.targets);
             let loss_scalar = loss.clone().into_scalar();
             let predictions = output.argmax(1).squeeze(1);
@@ -623,7 +623,7 @@ pub fn run_custom_nd(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCI
         // Implement our validation loop.
         for (_iteration, batch) in dataloader_test.iter().enumerate() {
             let output = model_valid.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
+            let loss = CrossEntropyLoss::new(None, Backend).forward(output.clone(), batch.targets.clone());
             let loss_scalar = &loss.into_scalar();
             // if iteration == test_len {
             //     last_epoch_loss = loss.into_scalar();

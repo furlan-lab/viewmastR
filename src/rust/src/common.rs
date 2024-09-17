@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use serde::Deserialize;
-use burn::tensor::{Shape, Tensor, Data};
+use burn::tensor::{Shape, Tensor, TensorData};
 use burn::backend::wgpu::Wgpu;
 use extendr_api::Robj;
 use extendr_api::Conversions;
@@ -132,7 +132,7 @@ pub fn extract_scalars(data: &Robj, index: usize) -> Vec<usize> {
 pub fn create_tensor(data: Vec<Vec<f64>>) -> Tensor<Wgpu, 2> {
     let flattened_data: Vec<f32> = data.iter().flatten().map(|&x| x as f32).collect();
     let shape = Shape::from(vec![data.len() as i64, data[0].len() as i64]);
-    Tensor::<Wgpu, 2>::from_data(Data::new(flattened_data, shape))
+    Tensor::<Wgpu, 2>::from_data(TensorData::new(flattened_data, shape), &Wgpu::default())
 }
 
 

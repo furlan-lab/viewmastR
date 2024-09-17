@@ -13,7 +13,7 @@ use burn::{
     },
     optim::{Optimizer, AdamConfig, GradientsParams},
     record::CompactRecorder,
-    tensor::{backend::Backend, Data, ElementConversion, Int, Tensor},
+    tensor::{backend::Backend, TensorData, ElementConversion, Int, Tensor},
     train::{ClassificationOutput, TrainStep, ValidStep, TrainOutput},
 };
 
