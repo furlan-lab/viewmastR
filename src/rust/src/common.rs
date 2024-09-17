@@ -8,7 +8,7 @@ use extendr_api::Conversions;
 use burn::data::dataloader::batcher::Batcher;
 use burn::data::dataset::transform::Mapper;
 use burn::data::dataset::Dataset;
-use burn::tensor::ElementConversion;
+// use burn::tensor::ElementConversion;
 
 pub fn mean(numbers: &Vec<f64>) -> f64 {
     numbers.iter().sum::<f64>() as f64 / numbers.len() as f64
@@ -65,12 +65,17 @@ impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
 
     fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
         let n: usize = items.first().unwrap().counts.len();
+        // let batch_size = items.len();
+
         let counts = items
             .iter()
-            .map(|item| Tensor::from(&item.counts[0..n]))
-            // .map(|item| Data::item))
-            // .map(|data| Tensor::<B, 1>::from_data(data.convert(), 0).reshape([1, n]))
-            .map(|tensor: Tensor<B, 2>| tensor.reshape([1, n]))
+            .map(|item| {
+                // eprintln!("{:?}", item); 
+                TensorData::from(&item.counts[0..n])
+            })
+            // .map(|item| Data::item)
+            .map(|data| Tensor::<B, 1>::from_data(data.convert::<f32>(), &B::Device::default()))
+            .map(|tensor| tensor.reshape([1, n]))
             // Normalize: make between [0,1] and make the mean=0 and std=1
             // values mean=0.1307,std=0.3081 are from the PyTorch MNIST example
             // https://github.com/pytorch/examples/blob/54f4572509891883a947411fd7239237dd2a39c3/mnist/main.py#L122
@@ -79,24 +84,26 @@ impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
 
         let targets = items
             .iter()
-            .map(|item| Tensor::<B, 1, Int>::from_data(TensorData::from([(item.label as i32).elem(), 1]), &self.device))
+            .map(|item| Tensor::<B, 1, Int>::from_data(TensorData::from([(item.label as i32)]), &self.device))
             .collect();
 
         let counts = Tensor::cat(counts, 0).to_device(&self.device);
         let targets = Tensor::cat(targets, 0).to_device(&self.device);
 
+        // Debug prints
+        // println!("Counts shape: {:?}", counts.shape());
+        // println!("Targets shape: {:?}", targets.shape());
+        // eprintln!("targets: {:?}", targets.to_data());  // HMMM THIS IS SHOWING 64 integers, not 1 integer
         SCBatch { counts, targets }
     }
 }
 
 
-#[derive(Clone, Debug)]
-pub struct MyBatch<B: Backend> {
-    pub images: Tensor<B, 2>,
-    pub targets: Tensor<B, 1, Int>,
-}
-
-
+// #[derive(Clone, Debug)]
+// pub struct MyBatch<B: Backend> {
+//     pub images: Tensor<B, 2>,
+//     pub targets: Tensor<B, 1, Int>,
+// }
 
 pub struct LocalCountstoMatrix;
 
@@ -147,8 +154,6 @@ impl Dataset<SCItem> for SCLocalDataset {
 
 
 
-
-
 #[derive(Debug)]
 pub struct ModelRExport {
     pub lr: f64,
@@ -189,13 +194,27 @@ impl ModelAccuracy {
         self.epoch = epoch;
         self
     }
-    pub fn batch_update(&mut self, num_corrects: i64, num_predictions: usize, loss_scalar: f64) -> &mut Self {
-        self.iter_count += 1;
-        self.num_correct += num_corrects as usize;
-        self.num_predictions += num_predictions;
-        self.loss.push(loss_scalar);
-        self
-    }
+    // pub fn batch_update(&mut self, num_corrects: i64, num_predictions: usize, loss_scalar: f64) -> &mut Self {
+    //     self.iter_count += 1;
+    //     self.num_correct += num_corrects as usize;
+    //     self.num_predictions += num_predictions;
+    //     self.loss.push(loss_scalar);
+    //     self
+    // }
+
+    pub fn batch_update<B>(&mut self, num_corrects: B::IntElem, num_predictions: usize, loss_scalar: B::FloatElem) -> &mut Self
+where
+    B: Backend,
+    B::IntElem: Into<i64>,
+    B::FloatElem: Into<f64>,
+{
+    self.iter_count += 1;
+    self.num_correct += num_corrects.into() as usize;
+    self.num_predictions += num_predictions;
+    self.loss.push(loss_scalar.into());
+    self
+}
+
     pub fn epoch_update(&mut self, history: & mut History) -> &mut Self {
         history.acc.push(self.num_correct as f64 / self.num_predictions as f64);
         history.loss.push(mean(&self.loss));
@@ -260,4 +279,14 @@ pub fn extract_scitemraw(data: &Robj, target_value: Option<i32>) -> Vec<SCItemRa
             SCItemRaw { data, target }
         })
         .collect()
+}
+
+
+pub fn integer_conversion<B>(value: B::IntElem) -> Result<i32, extendr_api::Error>
+where
+    B: Backend,
+    B::IntElem: TryInto<i32>, extendr_api::Error: From<<<B as Backend>::IntElem as extendr_api::TryInto<i32>>::Error>,
+{
+    let converted_value: i32 = value.try_into()?;
+    Ok(converted_value)
 }

@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
+// #![allow(unused_imports)]
 // #![allow(dead_code)]
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
 
-use burn::backend::candle::CandleDevice;
-use burn::backend::ndarray::NdArrayDevice;
+
 use extendr_api::prelude::*;
 mod scrna_ann;
 mod scrna_ann2l;
@@ -17,33 +17,13 @@ mod inference;
 mod nb;
 
 use burn::backend::wgpu::{Wgpu, WgpuDevice};
-use burn::backend::{Autodiff, Candle, NdArray};
+use burn::backend::Autodiff;
 
-// use core::num;
+
 use std::path::Path;
 use std::time::Instant;
-// use crate::common::{ModelRExport, extract_vectors, extract_scalars, create_tensor, extract_scitemraw};
 use crate::common::{ModelRExport, extract_vectors, extract_scalars, extract_scitemraw};
 use crate::inference::infer_helper;
-// use linfa::prelude::Predict;
-// use nb::MultinomialNB;
-// use std::io;
-// use std::io::prelude::*;
-
-
-// fn pause() {
-//     let mut stdin = io::stdin();
-//     let mut stdout = io::stdout();
-
-//     // We want the cursor to stay at the end of the line, so we print without a newline and flush manually.
-//     write!(stdout, "Press any key to continue...").unwrap();
-//     stdout.flush().unwrap();
-
-//     // Read a single byte and discard
-//     let _ = stdin.read(&mut [0u8]).unwrap();
-// }
-
-
 
 /// Process Robj learning objects for MLR
 /// @export
@@ -121,23 +101,12 @@ fn process_learning_obj_mlr (train: Robj, test: Robj, query: Robj, labels: Robj,
   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
 
   let model_export: ModelRExport;
-  //  if backend == "wpgu"{
-    type MyBackend = Wgpu<f32, i32>;
-    type MyAutodiffBackend = Autodiff<MyBackend>;
-    // let device = WgpuDevice::default();
-    model_export = scrna_mlr::train::<MyBackend, MyAutodiffBackend>(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose, WgpuDevice::default());
-  // } 
-  // else {
-  //   s
-  //   // type MyBackend = NdArray<f32, i32>;
-  //   // type MyAutodiffBackend = Autodiff<MyBackend>;
-  //   // let device = NdArrayDevice::default();
-  //   // model_export = scrna_mlr::train::<MyBackend>(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose, NdArrayDevice::default());
-  // }
-
-  // let model_export = scrna_mlr::run_custom(train_raw, test_raw, query_raw, labelvec.len(), Some(artifact_dir), &backend, verbose);
-
-  // model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+  // if backend == "wpgu"{
+  type MyBackend = Wgpu<f32, i32>;
+  type MyAutodiffBackend = Autodiff<MyBackend>;
+  let device = WgpuDevice::default();
+  model_export = scrna_mlr::train::<MyAutodiffBackend>(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose, &device.clone());
+  // } else {
   let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
   let predictions = list!(model_export.predictions);
   let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
@@ -147,11 +116,11 @@ fn process_learning_obj_mlr (train: Robj, test: Robj, query: Robj, labels: Robj,
 }
 
 
-/// Process Robj learning objects for ANN
+/// infer from saved model
 /// @export
 /// @keywords internal
 #[extendr]
-fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, hidden_size: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
+fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, verbose: Robj, backend: Robj) -> List{
   let backend = match backend.as_str_vector(){
     Some(string_vec) => string_vec.first().unwrap().to_string(),
     _ => panic!("Cound not find backend: '{:?}'", backend)
@@ -159,77 +128,6 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
   if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
     panic!("Cound not find backend: '{:?}'", backend)
   }
-  let start = Instant::now();
-  let verbose: bool = verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
-  let learning_rate = *learning_rate.as_real_vector().unwrap().first().unwrap_or(&0.2);
-  let num_epochs = *num_epochs.as_real_vector().unwrap().first().unwrap_or(&10.0) as usize;
-  let hidden_size = hidden_size.as_real_vector().unwrap();
-  let hidden_size1 = *hidden_size.first().unwrap() as usize;
-  let mut hidden_size2 = 0 as usize; 
-  if hidden_size.len() == 2{
-    hidden_size2 = hidden_size[1] as usize;
-  }
-  let artifact_dir = match directory.as_str_vector() {
-    Some(string_vec) => string_vec.first().unwrap().to_string(),
-    _ => panic!("Cound not find folder: '{:?}'", directory)
-  };
-  if !Path::new(&artifact_dir).exists(){
-    panic!("Could not find folder: '{:?}'", artifact_dir)
-  }
-  let labelvec = labels.as_str_vector().unwrap();
-
-  // Refactored code
-  let test_raw = extract_scitemraw(&test, None);   // No default target, extract from list
-  let train_raw = extract_scitemraw(&train, None); // No default target, extract from list
-  let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
-
-    
-  let model_export: ModelRExport;
-  if hidden_size.len() == 1 {
-    if backend == "candle"{
-      model_export = scrna_ann::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    } 
-    else if backend == "wpgu"{
-      model_export = scrna_ann::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    } 
-    else {
-      model_export = scrna_ann::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    }
-  } else {
-    if backend == "candle"{
-      model_export = scrna_ann2l::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    } 
-    else if backend == "wpgu"{
-      model_export = scrna_ann2l::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    } 
-    else {
-      model_export = scrna_ann2l::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
-    }
-  }
-  
-  let params = list!(lr = model_export.lr, hidden_size = model_export.hidden_size, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
-  let predictions = list!(model_export.predictions);
-  let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
-  let duration = start.elapsed();
-  let duration: List = list!(total_duration = duration.as_secs_f64(), training_duration = model_export.training_duration);
-  return list!(params = params, predictions = predictions, history = history, duration = duration)
-}
-
-
-
-/// Process Robj learning objects for ANN
-/// @export
-/// @keywords internal
-#[extendr]
-fn test_backend(){
-  // crate::scrna_mlr::tch_gpu::run();
-}
-
-/// infer from saved model
-/// @export
-/// @keywords internal
-#[extendr]
-fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, verbose: Robj) -> List{
   let verbose =  verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
   if verbose {eprintln!("Loading model")};
   let model_path_tested = match model_path.as_str_vector() {
@@ -243,8 +141,11 @@ fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_featur
   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
   let num_classes = num_classes.as_integer().unwrap() as usize;
   let num_features = num_features.as_integer().unwrap() as usize;
+
   if verbose {eprintln!("Running inference")};
-  let (predictions, probs) = infer_helper(model_path_tested, num_classes, num_features, query_raw);
+  type MyBackend = Wgpu<f32, i32>;
+  let device = WgpuDevice::default();
+  let (predictions, probs) = infer_helper::<MyBackend>(model_path_tested, num_classes, num_features, query_raw, device);
   if verbose {eprintln!("Returning results")};
   return list!(predictions = predictions, probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
 
@@ -258,10 +159,8 @@ extendr_module! {
   mod viewmastR;
   fn readR;
   fn computeSparseRowVariances;
-  fn process_learning_obj_ann;
+  // fn process_learning_obj_ann;
   fn process_learning_obj_mlr;
-  fn test_backend;
   fn infer_from_model;
-  // fn run_nb_test;
   fn process_learning_obj_nb;
 }
