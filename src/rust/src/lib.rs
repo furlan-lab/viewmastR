@@ -3,6 +3,8 @@
 // #![allow(unused_imports)]
 // #![allow(unused_variables)]
 
+use burn::backend::candle::CandleDevice;
+use burn::backend::ndarray::NdArrayDevice;
 use extendr_api::prelude::*;
 mod scrna_ann;
 mod scrna_ann2l;
@@ -13,6 +15,9 @@ mod pb;
 mod common;
 mod inference;
 mod nb;
+
+use burn::backend::wgpu::{Wgpu, WgpuDevice};
+use burn::backend::{Autodiff, Candle, NdArray};
 
 // use core::num;
 use std::path::Path;
@@ -86,7 +91,7 @@ fn computeSparseRowVariances(j: Robj, val: Robj, rm: Robj, n: Robj)-> Vec<f64>{
 /// @export
 /// @keywords internal
 #[extendr]
-fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
+fn process_learning_obj_mlr (train: Robj, test: Robj, query: Robj, labels: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
   let backend = match backend.as_str_vector(){
     Some(string_vec) => string_vec.first().unwrap().to_string(),
     _ => panic!("Cound not find backend: '{:?}'", backend)
@@ -116,15 +121,19 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
 
   let model_export: ModelRExport;
-  if backend == "candle"{
-    model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  } 
-  else if backend == "wpgu"{
-    model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  } 
-  else {
-    model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  }
+  //  if backend == "wpgu"{
+    type MyBackend = Wgpu<f32, i32>;
+    type MyAutodiffBackend = Autodiff<MyBackend>;
+    // let device = WgpuDevice::default();
+    model_export = scrna_mlr::train::<MyBackend, MyAutodiffBackend>(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose, WgpuDevice::default());
+  // } 
+  // else {
+  //   s
+  //   // type MyBackend = NdArray<f32, i32>;
+  //   // type MyAutodiffBackend = Autodiff<MyBackend>;
+  //   // let device = NdArrayDevice::default();
+  //   // model_export = scrna_mlr::train::<MyBackend>(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose, NdArrayDevice::default());
+  // }
 
   // let model_export = scrna_mlr::run_custom(train_raw, test_raw, query_raw, labelvec.len(), Some(artifact_dir), &backend, verbose);
 

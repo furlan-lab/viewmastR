@@ -3858,7 +3858,7 @@ dependencies = [
  "flate2",
  "linfa",
  "linfa-bayes",
- "ndarray 0.16.1",
+ "ndarray 0.15.6",
  "rand",
  "serde",
  "serde_json",

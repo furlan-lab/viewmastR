@@ -1,11 +1,14 @@
 #![allow(dead_code)]
 
 use serde::Deserialize;
-use burn::tensor::{Shape, Tensor, TensorData};
-use burn::backend::wgpu::Wgpu;
+use burn::tensor::{Tensor, TensorData, Int};
 use burn::prelude::Backend;
 use extendr_api::Robj;
 use extendr_api::Conversions;
+use burn::data::dataloader::batcher::Batcher;
+use burn::data::dataset::transform::Mapper;
+use burn::data::dataset::Dataset;
+use burn::tensor::ElementConversion;
 
 pub fn mean(numbers: &Vec<f64>) -> f64 {
     numbers.iter().sum::<f64>() as f64 / numbers.len() as f64
@@ -40,6 +43,109 @@ impl History {
         }
     }
 }
+
+#[derive(Clone)]
+pub struct SCBatcher<B: Backend> {
+    device: B::Device,
+}
+
+impl<B: Backend> SCBatcher<B> {
+    pub fn new(device: B::Device) -> Self {
+        Self { device }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SCBatch<B: Backend> {
+    pub counts: Tensor<B, 2>,
+    pub targets: Tensor<B, 1, Int>,
+}
+
+impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
+
+    fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
+        let n: usize = items.first().unwrap().counts.len();
+        let counts = items
+            .iter()
+            .map(|item| Tensor::from(&item.counts[0..n]))
+            // .map(|item| Data::item))
+            // .map(|data| Tensor::<B, 1>::from_data(data.convert(), 0).reshape([1, n]))
+            .map(|tensor: Tensor<B, 2>| tensor.reshape([1, n]))
+            // Normalize: make between [0,1] and make the mean=0 and std=1
+            // values mean=0.1307,std=0.3081 are from the PyTorch MNIST example
+            // https://github.com/pytorch/examples/blob/54f4572509891883a947411fd7239237dd2a39c3/mnist/main.py#L122
+            // .map(|tensor| ((tensor / 255) - 0.1307) / 0.3081)
+            .collect();
+
+        let targets = items
+            .iter()
+            .map(|item| Tensor::<B, 1, Int>::from_data(TensorData::from([(item.label as i32).elem(), 1]), &self.device))
+            .collect();
+
+        let counts = Tensor::cat(counts, 0).to_device(&self.device);
+        let targets = Tensor::cat(targets, 0).to_device(&self.device);
+
+        SCBatch { counts, targets }
+    }
+}
+
+
+#[derive(Clone, Debug)]
+pub struct MyBatch<B: Backend> {
+    pub images: Tensor<B, 2>,
+    pub targets: Tensor<B, 1, Int>,
+}
+
+
+
+pub struct LocalCountstoMatrix;
+
+impl Mapper<SCItemRaw, SCItem> for LocalCountstoMatrix {
+    /// Convert a raw MNIST item (image bytes) to a MNIST item (2D array image).
+    fn map(&self, item: &SCItemRaw) -> SCItem {
+        let counts = &item.data;
+
+        // // Convert the image to a 2D array of floats.
+        // let mut counts_array = [0f32; 3600];
+        // for (i, pixel) in counts.iter().enumerate() {
+        //     counts_array[i] = *pixel as f32;
+        // }
+
+        SCItem {
+            counts: counts.to_vec(),
+            label: item.target,
+        }
+    }
+}
+
+
+pub fn map_raw(item: &SCItemRaw) -> SCItem {
+    let counts = &item.data;
+
+    SCItem {
+        counts: counts.to_vec(),
+        label: item.target,
+    }
+}
+
+pub struct SCLocalDataset {
+    pub dataset: dyn Dataset<SCItem>,
+}
+
+
+impl Dataset<SCItem> for SCLocalDataset {
+    fn get(&self, index: usize) -> Option<SCItem> {
+        self.dataset.get(index)
+        // None
+    }
+
+    fn len(&self) -> usize {
+        self.dataset.len()
+    }
+}
+
+
+
 
 
 
@@ -130,11 +236,11 @@ pub fn extract_scalars(data: &Robj, index: usize) -> Vec<usize> {
 }
 
 // Function to flatten data and create a Tensor
-pub fn create_tensor <B: Backend>(data: Vec<Vec<f64>>) -> Tensor<B, 2> {
-    let flattened_data: Vec<f32> = data.iter().flatten().map(|&x| x as f32).collect();
-    let shape = Shape::from(vec![data.len() as i64, data[0].len() as i64]);
-    Tensor::<B, 2>::from_data(TensorData::new(flattened_data, shape), Backend)
-}
+// pub fn create_tensor <B: Backend>(data: Vec<Vec<f64>>) -> Tensor<B, 2> {
+//     let flattened_data: Vec<f32> = data.iter().flatten().map(|&x| x as f32).collect();
+//     let shape = Shape::from(vec![data.len() as i64, data[0].len() as i64]);
+//     Tensor::<B, 2>::from_data(TensorData::new(flattened_data, shape), burn::tensor::backend::base::Backend::Device)
+// }
 
 
 pub fn extract_scitemraw(data: &Robj, target_value: Option<i32>) -> Vec<SCItemRaw> {

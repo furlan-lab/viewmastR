@@ -5,7 +5,7 @@
 
 use crate::common::*;
 use crate::scrna_mlr::ModelConfig;
-use crate::scrna_mlr::{Model, SCBatcher, map_raw};
+use crate::common::{SCBatcher, map_raw};
 
 use burn::{
     backend::Autodiff,
@@ -61,12 +61,12 @@ pub fn infer_helper(model_path: String, num_classes: usize, num_features: usize,
     type MyAutodiffBackend = Autodiff<MyBackend>;
     let device = WgpuDevice::default();
     let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
-        .load(model_path.into())
+        .load(model_path.into(), &device)
         .expect("Should be able to load the model weights from the provided file");
 
     // Directly initialize a new model with the loaded record/weights
     let config_model = ModelConfig::new(num_classes);
-    let model: Model<MyAutodiffBackend> = config_model.init_with(num_features, record);
+    let model = config_model.init(num_features, &device).load_record(record);
     let mut prediction: Vec<i32> = Vec::new();
     let mut probs: Vec<Vec<f32>> = Vec::new();
     for item in query {
