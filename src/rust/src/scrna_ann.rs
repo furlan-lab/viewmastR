@@ -5,7 +5,7 @@ use burn::{
     backend::ndarray::{NdArray, NdArrayDevice},
     backend::wgpu::{WgpuDevice, Wgpu, AutoGraphicsApi},
     config::Config,
-    data::{dataloader::{DataLoaderBuilder, Dataset, batcher::Batcher}, dataset::{InMemDataset, transform::{Mapper,MapperDataset}}},
+    data::{dataloader::{DataLoaderBuilder, Dataset, batcher::Batcher}, dataset::{InMemDataset, transform::MapperDataset}},
     module::{Module, AutodiffModule},
     nn::{
         loss::CrossEntropyLoss,
@@ -13,65 +13,17 @@ use burn::{
     },
     optim::{Optimizer, AdamConfig, GradientsParams},
     record::CompactRecorder,
-    tensor::{backend::Backend, Data, ElementConversion, Int, Tensor},
+    tensor::{backend::Backend, Int, Tensor},
     train::{ClassificationOutput, TrainStep, ValidStep, TrainOutput},
 };
 
 
-// use core::num;
 use std::result::Result;
 use std::vec::Vec;
 use std::convert::TryInto;
 use crate::pb::ProgressBar;
 use std::time::Instant;
-use crate::common::{SCItemRaw, History, ModelRExport, ModelAccuracy, emit_metrics, SCItem};
-
-
-
-pub struct SCBatcher<B: Backend> {
-    device: B::Device,
-}
-
-impl<B: Backend> SCBatcher<B> {
-    pub fn new(device: B::Device) -> Self {
-        Self { device }
-    }
-}
-
-
-#[derive(Clone, Debug)]
-pub struct SCBatch<B: Backend> {
-    pub counts: Tensor<B, 2>,
-    pub targets: Tensor<B, 1, Int>,
-}
-
-impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
-    fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
-        let n: usize = items.first().unwrap().counts.len();
-        let counts = items
-            .iter()
-            .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
-            .map(|data| Tensor::<B, 1>::from_data(data.convert()))
-            .map(|tensor| tensor.reshape([1, n]))
-            .collect();
-
-        let targets = items
-            .iter()
-            .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()])))
-            .collect();
-
-        let counts = Tensor::cat(counts, 0).to_device(&self.device);
-        let targets = Tensor::cat(targets, 0).to_device(&self.device);
-        SCBatch { counts, targets }
-    }
-}
-
-
-// #[derive(Clone, Debug)]
-// pub struct MyBatch<B: Backend> {
-//     pub images: Tensor<B, 2>,
-//     pub targets: Tensor<B, 1, Int>,
-// }
+use crate::common::*;
 
 
 #[derive(Module, Debug)]
@@ -138,48 +90,6 @@ impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
     }
 }
 
-pub struct LocalCountstoMatrix;
-
-impl Mapper<SCItemRaw, SCItem> for LocalCountstoMatrix {
-    fn map(&self, item: &SCItemRaw) -> SCItem {
-        let counts = &item.data;
-        SCItem {
-            counts: counts.to_vec(),
-            label: item.target,
-        }
-    }
-}
-
-
-pub fn map_raw(item: &SCItemRaw) -> SCItem {
-    let counts = &item.data;
-    SCItem {
-        counts: counts.to_vec(),
-        label: item.target,
-    }
-}
-
-
-
-pub struct SCLocalDataset {
-    pub dataset: dyn Dataset<SCItem>,
-}
-
-
-
-
-impl Dataset<SCItem> for SCLocalDataset {
-    fn get(&self, index: usize) -> Option<SCItem> {
-        self.dataset.get(index)
-        // None
-    }
-
-    fn len(&self) -> usize {
-        self.dataset.len()
-    }
-}
-
-
 #[derive(Config)]
 pub struct SCTrainingConfig {
     pub num_epochs: usize,
@@ -207,10 +117,6 @@ pub fn run_custom_candle(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec
     let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
     let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let num_batches_train = train_dataset.len();
-    // let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    // type MyBackend = WgpuBackend<AutoGraphicsApi, f32, i32>;
-    // type MyAutodiffBackend = ADBackendDecorator<MyBackend>;
-    // let device = burn::backend::wgpu::WgpuDevice::default();
 
     type MyBackend = Candle<f64, i64>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
@@ -220,8 +126,6 @@ pub fn run_custom_candle(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec
     let config_model = ModelConfig::new(num_classes, num_epochs, hidden_size, learning_rate);
     let config_optimizer = AdamConfig::new();
     let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
-
-    // MyAutodiffBackend::seed(config.seed);
 
     // Create the model and optimizer.
     let mut model: Model<MyAutodiffBackend> = config.model.init(no_features);
@@ -347,11 +251,6 @@ pub fn run_custom_nd(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCI
     let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
     let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let num_batches_train = train_dataset.len();
-    // let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    // type MyBackend = WgpuBackend<AutoGraphicsApi, f32, i32>;
-    // type MyAutodiffBackend = ADBackendDecorator<MyBackend>;
-    // let device = burn::backend::wgpu::WgpuDevice::default();
-
     type MyBackend = NdArray<f64>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
     let device = NdArrayDevice::default();
@@ -360,8 +259,6 @@ pub fn run_custom_nd(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCI
     let config_model = ModelConfig::new(num_classes, num_epochs, hidden_size, learning_rate);
     let config_optimizer = AdamConfig::new();
     let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
-
-    // MyAutodiffBackend::seed(config.seed);
 
     // Create the model and optimizer.
     let mut model: Model<MyAutodiffBackend> = config.model.init(no_features);
@@ -486,10 +383,6 @@ pub fn run_custom_wgpu(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<S
     let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
     let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let num_batches_train = train_dataset.len();
-    // let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    // type MyBackend = WgpuBackend<AutoGraphicsApi, f32, i32>;
-    // type MyAutodiffBackend = ADBackendDecorator<MyBackend>;
-    // let device = burn::backend::wgpu::WgpuDevice::default();
 
     type MyBackend = Wgpu<AutoGraphicsApi, f32>;
     type MyAutodiffBackend = Autodiff<MyBackend>;
@@ -499,8 +392,6 @@ pub fn run_custom_wgpu(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<S
     let config_model = ModelConfig::new(num_classes, num_epochs, hidden_size, learning_rate);
     let config_optimizer = AdamConfig::new();
     let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
-
-    // MyAutodiffBackend::seed(config.seed);
 
     // Create the model and optimizer.
     let mut model: Model<MyAutodiffBackend> = config.model.init(no_features);

@@ -56,8 +56,6 @@ impl ModelConfig {
 
 impl<B: Backend> Model<B> {
     /// # Shapes
-    ///   - Images [batch_size, height, width]
-    ///   - Output [batch_size, num_classes]
     pub fn forward(&self, images: Tensor<B, 2>) -> Tensor<B, 2> {
         let [batch_size, dim] = images.dims();
 
@@ -110,9 +108,6 @@ struct SCTrainingConfig {
     pub model: ModelConfig,
     pub optimizer: AdamConfig,
 }
-
-
-
 
 
 pub fn run_custom_candle(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCItemRaw>, num_classes: usize, learning_rate: f64, num_epochs: usize, directory: Option<String>, verbose: bool)->ModelRExport {

@@ -5,7 +5,7 @@ use burn::{
     backend::ndarray::{NdArray, NdArrayDevice},
     backend::wgpu::{WgpuDevice, Wgpu, AutoGraphicsApi},
     config::Config,
-    data::{dataloader::{DataLoaderBuilder, Dataset, batcher::Batcher}, dataset::{InMemDataset, transform::{Mapper,MapperDataset}}},
+    data::{dataloader::{DataLoaderBuilder, Dataset, batcher::Batcher}, dataset::{InMemDataset, transform::MapperDataset}},
     module::{Module, AutodiffModule},
     nn::{
         loss::CrossEntropyLoss,
@@ -13,7 +13,7 @@ use burn::{
     },
     optim::{Optimizer, AdamConfig, GradientsParams},
     record::CompactRecorder,
-    tensor::{backend::Backend, Data, ElementConversion, Int, Tensor},
+    tensor::{backend::Backend, Int, Tensor},
     train::{ClassificationOutput, TrainStep, ValidStep, TrainOutput},
 };
 
@@ -23,54 +23,7 @@ use std::vec::Vec;
 use std::convert::TryInto;
 use crate::pb::ProgressBar;
 use std::time::Instant;
-use crate::common::{SCItemRaw, History, ModelRExport, ModelAccuracy, emit_metrics, SCItem};
-
-
-pub struct SCBatcher<B: Backend> {
-    device: B::Device,
-}
-
-impl<B: Backend> SCBatcher<B> {
-    pub fn new(device: B::Device) -> Self {
-        Self { device }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct SCBatch<B: Backend> {
-    pub counts: Tensor<B, 2>,
-    pub targets: Tensor<B, 1, Int>,
-}
-
-impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
-
-    fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
-        let n: usize = items.first().unwrap().counts.len();
-        let counts = items
-            .iter()
-            .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
-            .map(|data| Tensor::<B, 1>::from_data(data.convert()))
-            .map(|tensor| tensor.reshape([1, n]))
-            .collect();
-
-        let targets = items
-            .iter()
-            .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()])))
-            .collect();
-
-        let counts = Tensor::cat(counts, 0).to_device(&self.device);
-        let targets = Tensor::cat(targets, 0).to_device(&self.device);
-
-        SCBatch { counts, targets }
-    }
-}
-
-
-// #[derive(Clone, Debug)]
-// pub struct MyBatch<B: Backend> {
-//     pub images: Tensor<B, 2>,
-//     pub targets: Tensor<B, 1, Int>,
-// }
+use crate::common::*;
 
 
 #[derive(Module, Debug)]
@@ -147,46 +100,6 @@ impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
     }
 }
 
-
-pub struct LocalCountstoMatrix;
-
-impl Mapper<SCItemRaw, SCItem> for LocalCountstoMatrix {
-    /// Convert a raw MNIST item (image bytes) to a MNIST item (2D array image).
-    fn map(&self, item: &SCItemRaw) -> SCItem {
-        let counts = &item.data;
-        SCItem {
-            counts: counts.to_vec(),
-            label: item.target,
-        }
-    }
-}
-
-
-pub fn map_raw(item: &SCItemRaw) -> SCItem {
-    let counts = &item.data;
-    SCItem {
-        counts: counts.to_vec(),
-        label: item.target,
-    }
-}
-
-
-
-pub struct SCLocalDataset {
-    pub dataset: dyn Dataset<SCItem>,
-}
-
-
-impl Dataset<SCItem> for SCLocalDataset {
-    fn get(&self, index: usize) -> Option<SCItem> {
-        self.dataset.get(index)
-        // None
-    }
-
-    fn len(&self) -> usize {
-        self.dataset.len()
-    }
-}
 
 #[derive(Config)]
 pub struct SCTrainingConfig {
