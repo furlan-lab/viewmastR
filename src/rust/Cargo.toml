@@ -9,6 +9,7 @@ crate-type = [ 'staticlib' ]
 name = 'viewmastR'
 
 [dependencies]
+time = "0.3.35"
 extendr-api = "0.6"
 extendr-macros = "0.6"
 burn = { version =  "0.11.1" , features = ["wgpu",  "train", "ndarray", "candle"] }

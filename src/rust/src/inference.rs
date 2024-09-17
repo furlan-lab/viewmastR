@@ -4,8 +4,7 @@
 // use std::clone;
 
 use crate::common::*;
-use crate::scrna_mlr::ModelConfig;
-use crate::scrna_mlr::{Model, SCBatcher, map_raw};
+use crate::scrna_mlr::{Model, ModelConfig};
 
 use burn::{
     backend::Autodiff,

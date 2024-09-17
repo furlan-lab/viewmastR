@@ -122,7 +122,7 @@ seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_gene
 
 After running viewmastR, we can visualize the predicted cell types for the query dataset.
 
-```r
+```{r}
 DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
 ```
 

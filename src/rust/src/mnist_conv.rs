@@ -93,11 +93,11 @@ impl<B: Backend> Batcher<MNISTItem, MNISTBatch<B>> for MNISTBatcher<B> {
 }
 
 
-#[derive(Clone, Debug)]
-pub struct MyBatch<B: Backend> {
-    pub images: Tensor<B, 3>,
-    pub targets: Tensor<B, 1, Int>,
-}
+// #[derive(Clone, Debug)]
+// pub struct MyBatch<B: Backend> {
+//     pub images: Tensor<B, 3>,
+//     pub targets: Tensor<B, 1, Int>,
+// }
 
 
 #[derive(Module, Debug)]

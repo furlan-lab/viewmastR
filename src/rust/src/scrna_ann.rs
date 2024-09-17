@@ -67,11 +67,11 @@ impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
 }
 
 
-#[derive(Clone, Debug)]
-pub struct MyBatch<B: Backend> {
-    pub images: Tensor<B, 2>,
-    pub targets: Tensor<B, 1, Int>,
-}
+// #[derive(Clone, Debug)]
+// pub struct MyBatch<B: Backend> {
+//     pub images: Tensor<B, 2>,
+//     pub targets: Tensor<B, 1, Int>,
+// }
 
 
 #[derive(Module, Debug)]

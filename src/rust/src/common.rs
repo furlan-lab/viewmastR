@@ -1,8 +1,23 @@
 #![allow(dead_code)]
 
+
+use burn::{
+    // backend::Autodiff,
+    // backend::ndarray::{NdArray, NdArrayDevice},
+    backend::wgpu::Wgpu,
+    // backend::candle::Candle,
+    // // backend::libtorch::{LibTorch, LibTorchDevice},
+    // config::Config,
+    data::{dataloader::{ Dataset, batcher::Batcher}, dataset::transform::Mapper},
+    // record::{NamedMpkFileRecorder, FullPrecisionSettings},
+    tensor::{backend::Backend, Data, ElementConversion, Int, Tensor, Shape},
+    // train::{TrainStep, ValidStep, TrainOutput},
+};
+
+
 use serde::Deserialize;
-use burn::tensor::{Shape, Tensor, Data};
-use burn::backend::wgpu::Wgpu;
+// use burn::tensor::{Shape, Tensor, Data};
+// use burn::backend::wgpu::Wgpu;
 use extendr_api::Robj;
 use extendr_api::Conversions;
 
@@ -154,3 +169,101 @@ pub fn extract_scitemraw(data: &Robj, target_value: Option<i32>) -> Vec<SCItemRa
         })
         .collect()
 }
+
+
+pub struct SCBatcher<B: Backend> {
+    device: B::Device,
+}
+
+impl<B: Backend> SCBatcher<B> {
+    pub fn new(device: B::Device) -> Self {
+        Self { device }
+    }
+}
+
+
+
+
+#[derive(Clone, Debug)]
+pub struct SCBatch<B: Backend> {
+    pub counts: Tensor<B, 2>,
+    pub targets: Tensor<B, 1, Int>,
+}
+
+impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
+
+    fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
+        let n: usize = items.first().unwrap().counts.len();
+        let counts = items
+            .iter()
+            .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
+            // .map(|item| Data::item))
+            .map(|data| Tensor::<B, 1>::from_data(data.convert()))
+            .map(|tensor| tensor.reshape([1, n]))
+            // Normalize: make between [0,1] and make the mean=0 and std=1
+            // values mean=0.1307,std=0.3081 are from the PyTorch MNIST example
+            // https://github.com/pytorch/examples/blob/54f4572509891883a947411fd7239237dd2a39c3/mnist/main.py#L122
+            // .map(|tensor| ((tensor / 255) - 0.1307) / 0.3081)
+            .collect();
+
+        let targets = items
+            .iter()
+            .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()])))
+            .collect();
+
+        let counts = Tensor::cat(counts, 0).to_device(&self.device);
+        let targets = Tensor::cat(targets, 0).to_device(&self.device);
+
+        SCBatch { counts, targets }
+    }
+}
+
+
+pub struct LocalCountstoMatrix;
+
+impl Mapper<SCItemRaw, SCItem> for LocalCountstoMatrix {
+    /// Convert a raw MNIST item (image bytes) to a MNIST item (2D array image).
+    fn map(&self, item: &SCItemRaw) -> SCItem {
+        let counts = &item.data;
+
+        // // Convert the image to a 2D array of floats.
+        // let mut counts_array = [0f32; 3600];
+        // for (i, pixel) in counts.iter().enumerate() {
+        //     counts_array[i] = *pixel as f32;
+        // }
+
+        SCItem {
+            counts: counts.to_vec(),
+            label: item.target,
+        }
+    }
+}
+
+
+pub fn map_raw(item: &SCItemRaw) -> SCItem {
+    let counts = &item.data;
+
+    SCItem {
+        counts: counts.to_vec(),
+        label: item.target,
+    }
+}
+
+pub struct SCLocalDataset {
+    pub dataset: dyn Dataset<SCItem>,
+}
+
+
+impl Dataset<SCItem> for SCLocalDataset {
+    fn get(&self, index: usize) -> Option<SCItem> {
+        self.dataset.get(index)
+        // None
+    }
+
+    fn len(&self) -> usize {
+        self.dataset.len()
+    }
+}
+
+
+
