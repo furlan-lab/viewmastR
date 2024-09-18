@@ -117,8 +117,12 @@ Now we run viewmastR to predict cell types in the query dataset. This function w
 ```{r}
 
 baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#25.041
 edits1 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#24.901
 edits2 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#25.160
+
 ```
 
 ## **Visualizing Predictions**

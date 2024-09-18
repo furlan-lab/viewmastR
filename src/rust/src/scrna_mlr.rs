@@ -7,7 +7,7 @@ use burn::{
     backend::Autodiff,
     config::Config,
     data::{
-        dataloader::{batcher::Batcher, DataLoaderBuilder, Dataset},
+        dataloader::{DataLoaderBuilder, Dataset},
         dataset::{transform::MapperDataset, InMemDataset},
     },
     module::{AutodiffModule, Module},
@@ -249,18 +249,28 @@ pub fn run_custom<B>(
 
     let tduration = start.elapsed();
 
-    let mut prediction: Vec<i32> = vec![];
-    for item in query {
-        let batcher = SCBatcher::new(device.clone());
-        let batch = batcher.batch(vec![map_raw(&item)]);
-        let output = model.forward(batch.counts);
-        let pred = output
-            .argmax(1)
-            .flatten::<1>(0, 1)
-            .into_scalar()
-            .to_i32()
-            .expect("Failed to convert prediction to i32");
-        prediction.push(pred);
+    let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
+    MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
+
+    let batcher_query = SCBatcher::<B>::new(device.clone());
+
+    let dataloader_query = DataLoaderBuilder::new(batcher_query)
+        .batch_size(config.batch_size)
+        .num_workers(config.num_workers)
+        .build(query_dataset);
+
+    let model_valid = model.valid();
+    let mut predictions = Vec::new();
+
+    for batch in dataloader_query.iter() {
+        let output = model_valid.forward(batch.counts);
+        let batch_predictions = output.argmax(1).squeeze::<1>(1);
+        predictions.extend(
+            batch_predictions
+                .to_data()
+                .value.iter()
+                .map(|&pred| pred.to_i32().expect("Failed to convert prediction to i32")),
+        );
     }
 
     // Save the model
@@ -280,7 +290,7 @@ pub fn run_custom<B>(
         num_epochs: config.num_epochs,
         num_workers: config.num_workers,
         seed: config.seed,
-        predictions: prediction,
+        predictions: predictions,
         train_history,
         test_history,
         training_duration: tduration.as_secs_f64(),
