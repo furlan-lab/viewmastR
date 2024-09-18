@@ -42,7 +42,8 @@ seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 
 # View training history
 output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list")
-
+DimPlot(output_list$object, group.by = "viewmastR_pred")
+table(output_list$object$viewmastR_pred)
 ## (ALL TIMES elapsed)
 ## on M1 
 baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))

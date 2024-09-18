@@ -230,5 +230,16 @@ impl Dataset<SCItem> for SCLocalDataset {
     }
 }
 
+pub struct LocalCountstoMatrixWithIndex;
 
+impl Mapper<(usize, SCItemRaw), SCItem> for LocalCountstoMatrixWithIndex {
+    fn map(&self, item: &(usize, SCItemRaw)) -> SCItem {
+        let (_index, raw_item) = item;  // We're ignoring the index here
+        let counts = &raw_item.data;
 
+        SCItem {
+            counts: counts.to_vec(),  // Convert counts from SCItemRaw to SCItem
+            label: raw_item.target,   // Copy the label
+        }
+    }
+}

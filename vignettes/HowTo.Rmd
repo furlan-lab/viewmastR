@@ -18,7 +18,7 @@ Before we begin, ensure you have an updated Rust installation, as it’s a core 
 
 First, ensure you have the `devtools` R package installed, which allows you to install packages from GitHub. If `devtools` is installed, you can easily install viewmastR using the following command:
 
-```{r}
+```{r, eval=F}
 devtools::install_github("furlan-lab/viewmastR")
 ```
 

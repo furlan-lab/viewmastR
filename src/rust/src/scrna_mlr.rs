@@ -228,30 +228,43 @@ where
 
     let tduration = start.elapsed();
 
-    // Query handling and predictions
-    let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-        MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    let query_len = query_dataset.len();
-    let batcher_query = SCBatcher::<B>::new(device.clone());
 
+    // Query handling and predictions with proper indexing
+    let query_with_index: Vec<(usize, SCItemRaw)> = query.into_iter().enumerate().collect();
+    let query_len = query_with_index.len();
+    let query_dataset: MapperDataset<InMemDataset<(usize, SCItemRaw)>, LocalCountstoMatrixWithIndex, SCItem> =
+        MapperDataset::new(InMemDataset::new(query_with_index), LocalCountstoMatrixWithIndex);
+
+    let batcher_query = SCBatcher::<B>::new(device.clone());
     let dataloader_query = DataLoaderBuilder::new(batcher_query)
         .batch_size(config.batch_size)
         .num_workers(config.num_workers)
-        .build(query_dataset);
+        .build(query_dataset);  // query_dataset now returns (usize, SCItem)
 
     let model_valid = model.valid();
-    let mut predictions = Vec::with_capacity(query_len);
+    let mut indexed_predictions: Vec<(usize, i32)> = Vec::with_capacity(query_len);
 
-    for batch in dataloader_query.iter() {
+    // Create a Vec to store the original indices
+    let original_indices: Vec<usize> = (0..query_len).collect();
+    
+    // Assuming dataloader_query is built
+    for (batch_index, batch) in dataloader_query.iter().enumerate() {
         let output = model_valid.forward(batch.counts);
         let batch_predictions = output.argmax(1).squeeze::<1>(1);
-        predictions.extend(
-            batch_predictions
-                .to_data()
-                .value.iter()
-                .map(|&pred| pred.to_i32().expect("Failed to convert prediction to i32")),
-        );
+    
+        // Collect predictions along with their original indices
+        for (i, pred) in original_indices.iter().zip(batch_predictions.to_data().value.iter()) {
+            indexed_predictions.push((*i, pred.to_i32().expect("Failed to convert prediction to i32")));
+        }
     }
+    
+    // Sort predictions by the original index to restore the correct order
+    indexed_predictions.sort_by_key(|&(index, _)| index);
+    let predictions: Vec<i32> = indexed_predictions.into_iter().map(|(_, pred)| pred).collect();
+    
+    // Sort predictions by the original index to restore the correct order
+    indexed_predictions.sort_by_key(|&(index, _)| index);
+    let predictions: Vec<i32> = indexed_predictions.into_iter().map(|(_, pred)| pred).collect();
 
     // Save the model
     model

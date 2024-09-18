@@ -19,7 +19,7 @@ Before using `viewmastR`, you’ll need an updated installation of **Rust**, as 
 
 Once Rust is installed, you can install `viewmastR` directly from GitHub. Ensure you have the `devtools` package installed, and then use the following command:
 
-```{r}
+```{r, eval=F}
 devtools::install_github("furlan-lab/viewmastR")
 ```
 
