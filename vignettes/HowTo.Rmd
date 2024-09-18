@@ -119,9 +119,11 @@ Now we run viewmastR to predict cell types in the query dataset. This function w
 baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
 #25.041
 edits1 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#24.901
+#24.901 #fixed Recreating Loss Function in Each Iteration
 edits2 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#25.160
+#25.160 #fixed  Inefficient Computation of num_predictions
+edits3 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#25.160 #fixed query prediction
 
 ```
 

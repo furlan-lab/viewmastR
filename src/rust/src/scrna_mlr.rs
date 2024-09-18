@@ -184,10 +184,6 @@ pub fn run_custom<B>(
             if verbose {
                 bar.update();
             }
-            // let output = TrainStep::step(&model, batch);
-            // model = output.update(&mut optim, config.lr);
-            // let num_corrects = output.item.num_corrects;
-            // train_accuracy.batch_update(num_corrects, output.item.num_predictions, output.item.loss_value);
             let output = model.forward(batch.counts);
             let loss = loss_fn.forward(output.clone(), batch.targets.clone());
             let predictions = output.argmax(1).squeeze(1);
@@ -275,7 +271,6 @@ pub fn run_custom<B>(
 
     // Save the model
     model
-        .clone()
         .save_file(
             format!("{}/model", artifact_dir),
             &NamedMpkFileRecorder::<FullPrecisionSettings>::new(),
