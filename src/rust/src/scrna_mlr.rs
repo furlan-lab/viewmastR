@@ -166,7 +166,7 @@ pub fn run_custom<B>(
     // History tracking
     let mut train_history: History = History::new();
     let mut test_history: History = History::new();
-
+    
     let start = Instant::now();
 
     // Training and validation loop
@@ -174,7 +174,7 @@ pub fn run_custom<B>(
         train_accuracy.epoch_reset(epoch);
         test_accuracy.epoch_reset(epoch);
         let mut bar = ProgressBar::default(num_iterations, length, eta);
-
+        let loss_fn = CrossEntropyLoss::new(None);
         if verbose {
             eprintln!("[Epoch {} progress...]", epoch);
         }
@@ -184,12 +184,14 @@ pub fn run_custom<B>(
             if verbose {
                 bar.update();
             }
-
+            // let output = TrainStep::step(&model, batch);
+            // model = output.update(&mut optim, config.lr);
+            // let num_corrects = output.item.num_corrects;
+            // train_accuracy.batch_update(num_corrects, output.item.num_predictions, output.item.loss_value);
             let output = model.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None)
-                .forward(output.clone(), batch.targets.clone());
+            let loss = loss_fn.forward(output.clone(), batch.targets.clone());
             let predictions = output.argmax(1).squeeze(1);
-            let num_predictions: usize = batch.targets.dims().iter().product();
+            let num_predictions = batch.targets.dims()[0];
             let num_corrects = predictions
                 .equal(batch.targets)
                 .int()
@@ -204,7 +206,7 @@ pub fn run_custom<B>(
                 .expect("Conversion to f64 failed");
             train_accuracy.batch_update(num_corrects.try_into().unwrap(), num_predictions, loss_scalar);
 
-            // Gradients for the current backward pass
+            // Compute the gradients.
             let grads = loss.backward();
             // Gradients linked to each parameter of the model.
             let grads = GradientsParams::from_grads(grads, &model);
