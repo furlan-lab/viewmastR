@@ -115,7 +115,7 @@ DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 Now we run viewmastR to predict cell types in the query dataset. This function will learn from the reference dataset's cell type annotations and apply its knowledge to classify the query cells.
 
 ```{r}
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle")
 ```
 
 ## **Visualizing Predictions**

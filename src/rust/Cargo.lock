@@ -3122,6 +3122,7 @@ dependencies = [
  "linfa",
  "linfa-bayes",
  "ndarray",
+ "num-traits",
  "rand",
  "serde",
  "serde_json",

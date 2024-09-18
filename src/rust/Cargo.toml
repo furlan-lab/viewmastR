@@ -9,6 +9,7 @@ crate-type = [ 'staticlib' ]
 name = 'viewmastR'
 
 [dependencies]
+num-traits = "0.2"
 time = "0.3.35"
 extendr-api = "0.6"
 extendr-macros = "0.6"
