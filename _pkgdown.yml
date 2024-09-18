@@ -59,12 +59,7 @@ reference:
 - title: Additional functions
   desc: Helper functions to add or modify elements
   contents:
-  - monocle3_to_seurat
-  - seurat_to_monocle3
-  - add_souporcell_seurat
   - calculate_gene_dispersion
-  - iterative_LSI
-  - find_partitions
   - select_genes
   - common_features
   - common_variant_genes

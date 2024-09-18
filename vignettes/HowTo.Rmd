@@ -51,29 +51,13 @@ if (grepl("^gizmo", Sys.info()["nodename"])) {
 }
 
 # Load query and reference datasets
-seu <- readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
+seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
 seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 ```
 
 ## **Defining "Ground Truth" in the Query Dataset**
 
-Although we don’t know the cell type labels for the query dataset a priori, we can approximate the ground truth by using cluster-based cell type assignments. This approximation will help us evaluate the accuracy of viewmastR's predictions.
-
-```{r}
-# Harmonize labels
-labels <- levels(factor(seur$SFClassification))
-seu$ground_truth <- factor(seu$seurat_clusters)
-levels(seu$ground_truth) <- c(
-  labels[11], labels[18], labels[11], labels[17], labels[20],
-  labels[21], labels[14], labels[12], labels[16], labels[18],
-  labels[14], labels[19], labels[10], labels[11], labels[11]
-)
-seu$ground_truth <- as.character(seu$ground_truth)
-```
-
-## **Visualizing the Ground Truth**
-
-We can visualize the query dataset with its ground truth labels to get an initial idea of the cell types we’re working with.
+Although we don’t know the cell type labels for the query dataset a priori, we can approximate the ground truth by using cluster-based cell type assignments. This approximation will help us evaluate the accuracy of viewmastR's predictions. We can visualize the query dataset with its ground truth labels to get an initial idea of the cell types we’re working with.
 
 ```{r}
 DimPlot(seu, group.by = "ground_truth", cols = seur@misc$colors)
@@ -115,38 +99,7 @@ DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 Now we run viewmastR to predict cell types in the query dataset. This function will learn from the reference dataset's cell type annotations and apply its knowledge to classify the query cells.
 
 ```{r}
-## (ALL TIMES elapsed)
-## on M2 
-baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#25.041
-edits1 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#24.901 #fixed Recreating Loss Function in Each Iteration
-edits2 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#25.160 #fixed  Inefficient Computation of num_predictions
-edits3 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#24.493 #fixed query prediction
-edits5 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#38.857 model save - removed clone (battery low)
-
-## on intel
-baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#41.322
-baseline_wgpu <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
-#38.792
-edits6 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
-#36.400 #minor changes
-edits7 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
-#38.857 #minor changes
-edits8 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
-#34.034 #minor changes (update number of cores)
-edits9 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
-#32.875 #refactored code to run using step functions...
-edits9cl <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#38.548
-edits10 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
-#32.371 moved batch reporting to the last batch
-edits11 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
-#32.609 removed cloning of batch.targets
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 4)
 ```
 
 ## **Visualizing Predictions**
@@ -161,7 +114,7 @@ DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
 
 We can further evaluate the accuracy of viewmastR's predictions by comparing them to the ground truth labels (approximated earlier) using a confusion matrix.
 
-```r
+```{r}
 confusion_matrix(pred = factor(seu$viewmastR_pred), gt = factor(seu$ground_truth), cols = seur@misc$colors)
 ```
 
@@ -187,8 +140,6 @@ plt
 ```
 
 ## **Appendix**
-
-Finally, let’s include some session information for reproducibility.
 
 ```{r}
 sessionInfo()

@@ -12,8 +12,10 @@ usethis::use_pkgdown_github_pages()
 pkgdown::build_site()
 pkgdown::build_articles()
 pkgdown::build_news()
-pkgdown::build_home_index(); pkgdown::init_site()
+pkgdown::build_home_index(); 
+pkgdown::init_site()
 
+pkgdown::
 
 rm(list = ls())
 suppressPackageStartupMessages({

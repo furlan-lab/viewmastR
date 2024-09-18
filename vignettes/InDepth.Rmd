@@ -1,7 +1,7 @@
 ---
 title: "A deeper look at viewmastR"
 output: html_document
-date: "2024-01-23"
+date: "2024-08-08"
 always_allow_html: true
 editor_options: 
   chunk_output_type: console
@@ -76,7 +76,7 @@ plt
 
 ## **4. Tuning for Speed**
 
-`viewmastR` runs with 3 available backends (see [Burn](https://burn.dev/burn-book/basic-workflow/backend.html) for more details). The `candle` backend tends to run faster on Apple M1/M2 processors. Here’s how you can compare the performance of different backends:
+`viewmastR` runs with 3 available backends (see [Burn](https://burn.dev/burn-book/basic-workflow/backend.html) for more details). The `candle` backend tends to run faster on Apple M1/M2 processors. Here’s how you can compare the performance of different backends on your system:
 
 ```{r}
 run1 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "candle", return_type = "list")
@@ -95,9 +95,9 @@ ggplot(data.frame(training_times = c(run1$training_output$duration$training_dura
   NoLegend()
 ```
 
-## **5. Inspecting Training Subsets**
+## **5. Saving Training Subsets**
 
-To inspect the training and test data used by `viewmastR`:
+To inspect the training and test data used by `viewmastR` we provide the setup_training function if you so desire to evaluate these using other learning frameworks.
 
 ```{r}
 ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix")
@@ -147,7 +147,9 @@ colnames(wmat) <- ti$label_text
 
 ## **8. Comparing Different Algorithms**
 
-`viewmastR` supports various algorithms, such as **multinomial logistic regression (mlr)**, **multinomial naive bayes (nb)**, and a **multi-layer perceptron (nn)**. Here’s how you can run and compare these methods:
+`viewmastR` supports various algorithms, such as **a pseudo multinomial logistic regression (mlr)**, **multinomial naive bayes (nb)**, and a **multi-layer perceptron (nn)**. Note that our mlr function is a neural network with no hidden layers using ReLu activation.  You can read more about the similarity between this simple neural network and logistic regression here (https://medium.com/@axegggl/neural-networks-decoded-how-logistic-regression-is-the-hidden-first-step-495f4a0b5fd#:~:text=When%20you%20think%20about%20a,like%20a%20logistic%20regression%20model.)
+
+The code below shows how you can run and compare these methods:
 
 ```{r}
 seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend = "candle")

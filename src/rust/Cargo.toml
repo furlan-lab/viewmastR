@@ -1,7 +1,7 @@
 [package]
 name = 'viewmastR'
 publish = false
-version = '0.2.2'
+version = '0.2.3'
 edition = '2021'
 
 [lib]
@@ -22,9 +22,6 @@ flate2 = "1.0.28"
 ndarray = "0.15"
 linfa-bayes = "0.7.0"
 linfa = "0.7.0"
-# anyhow = "1.0.88"
-# indicatif = {version = "*", features = ["rayon"]}
-# simple_bar = {version = "0.2.2"}
 
 # Serialization
 serde = "1"

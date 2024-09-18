@@ -1,4 +1,4 @@
-# viewmastR v0.2.2
+# viewmastR v0.2.3
 
 * new feature - naive bayes implementation
 * new feature - make3file function for easy exporting Seurat objects
@@ -6,6 +6,10 @@
 * minor bug - fixed return type 'matrix' in training function
 * minor bug - fixed tf_idf function
 * enhancement - added debug function that enables tracking dimensions across learning steps
+* enhancement - made a number of enhancements in rust code; now using updated burn library 0.14
+
+# viewmastR v0.2.2
+* minor changes not packaged as an actual release
 
 # viewmastR v0.2.1
 
