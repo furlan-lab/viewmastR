@@ -1,30 +1,28 @@
+use std::time::Instant;
+use num_traits::ToPrimitive;
 
 use burn::{
     backend::Autodiff,
-    backend::candle::Candle,
-    backend::ndarray::{NdArray, NdArrayDevice},
-    backend::wgpu::{WgpuDevice, Wgpu, AutoGraphicsApi},
     config::Config,
-    data::{dataloader::{DataLoaderBuilder, Dataset, batcher::Batcher}, dataset::{InMemDataset, transform::MapperDataset}},
-    module::{Module, AutodiffModule},
+    data::{
+        dataloader::{DataLoaderBuilder, Dataset},
+        dataset::{transform::MapperDataset, InMemDataset},
+    },
+    module::{AutodiffModule, Module},
     nn::{
         loss::CrossEntropyLoss,
-        Linear, LinearConfig, ReLU,
+        Linear,
+        LinearConfig,
+        ReLU,
     },
-    optim::{Optimizer, AdamConfig, GradientsParams},
-    record::CompactRecorder,
-    tensor::{backend::Backend, Int, Tensor},
-    train::{ClassificationOutput, TrainStep, ValidStep, TrainOutput},
+    optim::{AdamConfig, Optimizer},
+    record::{FullPrecisionSettings, NamedMpkFileRecorder},
+    tensor::{Tensor, backend::Backend, Int},
+    train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
-
-use std::result::Result;
-use std::vec::Vec;
-use std::convert::TryInto;
-use crate::pb::ProgressBar;
-use std::time::Instant;
 use crate::common::*;
-
+use crate::pb::ProgressBar;
 
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
@@ -105,402 +103,270 @@ pub struct SCTrainingConfig {
 }
 
 
-
-
-pub fn run_custom_candle(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCItemRaw>, num_classes: usize, hidden_size: usize, learning_rate: f64, num_epochs: usize, directory: Option<String>, verbose: bool)->ModelRExport {
-    let artifact_dir = match directory {
-        Some(directory) => directory,
-        _ => panic!("Folder not found: {:?}", directory)
-    };
-    let no_features = train.first().unwrap().data.len();
-    
-    let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
-    let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
+pub fn run_custom<B>(
+    train: Vec<SCItemRaw>,
+    test: Vec<SCItemRaw>,
+    query: Vec<SCItemRaw>,
+    num_classes: usize,
+    learning_rate: f64,
+    hidden_size: usize,
+    num_epochs: usize,
+    directory: Option<String>,
+    verbose: bool,
+    device: B::Device,
+) -> ModelRExport
+where
+    B: Backend,
+    B::Device: Clone,
+    B::IntElem: ToPrimitive,
+    B::FloatElem: ToPrimitive,
+{
+    let no_features = train.first().expect("Features not found").data.len();
+    let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
+        MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
+    let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
+        MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let num_batches_train = train_dataset.len();
-
-    type MyBackend = Candle<f64, i64>;
-    type MyAutodiffBackend = Autodiff<MyBackend>;
-    let device = burn::backend::candle::CandleDevice::default();
-
+    let artifact_dir = directory.clone().unwrap_or_else(|| panic!("Folder not found: {:?}", directory));
+    
     // Create the configuration.
     let config_model = ModelConfig::new(num_classes, num_epochs, hidden_size, learning_rate);
     let config_optimizer = AdamConfig::new();
     let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
 
     // Create the model and optimizer.
-    let mut model: Model<MyAutodiffBackend> = config.model.init(no_features);
-    let mut optim = config.optimizer.init::<MyAutodiffBackend, Model<MyAutodiffBackend>>();
+    let mut model: Model<Autodiff<B>> = config.model.init(no_features);
+    let mut optim = config.optimizer.init::<Autodiff<B>, Model<Autodiff<B>>>();
 
-    // Create the batcher.
-    let batcher_train = SCBatcher::<MyAutodiffBackend>::new(device.clone());
-    let batcher_valid = SCBatcher::<MyBackend>::new(device.clone());
+    // Create the batchers.
+    let batcher_train = SCBatcher::<Autodiff<B>>::new(device.clone());
+    let batcher_valid = SCBatcher::<B>::new(device.clone());
 
     // Create the dataloaders.
     let dataloader_train = DataLoaderBuilder::new(batcher_train)
         .batch_size(config.batch_size)
-        // .shuffle(config.seed)
         .num_workers(config.num_workers)
         .build(train_dataset);
 
     let dataloader_test = DataLoaderBuilder::new(batcher_valid)
         .batch_size(config.batch_size)
-        // .shuffle(config.seed)
         .num_workers(config.num_workers)
         .build(test_dataset);
 
     let mut train_accuracy = ModelAccuracy::new();
     let mut test_accuracy = ModelAccuracy::new();
 
-    // progress bar items
-    let num_iterations = (num_batches_train / config.batch_size) as u32; 
+    // Progress bar items
+    let num_iterations = (num_batches_train as f64 / config.batch_size as f64).ceil() as u32;
+    let batch_report_interval = num_iterations.to_usize().unwrap() - 1;
     let length = 40;
     let eta = false;
 
-    //history stuff
+    // History tracking
     let mut train_history: History = History::new();
     let mut test_history: History = History::new();
 
     let start = Instant::now();
-    for epoch in 1..config.num_epochs + 1 {
-        
-        // Implement our training loop.
-        train_accuracy.epoch = epoch;
-        test_accuracy.epoch = epoch;
-        test_accuracy.epoch_reset(epoch);
+
+    // Training and validation loop
+    for epoch in 1..=config.num_epochs {
         train_accuracy.epoch_reset(epoch);
+        test_accuracy.epoch_reset(epoch);
         let mut bar = ProgressBar::default(num_iterations, length, eta);
+        if verbose {
+            eprintln!("[Epoch {} progress...]", epoch);
+        }
 
-        if verbose {eprintln!("[Epoch {} progress...]", epoch)}
-        for (_iteration, batch) in dataloader_train.iter().enumerate() {
-            if verbose {bar.update()}
-            let output = model.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
-            let loss_scalar = loss.clone().into_scalar();
-            let predictions = output.argmax(1).squeeze(1);
-            let num_predictions: usize = batch.targets.dims().iter().product();
-            let num_corrects = predictions.equal(batch.targets).int().sum().into_scalar();
-            train_accuracy.batch_update(num_corrects, num_predictions, loss_scalar);
+        // Training loop using `TrainStep`
+        for (iteration, batch) in dataloader_train.iter().enumerate() {
+            if verbose {
+                bar.update();
+            }
             
-            // Gradients for the current backward pass
-            let grads = loss.backward();
-            // Gradients linked to each parameter of the model.
-            let grads = GradientsParams::from_grads(grads, &model);
-            // Update the model using the optimizer.
-            model = optim.step(config.lr, model, grads);
+
+            let output = TrainStep::step(&model, batch); // using the `step` method
+            model = optim.step(config.lr, model, output.grads);
+            // // Calculate number of correct predictions on the last batch
+            if iteration == batch_report_interval {
+                let predictions = output.item.output.argmax(1).squeeze(1);
+                let num_predictions = output.item.targets.dims()[0];
+                let num_corrects = predictions
+                    .equal(output.item.targets)
+                    .int()
+                    .sum()
+                    .into_scalar()
+                    .to_i64()
+                    .expect("Conversion to i64 failed");
+
+                // Update accuracy and loss tracking
+                train_accuracy.batch_update(num_corrects, num_predictions, output.item.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
+            }
         }
-        train_accuracy.epoch_update(& mut train_history);
 
+        train_accuracy.epoch_update(&mut train_history);
 
-        // Get the model without autodiff.
-        let model_valid = model.valid();
-
-        // Implement our validation loop.
+        // Validation loop using `ValidStep`
         for (_iteration, batch) in dataloader_test.iter().enumerate() {
-            let output = model_valid.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
-            let loss_scalar = &loss.into_scalar();
-            let predictions = output.argmax(1).squeeze(1);
-            let num_predictions: usize = batch.targets.dims().iter().product();
-            let num_corrects = predictions.equal(batch.targets).int().sum().into_scalar();
-            test_accuracy.batch_update(num_corrects, num_predictions, *loss_scalar);
+            let output = ValidStep::step(&model.valid(), batch.clone()); // using the `step` method
 
+            // Calculate number of correct predictions
+            let predictions = output.output.argmax(1).squeeze(1);
+            let num_predictions = batch.targets.dims()[0];
+            let num_corrects = predictions
+                .equal(batch.targets)
+                .int()
+                .sum()
+                .into_scalar()
+                .to_i64()
+                .expect("Conversion to usize failed");
+
+            // Update accuracy and loss tracking
+            test_accuracy.batch_update(num_corrects.to_i64().unwrap(), num_predictions, output.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
         }
-        test_accuracy.epoch_update(& mut test_history);
-        if verbose {emit_metrics(&train_accuracy, &test_accuracy)}
+        test_accuracy.epoch_update(&mut test_history);
+
+        if verbose {
+            emit_metrics(&train_accuracy, &test_accuracy);
+        }
     }
+
     let tduration = start.elapsed();
 
-    let mut prediction: Vec<i32> = vec![];
-    for item in query {
-        let batcher = SCBatcher::new(device.clone());
-        let batch = batcher.batch(vec![map_raw(&item)]);
-        let output = &model.forward(batch.counts);
-        prediction.push(output.clone().argmax(1).flatten::<1>(0, 1).into_scalar().try_into().unwrap());
+    // Query handling and predictions
+    let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
+        MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
+    let query_len = query_dataset.len();
+    let batcher_query = SCBatcher::<B>::new(device.clone());
+
+    let dataloader_query = DataLoaderBuilder::new(batcher_query)
+        .batch_size(config.batch_size)
+        .num_workers(config.num_workers)
+        .build(query_dataset);
+
+    let model_valid = model.valid();
+    let mut predictions = Vec::with_capacity(query_len);
+
+    for batch in dataloader_query.iter() {
+        let output = model_valid.forward(batch.counts);
+        let batch_predictions = output.argmax(1).squeeze::<1>(1);
+        predictions.extend(
+            batch_predictions
+                .to_data()
+                .value.iter()
+                .map(|&pred| pred.to_i32().expect("Failed to convert prediction to i32")),
+        );
     }
 
-
-    let _ = &model.clone()
-        .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
+    // Save the model
+    model
+        .save_file(
+            format!("{}/model", artifact_dir),
+            &NamedMpkFileRecorder::<FullPrecisionSettings>::new(),
+        )
         .expect("Failed to save trained model");
 
-    //collect and return the predictions
-    return ModelRExport {
+    // Collect and return the predictions
+    ModelRExport {
         lr: config.lr,
         hidden_size: vec![hidden_size],
         batch_size: config.batch_size,
         num_epochs: config.num_epochs,
         num_workers: config.num_workers,
         seed: config.seed,
-        predictions: prediction,
-        train_history: train_history,
-        test_history: test_history,
+        predictions: predictions,
+        train_history,
+        test_history,
         training_duration: tduration.as_secs_f64(),
     }
-
 }
 
 
 
-pub fn run_custom_nd(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCItemRaw>, num_classes: usize, hidden_size: usize, learning_rate: f64, num_epochs: usize, directory: Option<String>, verbose: bool)->ModelRExport {
-    let artifact_dir = match directory {
-        Some(directory) => directory,
-        _ => panic!("Folder not found: {:?}", directory)
-    };
-    let no_features = train.first().unwrap().data.len();
-    
-    let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
-    let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
-    let num_batches_train = train_dataset.len();
-    type MyBackend = NdArray<f64>;
-    type MyAutodiffBackend = Autodiff<MyBackend>;
+
+
+pub fn run_custom_nd(
+    train: Vec<SCItemRaw>,
+    test: Vec<SCItemRaw>,
+    query: Vec<SCItemRaw>,
+    num_classes: usize,
+    hidden_size: usize,
+    learning_rate: f64,
+    num_epochs: usize,
+    directory: Option<String>,
+    verbose: bool,
+) -> ModelRExport {
+    use burn::backend::ndarray::{NdArray, NdArrayDevice};
+
     let device = NdArrayDevice::default();
-
-    // Create the configuration.
-    let config_model = ModelConfig::new(num_classes, num_epochs, hidden_size, learning_rate);
-    let config_optimizer = AdamConfig::new();
-    let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
-
-    // Create the model and optimizer.
-    let mut model: Model<MyAutodiffBackend> = config.model.init(no_features);
-    let mut optim = config.optimizer.init::<MyAutodiffBackend, Model<MyAutodiffBackend>>();
-
-    // Create the batcher.
-    let batcher_train = SCBatcher::<MyAutodiffBackend>::new(device.clone());
-    let batcher_valid = SCBatcher::<MyBackend>::new(device.clone());
-
-    // Create the dataloaders.
-    let dataloader_train = DataLoaderBuilder::new(batcher_train)
-        .batch_size(config.batch_size)
-        // .shuffle(config.seed)
-        .num_workers(config.num_workers)
-        .build(train_dataset);
-
-    let dataloader_test = DataLoaderBuilder::new(batcher_valid)
-        .batch_size(config.batch_size)
-        // .shuffle(config.seed)
-        .num_workers(config.num_workers)
-        .build(test_dataset);
-
-    let mut train_accuracy = ModelAccuracy::new();
-    let mut test_accuracy = ModelAccuracy::new();
-
-    // progress bar items
-    let num_iterations = (num_batches_train / config.batch_size) as u32; 
-    let length = 40;
-    let eta = false;
-
-    //history stuff
-    let mut train_history: History = History::new();
-    let mut test_history: History = History::new();
-
-    let start = Instant::now();
-    for epoch in 1..config.num_epochs + 1 {
-        
-        // Implement our training loop.
-        train_accuracy.epoch = epoch;
-        test_accuracy.epoch = epoch;
-        test_accuracy.epoch_reset(epoch);
-        train_accuracy.epoch_reset(epoch);
-        let mut bar = ProgressBar::default(num_iterations, length, eta);
-
-        if verbose {eprintln!("[Epoch {} progress...]", epoch)}
-        for (_iteration, batch) in dataloader_train.iter().enumerate() {
-            if verbose {bar.update()}
-            let output = model.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
-            let loss_scalar = loss.clone().into_scalar();
-            let predictions = output.argmax(1).squeeze(1);
-            let num_predictions: usize = batch.targets.dims().iter().product();
-            let num_corrects = predictions.equal(batch.targets).int().sum().into_scalar();
-            train_accuracy.batch_update(num_corrects, num_predictions, loss_scalar);
-            
-            // Gradients for the current backward pass
-            let grads = loss.backward();
-            // Gradients linked to each parameter of the model.
-            let grads = GradientsParams::from_grads(grads, &model);
-            // Update the model using the optimizer.
-            model = optim.step(config.lr, model, grads);
-        }
-        train_accuracy.epoch_update(& mut train_history);
-
-
-        // Get the model without autodiff.
-        let model_valid = model.valid();
-
-        // Implement our validation loop.
-        for (_iteration, batch) in dataloader_test.iter().enumerate() {
-            let output = model_valid.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
-            let loss_scalar = &loss.into_scalar();
-            let predictions = output.argmax(1).squeeze(1);
-            let num_predictions: usize = batch.targets.dims().iter().product();
-            let num_corrects = predictions.equal(batch.targets).int().sum().into_scalar();
-            test_accuracy.batch_update(num_corrects, num_predictions, *loss_scalar);
-
-        }
-        test_accuracy.epoch_update(& mut test_history);
-        if verbose {emit_metrics(&train_accuracy, &test_accuracy)}
-    }
-    let tduration = start.elapsed();
-
-    let mut prediction: Vec<i32> = vec![];
-    for item in query {
-        let batcher = SCBatcher::new(device.clone());
-        let batch = batcher.batch(vec![map_raw(&item)]);
-        let output = &model.forward(batch.counts);
-        prediction.push(output.clone().argmax(1).flatten::<1>(0, 1).into_scalar().try_into().unwrap());
-    }
-
-
-    let _ = &model.clone()
-        .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
-        .expect("Failed to save trained model");
-
-    //collect and return the predictions
-    return ModelRExport {
-        lr: config.lr,
-        hidden_size: vec![hidden_size],
-        batch_size: config.batch_size,
-        num_epochs: config.num_epochs,
-        num_workers: config.num_workers,
-        seed: config.seed,
-        predictions: prediction,
-        train_history: train_history,
-        test_history: test_history,
-        training_duration: tduration.as_secs_f64(),
-    }
-
+    run_custom::<NdArray<f64>>(
+        train,
+        test,
+        query,
+        num_classes,
+        learning_rate,
+        hidden_size,
+        num_epochs,
+        directory,
+        verbose,
+        device,
+    )
 }
 
 
-pub fn run_custom_wgpu(train: Vec<SCItemRaw>, test: Vec<SCItemRaw>, query: Vec<SCItemRaw>, num_classes: usize, hidden_size: usize, learning_rate: f64, num_epochs: usize, directory: Option<String>, verbose: bool)->ModelRExport {
-    let artifact_dir = match directory {
-        Some(directory) => directory,
-        _ => panic!("Folder not found: {:?}", directory)
-    };
-    let no_features = train.first().unwrap().data.len();
-    
-    let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
-    let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
-    let num_batches_train = train_dataset.len();
+pub fn run_custom_wgpu(
+    train: Vec<SCItemRaw>,
+    test: Vec<SCItemRaw>,
+    query: Vec<SCItemRaw>,
+    num_classes: usize,
+    hidden_size: usize,
+    learning_rate: f64,
+    num_epochs: usize,
+    directory: Option<String>,
+    verbose: bool,
+) -> ModelRExport {
+    use burn::backend::wgpu::{AutoGraphicsApi, Wgpu, WgpuDevice};
 
-    type MyBackend = Wgpu<AutoGraphicsApi, f32>;
-    type MyAutodiffBackend = Autodiff<MyBackend>;
     let device = WgpuDevice::default();
-
-    // Create the configuration.
-    let config_model = ModelConfig::new(num_classes, num_epochs, hidden_size, learning_rate);
-    let config_optimizer = AdamConfig::new();
-    let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
-
-    // Create the model and optimizer.
-    let mut model: Model<MyAutodiffBackend> = config.model.init(no_features);
-    let mut optim = config.optimizer.init::<MyAutodiffBackend, Model<MyAutodiffBackend>>();
-
-    // Create the batcher.
-    let batcher_train = SCBatcher::<MyAutodiffBackend>::new(device.clone());
-    let batcher_valid = SCBatcher::<MyBackend>::new(device.clone());
-
-    // Create the dataloaders.
-    let dataloader_train = DataLoaderBuilder::new(batcher_train)
-        .batch_size(config.batch_size)
-        // .shuffle(config.seed)
-        .num_workers(config.num_workers)
-        .build(train_dataset);
-
-    let dataloader_test = DataLoaderBuilder::new(batcher_valid)
-        .batch_size(config.batch_size)
-        // .shuffle(config.seed)
-        .num_workers(config.num_workers)
-        .build(test_dataset);
-
-    let mut train_accuracy = ModelAccuracy::new();
-    let mut test_accuracy = ModelAccuracy::new();
-
-    // progress bar items
-    let num_iterations = (num_batches_train / config.batch_size) as u32; 
-    let length = 40;
-    let eta = false;
-
-    //history stuff
-    let mut train_history: History = History::new();
-    let mut test_history: History = History::new();
-
-    let start = Instant::now();
-    for epoch in 1..config.num_epochs + 1 {
-        
-        // Implement our training loop.
-        train_accuracy.epoch = epoch;
-        test_accuracy.epoch = epoch;
-        test_accuracy.epoch_reset(epoch);
-        train_accuracy.epoch_reset(epoch);
-        let mut bar = ProgressBar::default(num_iterations, length, eta);
-
-        if verbose {eprintln!("[Epoch {} progress...]", epoch)}
-        for (_iteration, batch) in dataloader_train.iter().enumerate() {
-            if verbose {bar.update()}
-            let output = model.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
-            let loss_scalar = loss.clone().into_scalar();
-            let predictions = output.argmax(1).squeeze(1);
-            let num_predictions: usize = batch.targets.dims().iter().product();
-            let num_corrects = predictions.equal(batch.targets).int().sum().into_scalar();
-            train_accuracy.batch_update(num_corrects.into(), num_predictions, loss_scalar.into());
-            
-            // Gradients for the current backward pass
-            let grads = loss.backward();
-            // Gradients linked to each parameter of the model.
-            let grads = GradientsParams::from_grads(grads, &model);
-            // Update the model using the optimizer.
-            model = optim.step(config.lr, model, grads);
-        }
-        train_accuracy.epoch_update(& mut train_history);
-
-
-        // Get the model without autodiff.
-        let model_valid = model.valid();
-
-        // Implement our validation loop.
-        for (_iteration, batch) in dataloader_test.iter().enumerate() {
-            let output = model_valid.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None).forward(output.clone(), batch.targets.clone());
-            let loss_scalar = &loss.into_scalar();
-            let predictions = output.argmax(1).squeeze(1);
-            let num_predictions: usize = batch.targets.dims().iter().product();
-            let num_corrects = predictions.equal(batch.targets).int().sum().into_scalar();
-            test_accuracy.batch_update(num_corrects.into(), num_predictions, (*loss_scalar).into());
-
-        }
-        test_accuracy.epoch_update(& mut test_history);
-        if verbose {emit_metrics(&train_accuracy, &test_accuracy)}
-    }
-    let tduration = start.elapsed();
-
-    let mut prediction: Vec<i32> = vec![];
-    for item in query {
-        let batcher = SCBatcher::new(device.clone());
-        let batch = batcher.batch(vec![map_raw(&item)]);
-        let output = &model.forward(batch.counts);
-        prediction.push(output.clone().argmax(1).flatten::<1>(0, 1).into_scalar().try_into().unwrap());
-    }
-
-
-    let _ = &model.clone()
-        .save_file(format!("{artifact_dir}/model"), &CompactRecorder::new())
-        .expect("Failed to save trained model");
-
-    //collect and return the predictions
-    return ModelRExport {
-        lr: config.lr,
-        hidden_size: vec![hidden_size],
-        batch_size: config.batch_size,
-        num_epochs: config.num_epochs,
-        num_workers: config.num_workers,
-        seed: config.seed,
-        predictions: prediction,
-        train_history: train_history,
-        test_history: test_history,
-        training_duration: tduration.as_secs_f64(),
-    }
-
+    run_custom::<Wgpu<AutoGraphicsApi, f32, i32>>(
+        train,
+        test,
+        query,
+        num_classes,
+        learning_rate,
+        hidden_size,
+        num_epochs,
+        directory,
+        verbose,
+        device,
+    )
 }
+
+
+pub fn run_custom_candle(
+    train: Vec<SCItemRaw>,
+    test: Vec<SCItemRaw>,
+    query: Vec<SCItemRaw>,
+    num_classes: usize,
+    hidden_size: usize,
+    learning_rate: f64,
+    num_epochs: usize,
+    directory: Option<String>,
+    verbose: bool,
+) -> ModelRExport {
+    use burn::backend::candle::{Candle, CandleDevice};
+
+    let device = CandleDevice::default();
+    run_custom::<Candle<f64, i64>>(
+        train,
+        test,
+        query,
+        num_classes,
+        learning_rate,
+        hidden_size,
+        num_epochs,
+        directory,
+        verbose,
+        device,
+    )
+}
+
