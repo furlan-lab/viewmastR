@@ -136,7 +136,15 @@ baseline_wgpu <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFC
 edits6 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
 #36.400 #minor changes
 edits7 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
-#38.857 
+#38.857 #minor changes
+edits8 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#34.034 #minor changes (update number of cores)
+edits9 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#32.875 #refactored code to run using step functions...
+edits9cl <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#38.548
+edits10 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#32.371 moved batch reporting to the last batch
 ```
 
 ## **Visualizing Predictions**

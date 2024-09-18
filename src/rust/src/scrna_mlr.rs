@@ -1,6 +1,6 @@
-// use std::convert::TryInto;
 use std::time::Instant;
 
+// use ndarray::iter;
 use num_traits::ToPrimitive;
 
 use burn::{
@@ -55,10 +55,7 @@ impl ModelConfig {
 }
 
 impl<B: Backend> Model<B> {
-    /// # Shapes
     pub fn forward(&self, data: Tensor<B, 2>) -> Tensor<B, 2> {
-        // let [batch_size, dim] = data.dims();
-        // let x = data.reshape([batch_size, dim]); // removed in edits7 (is this really necessary)
         self.linear1.forward(data)
     }
 }
@@ -119,14 +116,14 @@ where
     B::IntElem: ToPrimitive,
     B::FloatElem: ToPrimitive,
 {
-    let no_features = train.first().unwrap().data.len();
+    let no_features = train.first().expect("Features not found").data.len();
     let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
         MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
     let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
         MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let num_batches_train = train_dataset.len();
     let artifact_dir = directory.clone().unwrap_or_else(|| panic!("Folder not found: {:?}", directory));
-
+    
     // Create the configuration.
     let config_model = ModelConfig::new(num_classes);
     let config_optimizer = AdamConfig::new();
@@ -156,6 +153,7 @@ where
 
     // Progress bar items
     let num_iterations = (num_batches_train as f64 / config.batch_size as f64).ceil() as u32;
+    let batch_report_interval = num_iterations.to_usize().unwrap() - 1;
     let length = 40;
     let eta = false;
 
@@ -175,35 +173,32 @@ where
         }
 
         // Training loop using `TrainStep`
-        for (_iteration, batch) in dataloader_train.iter().enumerate() {
+        for (iteration, batch) in dataloader_train.iter().enumerate() {
             if verbose {
                 bar.update();
             }
+            
 
-            let output = TrainStep::step(&model, batch.clone()); // using the `step` method
-
-            // Calculate number of correct predictions
-            let predictions = output.item.output.argmax(1).squeeze(1);
-            let num_predictions = batch.targets.dims()[0];
-            let num_corrects = predictions
-                .equal(batch.targets)
-                .int()
-                .sum()
-                .into_scalar()
-                .to_i64()
-                .expect("Conversion to i64 failed");
-
-            // Update accuracy and loss tracking
-            train_accuracy.batch_update(num_corrects, num_predictions, output.item.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
-
-            // Update the model using the optimizer.
-            // let grads = GradientsParams::from_grads(output.grads, &model);
+            let output = TrainStep::step(&model, batch); // using the `step` method
             model = optim.step(config.lr, model, output.grads);
-        }
-        train_accuracy.epoch_update(&mut train_history);
+            // // Calculate number of correct predictions on the last batch
+            if iteration == batch_report_interval {
+                let predictions = output.item.output.argmax(1).squeeze(1);
+                let num_predictions = output.item.targets.dims()[0];
+                let num_corrects = predictions
+                    .equal(output.item.targets)
+                    .int()
+                    .sum()
+                    .into_scalar()
+                    .to_i64()
+                    .expect("Conversion to i64 failed");
 
-        // Get the model without autodiff.
-        // let model_valid = model.valid();
+                // Update accuracy and loss tracking
+                train_accuracy.batch_update(num_corrects, num_predictions, output.item.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
+            }
+        }
+
+        train_accuracy.epoch_update(&mut train_history);
 
         // Validation loop using `ValidStep`
         for (_iteration, batch) in dataloader_test.iter().enumerate() {
