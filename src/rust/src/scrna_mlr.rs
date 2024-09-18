@@ -1,3 +1,8 @@
+use std::convert::TryInto;
+use std::time::Instant;
+
+use num_traits::ToPrimitive;
+
 use burn::{
     backend::Autodiff,
     config::Config,
@@ -18,14 +23,9 @@ use burn::{
     train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
-use num_traits::ToPrimitive;
-use std::convert::TryInto;
-use std::result::Result;
-use std::time::Instant;
-use std::vec::Vec;
-
 use crate::common::*;
 use crate::pb::ProgressBar;
+
 
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
