@@ -19,8 +19,8 @@ use burn::{
     },
     optim::{AdamConfig, GradientsParams, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder},
-    tensor::{Tensor, backend::Backend},
-    // train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
+    tensor::{Tensor, backend::Backend, Int},
+    train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
 use crate::common::*;
@@ -57,37 +57,37 @@ impl ModelConfig {
 impl<B: Backend> Model<B> {
     /// # Shapes
     pub fn forward(&self, data: Tensor<B, 2>) -> Tensor<B, 2> {
-        let [batch_size, dim] = data.dims();
-        let x = data.reshape([batch_size, dim]);
-        self.linear1.forward(x)
+        // let [batch_size, dim] = data.dims();
+        // let x = data.reshape([batch_size, dim]);
+        self.linear1.forward(data)
     }
 }
 
-// impl<B: Backend> Model<B> {
-//     pub fn forward_classification(
-//         &self,
-//         data: Tensor<B, 2>,
-//         targets: Tensor<B, 1, Int>,
-//     ) -> ClassificationOutput<B> {
-//         let output = self.forward(data);
-//         let loss = CrossEntropyLoss::new(None).forward(output.clone(), targets.clone());
+impl<B: Backend> Model<B> {
+    pub fn forward_classification(
+        &self,
+        data: Tensor<B, 2>,
+        targets: Tensor<B, 1, Int>,
+    ) -> ClassificationOutput<B> {
+        let output = self.forward(data);
+        let loss = CrossEntropyLoss::new(None).forward(output.clone(), targets.clone());
 
-//         ClassificationOutput::new(loss, output, targets)
-//     }
-// }
+        ClassificationOutput::new(loss, output, targets)
+    }
+}
 
-// impl<B: Backend + burn::tensor::backend::AutodiffBackend> TrainStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
-//     fn step(&self, batch: SCBatch<B>) -> TrainOutput<ClassificationOutput<B>> {
-//         let item = self.forward_classification(batch.counts, batch.targets);
-//         TrainOutput::new(self, item.loss.backward(), item)
-//     }
-// }
+impl<B: Backend + burn::tensor::backend::AutodiffBackend> TrainStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
+    fn step(&self, batch: SCBatch<B>) -> TrainOutput<ClassificationOutput<B>> {
+        let item = self.forward_classification(batch.counts, batch.targets);
+        TrainOutput::new(self, item.loss.backward(), item)
+    }
+}
 
-// impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
-//     fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
-//         self.forward_classification(batch.counts, batch.targets)
-//     }
-// }
+impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
+    fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
+        self.forward_classification(batch.counts, batch.targets)
+    }
+}
 
 #[derive(Config)]
 struct SCTrainingConfig {
