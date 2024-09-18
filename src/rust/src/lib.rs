@@ -90,12 +90,8 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
   }
   let labelvec = labels.as_str_vector().unwrap();
 
-  // Refactored code
-  if verbose {eprint!("Loading train\n");}
   let test_raw = extract_scitemraw(&test, None);   // No default target, extract from list
-  if verbose {eprint!("Loading test\n");}
   let train_raw = extract_scitemraw(&train, None); // No default target, extract from list
-  if verbose {eprint!("Loading query\n");}
   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
 
   let model_export: ModelRExport;

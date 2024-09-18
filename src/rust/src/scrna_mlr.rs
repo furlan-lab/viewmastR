@@ -19,8 +19,8 @@ use burn::{
     },
     optim::{AdamConfig, GradientsParams, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder},
-    tensor::{Int, Tensor, backend::Backend},
-    train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
+    tensor::{Tensor, backend::Backend},
+    // train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
 use crate::common::*;
@@ -63,31 +63,31 @@ impl<B: Backend> Model<B> {
     }
 }
 
-impl<B: Backend> Model<B> {
-    pub fn forward_classification(
-        &self,
-        data: Tensor<B, 2>,
-        targets: Tensor<B, 1, Int>,
-    ) -> ClassificationOutput<B> {
-        let output = self.forward(data);
-        let loss = CrossEntropyLoss::new(None).forward(output.clone(), targets.clone());
+// impl<B: Backend> Model<B> {
+//     pub fn forward_classification(
+//         &self,
+//         data: Tensor<B, 2>,
+//         targets: Tensor<B, 1, Int>,
+//     ) -> ClassificationOutput<B> {
+//         let output = self.forward(data);
+//         let loss = CrossEntropyLoss::new(None).forward(output.clone(), targets.clone());
 
-        ClassificationOutput::new(loss, output, targets)
-    }
-}
+//         ClassificationOutput::new(loss, output, targets)
+//     }
+// }
 
-impl<B: Backend + burn::tensor::backend::AutodiffBackend> TrainStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
-    fn step(&self, batch: SCBatch<B>) -> TrainOutput<ClassificationOutput<B>> {
-        let item = self.forward_classification(batch.counts, batch.targets);
-        TrainOutput::new(self, item.loss.backward(), item)
-    }
-}
+// impl<B: Backend + burn::tensor::backend::AutodiffBackend> TrainStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
+//     fn step(&self, batch: SCBatch<B>) -> TrainOutput<ClassificationOutput<B>> {
+//         let item = self.forward_classification(batch.counts, batch.targets);
+//         TrainOutput::new(self, item.loss.backward(), item)
+//     }
+// }
 
-impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
-    fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
-        self.forward_classification(batch.counts, batch.targets)
-    }
-}
+// impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
+//     fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
+//         self.forward_classification(batch.counts, batch.targets)
+//     }
+// }
 
 #[derive(Config)]
 struct SCTrainingConfig {
@@ -159,7 +159,7 @@ pub fn run_custom<B>(
     let mut test_accuracy = ModelAccuracy::new();
 
     // Progress bar items
-    let num_iterations = (num_batches_train / config.batch_size) as u32;
+    let num_iterations = ((num_batches_train + config.batch_size - 1) / config.batch_size) as u32; // adjust to estimate ceiling
     let length = 40;
     let eta = false;
 

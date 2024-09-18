@@ -123,8 +123,9 @@ edits1 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassifi
 edits2 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
 #25.160 #fixed  Inefficient Computation of num_predictions
 edits3 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
-#25.160 #fixed query prediction
-
+#24.493 #fixed query prediction
+edits5 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#38.857 model save - removed clone
 ```
 
 ## **Visualizing Predictions**
