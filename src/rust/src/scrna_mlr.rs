@@ -129,7 +129,7 @@ pub fn run_custom<B>(
         MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let num_batches_train = train_dataset.len();
     let artifact_dir = directory.clone().unwrap_or_else(|| panic!("Folder not found: {:?}", directory));
-
+    
     // Create the configuration.
     let config_model = ModelConfig::new(num_classes);
     let config_optimizer = AdamConfig::new();
@@ -159,7 +159,7 @@ pub fn run_custom<B>(
     let mut test_accuracy = ModelAccuracy::new();
 
     // Progress bar items
-    let num_iterations = ((num_batches_train + config.batch_size - 1) / config.batch_size) as u32; // adjust to estimate ceiling
+    let num_iterations = (num_batches_train as f64 / config.batch_size as f64).ceil() as u32; // adjust to estimate ceiling
     let length = 40;
     let eta = false;
 
@@ -202,10 +202,8 @@ pub fn run_custom<B>(
                 .expect("Conversion to f64 failed");
             train_accuracy.batch_update(num_corrects.try_into().unwrap(), num_predictions, loss_scalar);
 
-            // Compute the gradients.
-            let grads = loss.backward();
             // Gradients linked to each parameter of the model.
-            let grads = GradientsParams::from_grads(grads, &model);
+            let grads = GradientsParams::from_grads(loss.backward(), &model);
             // Update the model using the optimizer.
             model = optim.step(config.lr, model, grads);
         }
@@ -247,7 +245,7 @@ pub fn run_custom<B>(
 
     let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
     MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-
+    let query_len = query_dataset.len();
     let batcher_query = SCBatcher::<B>::new(device.clone());
 
     let dataloader_query = DataLoaderBuilder::new(batcher_query)
@@ -256,7 +254,7 @@ pub fn run_custom<B>(
         .build(query_dataset);
 
     let model_valid = model.valid();
-    let mut predictions = Vec::new();
+    let mut predictions = Vec::with_capacity(query_len);
 
     for batch in dataloader_query.iter() {
         let output = model_valid.forward(batch.counts);
