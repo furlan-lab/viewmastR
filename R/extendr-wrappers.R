@@ -11,21 +11,6 @@
 #' @useDynLib viewmastR, .registration = TRUE
 NULL
 
-#' Run full mnist training in R
-#' @export
-#' @keywords internal
-run_mnist_terminal <- function() invisible(.Call(wrap__run_mnist_terminal))
-
-#' Run full mnist training in R; for Rstudio
-#' @export
-#' @keywords internal
-run_mnist <- function() invisible(.Call(wrap__run_mnist))
-
-#' Run full mnist training in R; for Rstudio
-#' @export
-#' @keywords internal
-run_mnist_ann <- function() invisible(.Call(wrap__run_mnist_ann))
-
 #' Read an R object
 #' @export
 #' @keywords internal
@@ -46,19 +31,11 @@ process_learning_obj_ann <- function(train, test, query, labels, hidden_size, le
 #' @keywords internal
 process_learning_obj_mlr <- function(train, test, query, labels, learning_rate, num_epochs, directory, verbose, backend) .Call(wrap__process_learning_obj_mlr, train, test, query, labels, learning_rate, num_epochs, directory, verbose, backend)
 
-#' Process Robj learning objects for ANN
-#' @export
-#' @keywords internal
-test_backend <- function() invisible(.Call(wrap__test_backend))
-
 #' infer from saved model
 #' @export
 #' @keywords internal
 infer_from_model <- function(model_path, query, num_classes, num_features, verbose) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, verbose)
 
-#' Run test nb training
-#' @export
-#' @keywords internal
 #' Process Robj learning objects for MLR
 #' @export
 #' @keywords internal

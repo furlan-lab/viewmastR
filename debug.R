@@ -9,13 +9,14 @@ rextendr::document()
 
 # Run once to configure package to use pkgdown
 usethis::use_pkgdown_github_pages()
+pkgdown::clean_site()
 pkgdown::build_site()
 pkgdown::build_articles()
 pkgdown::build_news()
 pkgdown::build_home_index(); 
 pkgdown::init_site()
 
-pkgdown::
+pkgdown::build_site_github_pages()
 
 rm(list = ls())
 suppressPackageStartupMessages({
