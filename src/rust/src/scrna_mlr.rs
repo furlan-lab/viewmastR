@@ -1,4 +1,4 @@
-use std::convert::TryInto;
+// use std::convert::TryInto;
 use std::time::Instant;
 
 use num_traits::ToPrimitive;
@@ -17,7 +17,7 @@ use burn::{
         LinearConfig,
         ReLU,
     },
-    optim::{AdamConfig, GradientsParams, Optimizer},
+    optim::{AdamConfig, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder},
     tensor::{Tensor, backend::Backend, Int},
     train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
@@ -102,8 +102,6 @@ struct SCTrainingConfig {
     pub model: ModelConfig,
     pub optimizer: AdamConfig,
 }
-
-
 pub fn run_custom<B>(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,
@@ -115,13 +113,12 @@ pub fn run_custom<B>(
     verbose: bool,
     device: B::Device,
 ) -> ModelRExport
-    where
-     B: Backend,
-     B::Device: Clone, 
-     B::IntElem: ToPrimitive,
-     B::FloatElem: ToPrimitive,
+where
+    B: Backend,
+    B::Device: Clone,
+    B::IntElem: ToPrimitive,
+    B::FloatElem: ToPrimitive,
 {
-
     let no_features = train.first().unwrap().data.len();
     let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
         MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
@@ -129,12 +126,11 @@ pub fn run_custom<B>(
         MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let num_batches_train = train_dataset.len();
     let artifact_dir = directory.clone().unwrap_or_else(|| panic!("Folder not found: {:?}", directory));
-    
+
     // Create the configuration.
     let config_model = ModelConfig::new(num_classes);
     let config_optimizer = AdamConfig::new();
-    let config =
-        SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
+    let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
 
     // Create the model and optimizer.
     let mut model: Model<Autodiff<B>> = config.model.init(no_features);
@@ -159,14 +155,14 @@ pub fn run_custom<B>(
     let mut test_accuracy = ModelAccuracy::new();
 
     // Progress bar items
-    let num_iterations = (num_batches_train as f64 / config.batch_size as f64).ceil() as u32; // adjust to estimate ceiling
+    let num_iterations = (num_batches_train as f64 / config.batch_size as f64).ceil() as u32;
     let length = 40;
     let eta = false;
 
     // History tracking
     let mut train_history: History = History::new();
     let mut test_history: History = History::new();
-    
+
     let start = Instant::now();
 
     // Training and validation loop
@@ -174,65 +170,58 @@ pub fn run_custom<B>(
         train_accuracy.epoch_reset(epoch);
         test_accuracy.epoch_reset(epoch);
         let mut bar = ProgressBar::default(num_iterations, length, eta);
-        let loss_fn = CrossEntropyLoss::new(None);
         if verbose {
             eprintln!("[Epoch {} progress...]", epoch);
         }
 
-        // Training loop
+        // Training loop using `TrainStep`
         for (_iteration, batch) in dataloader_train.iter().enumerate() {
             if verbose {
                 bar.update();
             }
-            let output = model.forward(batch.counts);
-            let loss = loss_fn.forward(output.clone(), batch.targets.clone());
-            let predictions = output.argmax(1).squeeze(1);
+
+            let output = TrainStep::step(&model, batch.clone()); // using the `step` method
+
+            // Calculate number of correct predictions
+            let predictions = output.item.output.argmax(1).squeeze(1);
             let num_predictions = batch.targets.dims()[0];
             let num_corrects = predictions
                 .equal(batch.targets)
                 .int()
                 .sum()
                 .into_scalar()
-                .to_usize()
-                .expect("Conversion to usize failed");
+                .to_i64()
+                .expect("Conversion to i64 failed");
 
-            let loss_scalar = loss.clone()
-                .into_scalar()
-                .to_f64()
-                .expect("Conversion to f64 failed");
-            train_accuracy.batch_update(num_corrects.try_into().unwrap(), num_predictions, loss_scalar);
+            // Update accuracy and loss tracking
+            train_accuracy.batch_update(num_corrects, num_predictions, output.item.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
 
-            // Gradients linked to each parameter of the model.
-            let grads = GradientsParams::from_grads(loss.backward(), &model);
             // Update the model using the optimizer.
-            model = optim.step(config.lr, model, grads);
+            // let grads = GradientsParams::from_grads(output.grads, &model);
+            model = optim.step(config.lr, model, output.grads);
         }
         train_accuracy.epoch_update(&mut train_history);
 
         // Get the model without autodiff.
-        let model_valid = model.valid();
+        // let model_valid = model.valid();
 
-        // Validation loop
+        // Validation loop using `ValidStep`
         for (_iteration, batch) in dataloader_test.iter().enumerate() {
-            let output = model_valid.forward(batch.counts);
-            let loss = CrossEntropyLoss::new(None)
-                .forward(output.clone(), batch.targets.clone());
+            let output = ValidStep::step(&model.valid(), batch.clone()); // using the `step` method
 
-            let loss_scalar = loss
-                .into_scalar()
-                .to_f64()
-                .expect("Conversion to f64 failed");
-            let predictions = output.argmax(1).squeeze(1);
-            let num_predictions = batch.targets.dims().iter().product();
+            // Calculate number of correct predictions
+            let predictions = output.output.argmax(1).squeeze(1);
+            let num_predictions = batch.targets.dims()[0];
             let num_corrects = predictions
                 .equal(batch.targets)
                 .int()
                 .sum()
                 .into_scalar()
-                .to_usize()
+                .to_i64()
                 .expect("Conversion to usize failed");
 
-            test_accuracy.batch_update(num_corrects.to_i64().expect("Failed to convert usize to i64"), num_predictions, loss_scalar);
+            // Update accuracy and loss tracking
+            test_accuracy.batch_update(num_corrects.to_i64().unwrap(), num_predictions, output.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
         }
         test_accuracy.epoch_update(&mut test_history);
 
@@ -243,8 +232,9 @@ pub fn run_custom<B>(
 
     let tduration = start.elapsed();
 
+    // Query handling and predictions
     let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-    MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
+        MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
     let query_len = query_dataset.len();
     let batcher_query = SCBatcher::<B>::new(device.clone());
 
@@ -289,6 +279,10 @@ pub fn run_custom<B>(
         training_duration: tduration.as_secs_f64(),
     }
 }
+
+
+
+
 
 pub fn run_custom_nd(
     train: Vec<SCItemRaw>,
