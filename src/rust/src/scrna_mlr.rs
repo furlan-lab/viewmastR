@@ -94,7 +94,7 @@ struct SCTrainingConfig {
     pub num_epochs: usize,
     #[config(default = 64)]
     pub batch_size: usize,
-    #[config(default = 4)]
+    #[config(default = 16)]
     pub num_workers: usize,
     #[config(default = 42)]
     pub seed: u64,
