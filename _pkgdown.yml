@@ -64,7 +64,7 @@ reference:
   - common_features
   - common_variant_genes
   - sparseRowVariances
-  - sfc
+  - writeMMgz
   - viewmastR-package
 articles:
 - title: Get Started

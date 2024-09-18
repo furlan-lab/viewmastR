@@ -3,6 +3,7 @@
 
 rm(list=ls())
 roxygen2::roxygenise()
+roxygen2::parse_package()
 rextendr::clean()
 rextendr::document()
 
