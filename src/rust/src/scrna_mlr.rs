@@ -1,6 +1,4 @@
 use std::time::Instant;
-
-// use ndarray::iter;
 use num_traits::ToPrimitive;
 
 use burn::{
@@ -99,6 +97,9 @@ struct SCTrainingConfig {
     pub model: ModelConfig,
     pub optimizer: AdamConfig,
 }
+
+
+
 pub fn run_custom<B>(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,

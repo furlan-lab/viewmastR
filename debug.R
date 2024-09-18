@@ -2,305 +2,79 @@
 #remotes::install_github("extendr/rextendr")
 
 rm(list=ls())
-
-
-library(rextendr)
-
-library(viewmastR)
-#run_burn_helper()
-#run_burn_helper2()
-# run_mnist_mlr()
-# run_mnist()
-#readR(list(hello="hello"))
-
-
 roxygen2::roxygenise()
-
-
 rextendr::clean()
-#rextendr::use_extendr()
 rextendr::document()
 
+
 # Run once to configure package to use pkgdown
-#usethis::use_pkgdown()
 usethis::use_pkgdown_github_pages()
-# Run to build the website
 pkgdown::build_site()
-
 pkgdown::build_articles()
-
 pkgdown::build_news()
-
-
 pkgdown::build_home_index(); pkgdown::init_site()
 
-library(viewmastR)
-#remotes::install_github("satijalab/seurat", "seurat5", quiet = TRUE)
-library(Seurat)
-#library(viewmastR2)
-library(ggplot2)
 
-if(grepl("^gizmo", Sys.info()["nodename"])){
-  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+rm(list = ls())
+suppressPackageStartupMessages({
+  library(viewmastR)
+  library(Seurat)
+  library(ggplot2)
+  library(scCustomize)
+})
+
+if (grepl("^gizmo", Sys.info()["nodename"])) {
+  ROOT_DIR1 <- "/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/fh/fast/furlan_s/grp/data/ddata/BM_data"
 } else {
-  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
-}
-seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
-seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
-
-#seur<-seur[,sample(1:dim(seur)[2], 25000)]
-DimPlot(seur)
-
-labels<-levels(factor(seur$SFClassification))
-
-seu$ground_truth<-factor(seu$seurat_clusters)
-levels(seu$ground_truth)<-c(labels[11], #0
-                            labels[18], #1
-                            labels[11], #2
-                            labels[17], #3
-                            labels[20], #4
-                            labels[21], #5
-                            labels[14], #6
-                            labels[12], #7
-                            labels[16], #8,
-                            labels[18], #9,
-                            labels[14], #10,
-                            labels[19], #11,
-                            labels[10], #12,
-                            labels[11], #13,
-                            labels[11])
-seu$ground_truth<-as.character(seu$ground_truth)
-DimPlot(seu, group.by = "ground_truth", cols = seur@misc$colors)
-
-
-seu<-calculate_gene_dispersion(seu)
-plot_gene_dispersion(seu)
-seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-plot_gene_dispersion(seu)
-vgq<-get_selected_genes(seu)
-
-seur<-calculate_gene_dispersion(seur)
-plot_gene_dispersion(seur)
-seur<-select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-plot_gene_dispersion(seur)
-vgr<-get_selected_genes(seur)
-
-vg<-intersect(vgq, vgr)
-
-DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
-
-
-seuC<-viewmastR::viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
-
-DimPlot(seuC, group.by = "viewmastR_pred", cols = seur@misc$colors)
-
-
-# seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", 
-#                query_celldata_col = "viewmastR", selected_genes = vg,
-#                FUNC = "softmax_regression", verbose=T)
-#DimPlot(seu, group.by = "viewmastR", cols=seur@misc$colors)
-undebug(setup_training)
-training_list<-setup_training(seu, seur, ref_celldata_col = "SFClassification",selected_genes = vg, verbose=T, return_type = "list", use_sparse = F)
-training_mats<-setup_training(seu, seur, ref_celldata_col = "SFClassification",selected_genes = vg, verbose=T, return_type = "matrix", use_sparse = F)
-training_s4s<-setup_training(seu, seur, ref_celldata_col = "SFClassification",selected_genes = vg, verbose=T, return_type = "S4obj", use_sparse = F)
-training_list$features
-names(training_list)
-training_list$labels
-
-
-export_list<-process_learning_obj_mlr(train = training_list[["train"]], 
-                                       test = training_list[["test"]], 
-                                       query = training_list[["query"]], 
-                                       labels = training_list[["labels"]], 
-                                       learning_rate = 1e-3, num_epochs = 10, 
-                                       directory = "/tmp/sc_local", verbose = TRUE, backend = "wgpu")
-
-export_list$duration
-
-#works, now make like old viewmastR
-
-
-
-export_list<-process_learning_obj_mlr(train = training_list[["train"]], 
-                                      test = training_list[["test"]], 
-                                      query = training_list[["query"]], 
-                                      labels = training_list[["labels"]], 
-                                      learning_rate = 1e-3, num_epochs = 10, 
-                                      directory = "/tmp/sc_local", verbose = TRUE, backend = "candle")
-
-export_list$duration
-
-export_list<-process_learning_obj_mlr(train = training_list[["train"]], 
-                                      test = training_list[["test"]], 
-                                      query = training_list[["query"]], 
-                                      labels = training_list[["labels"]], 
-                                      learning_rate = 1e-3, num_epochs = 10, 
-                                      directory = "/tmp/sc_local", verbose = TRUE, backend = "nd")
-
-export_list$duration
-
-
-accuracy<-rbind(
-  data.frame(epoch=1:length(export_list$history$train_acc), 
-             metric=as.numeric(format(export_list$history$train_acc*100, digits=5)), 
-             label="train_accuracy"),
-  data.frame(epoch=1:length(export_list$history$test_acc), 
-             metric=as.numeric(format(export_list$history$test_acc*100, digits=5)), 
-             label="validation_accuracy"))
-loss<-rbind(
-  data.frame(epoch=1:length(export_list$history$test_loss), 
-             metric=as.numeric(format(export_list$history$train_loss, digits=5)),
-             label="train_loss"),
-  data.frame(epoch=1:length(export_list$history$test_loss), 
-             metric=as.numeric(format(export_list$history$test_loss, digits=5)),
-             label="validation_loss"))
-
-library(highcharter)
-library(tidyr)
-
-highcharter::hw_grid(ncol = 1,rowheight = 280,
-  hchart(
-    tibble::tibble(accuracy),
-    "line",
-    hcaes(x = epoch , y = metric, group = label),
-    color = c(pals::glasbey(2))
-  ) |> 
-    hc_chart(
-      backgroundColor = list(
-        linearGradient = c(0, 0, 500, 500),
-        stops = list(
-          list(0, 'rgb(255, 255, 255)'),
-          list(1, 'rgb(170, 230, 255)')
-        )
-      )
-    ),
-  hchart(
-    tibble::tibble(loss),
-    "line",
-    hcaes(x = epoch , y = metric, group = label),
-    color = c(pals::glasbey(2))
-  ) |> 
-    hc_chart(
-      backgroundColor = list(
-        linearGradient = c(0, 0, 500, 500),
-        stops = list(
-          list(0, 'rgb(255, 255, 255)'),
-          list(1, 'rgb(170, 230, 255)')
-        )
-      )
-    )
-) %>% htmltools::browsable()
-
-
-export_list<-process_learning_obj_ann(train = training_list[["train"]], 
-                                      test = training_list[["test"]], 
-                                      query = training_list[["query"]], 
-                                      labels = training_list[["labels"]], 
-                                      hidden_size = c(10000,10000), 
-                                      learning_rate = 1e-3, num_epochs = 2, 
-                                      directory = "/tmp/sc_local", verbose = TRUE)
-export_list$params
-
-export_list<-process_learning_obj_ann(train = training_list[["train"]], 
-                                      test = training_list[["test"]], 
-                                      query = training_list[["query"]], 
-                                      labels = training_list[["labels"]], 
-                                      hidden_size = 200, 
-                                      learning_rate = 1e-3, num_epochs = 2, 
-                                      directory = "/tmp/sc_local", verbose = TRUE)
-export_list$params
-export_list$duration
-
-seu$viewmastRust_mlr<-training_list[["labels"]][export_list$predictions[[1]]+1]
-DimPlot(seu, group.by = "viewmastRust_mlr", cols = seur@misc$colors)
-
-confusion_matrix(factor(seu$viewmastRust_mlr), factor(seu$ground_truth), cols = seur@misc$colors)
-
-confusion_matrix<-function(pred, gt, cols=NULL){
-  mat<-table( pred, gt)
-  labels = union(colnames(mat), rownames(mat))
-  levels(gt)<-c(levels(gt), levels(pred)[!levels(pred) %in% levels(gt)])
-  mat_full<-table( pred, gt)
-  #deal with null colors
-  if(is.null(cols)){
-    cols = sample(grDevices::colors()[grep('gr(a|e)y', grDevices::colors(), invert = T)], length(labels))
-    names(cols)<-labels
-  }
-  # } else {
-  #   if(length(cols)!=length(labels)) stop("length of color vector provided is incorrect")
-  # }
-  mat_full<-mat_full[,match(rownames(mat_full), colnames(mat_full))]
-  data<-caret::confusionMatrix(mat_full)
-  pmat<-sweep(mat, MARGIN = 2, colSums(mat), "/")*100
-  acc =format(as.numeric(data$overall[1])*100, digits=4)
-  column_ha = ComplexHeatmap::HeatmapAnnotation(
-     
-    labels = colnames(mat),
-    col = list(labels=cols),
-    na_col = "black"
-  )
-  row_ha = ComplexHeatmap::rowAnnotation(
-    
-    labels = rownames(mat),
-    col = list(labels=cols),
-    na_col = "black"
-  )
-    ComplexHeatmap::Heatmap(pmat, col = scCustomize::viridis_light_high, cluster_rows = F, cluster_columns = F, 
-                            row_names_side = "left", row_title = "Predicted Label", column_title = "True Label", 
-                            name = "Percent of Column", column_title_side = "top", column_names_side = "top", 
-                            bottom_annotation = column_ha, left_annotation = row_ha,
-                            heatmap_legend_param = list(
-                              title = paste0("Acc. ", acc, "\nPercent of Row")), 
-                              rect_gp = grid::gpar(col = "white", lwd = 2),
-                            cell_fun = function(j, i, x, y, width, height, fill){
-    if(is.na(pmat[i,j])){
-      grid::grid.text("NA", x, y, gp = grid::gpar(col="black", fontsize = 10))
-    }else{
-      if(pmat[i,j]>60){
-        grid::grid.text(sprintf("%.f", mat[i, j]), x, y, gp = grid::gpar(col="black", fontsize = 10))
-      }else{
-        grid::grid.text(sprintf("%.f", mat[i, j]), x, y, gp = grid::gpar(col="white", fontsize = 10))
-      }
-    }
-  })
-  
-  
-  #pheatmap::pheatmap(tabd, color = c("white", colorRampPalette(c("thistle1", "purple"))(4000)),display_numbers = T,  cluster_cols = F, cluster_rows = F)
+  ROOT_DIR1 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
 }
 
-undebug(confusion_matrix)
-confusion_matrix(factor(seu$viewmastRust), factor(seu$ground_truth), cols = seur@misc$colors)
-confusion_matrix(factor(seu$viewmastRust_mlr), factor(seu$ground_truth), cols = seur@misc$colors)
-confusion_matrix(factor(seu$viewmastRust_mlr_hilofeat), factor(seu$ground_truth), cols = seur@misc$colors)
+# Load query and reference datasets
+seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
+vg <- get_selected_genes(seu)
+seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
+
+# View training history
+output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list")
+
+## (ALL TIMES elapsed)
+## on M2 
+baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#25.041
+edits1 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#24.901 #fixed Recreating Loss Function in Each Iteration
+edits2 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#25.160 #fixed  Inefficient Computation of num_predictions
+edits3 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#24.493 #fixed query prediction
+edits5 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#38.857 model save - removed clone (battery low)
+
+## on intel
+baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#41.322
+baseline_wgpu <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#38.792
+edits6 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#36.400 #minor changes
+edits7 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#38.857 #minor changes
+edits8 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#34.034 #minor changes (update number of cores)
+edits9 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#32.875 #refactored code to run using step functions...
+edits9cl <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#38.548
+edits10 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#32.371 moved batch reporting to the last batch
+edits11 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#32.609 removed cloning of batch.targets
+```
 
 
-src<-"
-Rcpp::NumericVector computeSparseRowVariancesCPP(IntegerVector j, NumericVector val, NumericVector rm, int n) {
-  const int nv = j.size();
-  const int nm = rm.size();
-  Rcpp::NumericVector rv(nm);
-  Rcpp::NumericVector rit(nm);
-  int current;
-  // Calculate RowVars Initial
-  for (int i = 0; i < nv; ++i) {
-    current = j(i) - 1;
-    rv(current) = rv(current) + (val(i) - rm(current)) * (val(i) - rm(current));
-    rit(current) = rit(current) + 1;
-  }
-  // Calculate Remainder Variance
-  for (int i = 0; i < nm; ++i) {
-    rv(i) = rv(i) + (n - rit(i))*rm(i)*rm(i);
-  }
-  rv = rv / (n - 1);
-  return(rv);
-}
-"
-Rcpp::cppFunction(src)
 
-mat<-seu@assays$RNA@counts
-rM<-Matrix::rowMeans(mat)
 
 #BiocManager::install("karyoploteR")
 #BiocManager::install("ballgown")

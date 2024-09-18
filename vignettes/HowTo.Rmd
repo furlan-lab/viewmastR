@@ -145,6 +145,8 @@ edits9cl <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassi
 #38.548
 edits10 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
 #32.371 moved batch reporting to the last batch
+edits11 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#32.609 removed cloning of batch.targets
 ```
 
 ## **Visualizing Predictions**
