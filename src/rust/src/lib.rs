@@ -13,6 +13,7 @@ mod pb;
 mod common;
 mod inference;
 mod nb;
+mod train;
 
 use std::path::Path;
 use std::time::Instant;
@@ -209,6 +210,32 @@ fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_featur
   
 }
 
+
+
+//  Process all types of objects
+//  @export
+//  @keywords internal
+// #[extendr]
+
+// fn process_learning_obj(train: Robj, test: Robj, query: Robj, labels: Robj, model: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
+//     // Instantiate the LearningProcessor with the provided Robj data
+//   use train::LearningProcessor;
+//   let processor = LearningProcessor::new(
+//     train, 
+//     test, 
+//     query, 
+//     labels, 
+//     model, 
+//     num_epochs, 
+//     directory, 
+//     verbose, 
+//     backend
+//   );
+//   // Run the learning process and collect the results
+//   let results = processor.process();
+
+//   }
+
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
@@ -219,6 +246,7 @@ extendr_module! {
   fn process_learning_obj_ann;
   fn process_learning_obj_mlr;
   fn infer_from_model;
+  // fn process_learning_obj;
   // fn run_nb_test;
   fn process_learning_obj_nb;
 }

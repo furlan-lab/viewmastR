@@ -1,23 +1,11 @@
-#![allow(dead_code)]
-
 
 use burn::{
-    // backend::Autodiff,
-    // backend::ndarray::{NdArray, NdArrayDevice},
-    backend::wgpu::Wgpu,
-    // backend::candle::Candle,
-    // // backend::libtorch::{LibTorch, LibTorchDevice},
-    // config::Config,
     data::{dataloader::{ Dataset, batcher::Batcher}, dataset::transform::Mapper},
-    // record::{NamedMpkFileRecorder, FullPrecisionSettings},
-    tensor::{backend::Backend, Data, ElementConversion, Int, Tensor, Shape},
-    // train::{TrainStep, ValidStep, TrainOutput},
+    tensor::{backend::Backend, Data, ElementConversion, Int, Tensor},
 };
 
 
 use serde::Deserialize;
-// use burn::tensor::{Shape, Tensor, Data};
-// use burn::backend::wgpu::Wgpu;
 use extendr_api::Robj;
 use extendr_api::Conversions;
 
@@ -97,7 +85,7 @@ impl ModelAccuracy {
         self.epoch = epoch;
         self
     }
-    pub fn batch_update(&mut self, num_corrects: i64, num_predictions: usize, loss_scalar: f64) -> &mut Self {
+    pub fn batch_update(&mut self, num_corrects: usize, num_predictions: usize, loss_scalar: f64) -> &mut Self {
         self.iter_count += 1;
         self.num_correct += num_corrects as usize;
         self.num_predictions += num_predictions;
@@ -144,32 +132,23 @@ pub fn extract_scalars(data: &Robj, index: usize) -> Vec<usize> {
 }
 
 // Function to flatten data and create a Tensor
-pub fn create_tensor(data: Vec<Vec<f64>>) -> Tensor<Wgpu, 2> {
-    let flattened_data: Vec<f32> = data.iter().flatten().map(|&x| x as f32).collect();
-    let shape = Shape::from(vec![data.len() as i64, data[0].len() as i64]);
-    Tensor::<Wgpu, 2>::from_data(Data::new(flattened_data, shape))
-}
+// pub fn create_tensor(data: Vec<Vec<f64>>) -> Tensor<Wgpu, 2> {
+//     let flattened_data: Vec<f32> = data.iter().flatten().map(|&x| x as f32).collect();
+//     let shape = Shape::from(vec![data.len() as i64, data[0].len() as i64]);
+//     Tensor::<Wgpu, 2>::from_data(Data::new(flattened_data, shape))
+// }
 
 
 pub fn extract_scitemraw(data: &Robj, target_value: Option<i32>) -> Vec<SCItemRaw> {
-    let sc_from_list = data.as_list().unwrap();
-    sc_from_list
-        .iter()
-        .map(|(_, item_robj)| {
-            let list_items = item_robj.as_list().unwrap();
-            let data = list_items[0].as_real_vector().unwrap();
-            // Check and compute target per iteration, fall back to list_items[1] safely
-            let target = target_value.unwrap_or_else(|| {
-                list_items.get(1)
-                    .and_then(|item| item.as_real_vector())
-                    .map(|vec| vec[0] as i32)
-                    .unwrap_or_default() // fallback if index 1 or conversion fails
-            });
-            SCItemRaw { data, target }
-        })
-        .collect()
+    data.as_list().unwrap().iter().filter_map(|(_, item_robj)| {
+        let list_items = item_robj.as_list().expect("Failed to unlist R object data");
+        let data = list_items[0].as_real_vector().expect("Failed to extract data vector");
+        let target = target_value.or_else(|| list_items.get(1)
+            .and_then(|item| item.as_real_vector().map(|vec| vec[0] as i32))
+        )?;
+        Some(SCItemRaw { data, target })
+    }).collect()
 }
-
 
 pub struct SCBatcher<B: Backend> {
     device: B::Device,
@@ -197,14 +176,9 @@ impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
         let counts = items
             .iter()
             .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
-            // .map(|item| Data::item))
-            .map(|data| Tensor::<B, 1>::from_data(data.convert()))
-            .map(|tensor| tensor.reshape([1, n]))
-            // Normalize: make between [0,1] and make the mean=0 and std=1
-            // values mean=0.1307,std=0.3081 are from the PyTorch MNIST example
-            // https://github.com/pytorch/examples/blob/54f4572509891883a947411fd7239237dd2a39c3/mnist/main.py#L122
-            // .map(|tensor| ((tensor / 255) - 0.1307) / 0.3081)
+            .map(|data| Tensor::<B, 1>::from_data(data.convert()).reshape([1, n]))
             .collect();
+        
 
         let targets = items
             .iter()
@@ -220,18 +194,9 @@ impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
 
 
 pub struct LocalCountstoMatrix;
-
 impl Mapper<SCItemRaw, SCItem> for LocalCountstoMatrix {
-    /// Convert a raw MNIST item (image bytes) to a MNIST item (2D array image).
     fn map(&self, item: &SCItemRaw) -> SCItem {
         let counts = &item.data;
-
-        // // Convert the image to a 2D array of floats.
-        // let mut counts_array = [0f32; 3600];
-        // for (i, pixel) in counts.iter().enumerate() {
-        //     counts_array[i] = *pixel as f32;
-        // }
-
         SCItem {
             counts: counts.to_vec(),
             label: item.target,

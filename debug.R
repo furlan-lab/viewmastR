@@ -71,8 +71,13 @@ edits10 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassif
 #32.371 moved batch reporting to the last batch
 edits11 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
 #32.609 removed cloning of batch.targets
-```
 
+#####NN######
+## on intel
+baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", hidden_layers = c(1000), selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#41.322
+edits11 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", hidden_layers = c(1000), selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#41.322
 
 
 

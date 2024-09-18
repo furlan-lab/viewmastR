@@ -195,8 +195,8 @@ where
                     .int()
                     .sum()
                     .into_scalar()
-                    .to_i64()
-                    .expect("Conversion to i64 failed");
+                    .to_usize()
+                    .expect("Conversion to usize failed");
 
                 // Update accuracy and loss tracking
                 train_accuracy.batch_update(num_corrects, num_predictions, output.item.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
@@ -217,11 +217,11 @@ where
                 .int()
                 .sum()
                 .into_scalar()
-                .to_i64()
+                .to_usize()
                 .expect("Conversion to usize failed");
 
             // Update accuracy and loss tracking
-            test_accuracy.batch_update(num_corrects.to_i64().unwrap(), num_predictions, output.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
+            test_accuracy.batch_update(num_corrects, num_predictions, output.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
         }
         test_accuracy.epoch_update(&mut test_history);
 
