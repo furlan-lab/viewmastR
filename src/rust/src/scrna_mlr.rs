@@ -58,7 +58,7 @@ impl<B: Backend> Model<B> {
     /// # Shapes
     pub fn forward(&self, data: Tensor<B, 2>) -> Tensor<B, 2> {
         // let [batch_size, dim] = data.dims();
-        // let x = data.reshape([batch_size, dim]);
+        // let x = data.reshape([batch_size, dim]); // removed in edits7 (is this really necessary)
         self.linear1.forward(data)
     }
 }

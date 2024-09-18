@@ -134,6 +134,8 @@ baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassi
 baseline_wgpu <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
 #38.792
 edits6 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+#36.400 #minor changes
+edits7 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
 #38.857 
 ```
 
