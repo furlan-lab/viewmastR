@@ -132,7 +132,19 @@ viewmastR <-function(query_cds,
   if(is.null(query_celldata_col)){
     query_celldata_col<-"viewmastR_pred"
   }
-  query_cds[[query_celldata_col]]<-training_list[["labels"]][export_list$predictions[[1]]+1]
+  
+  log_odds = unlist(export_list$probs[[1]])
+  if(length(log_odds) == dim(query_cds)[2]*length(training_list[["labels"]])){
+    log_odds = matrix(log_odds, nrow = dim(query_cds)[2])
+    colnames(log_odds) <- paste0("prob_", training_list[["labels"]])
+  } else {
+    stop("Error in log odds dimensions of function output")
+  }
+  export_list$probs = plogis(log_odds)
+  query_cds[[query_celldata_col]]<-training_list[["labels"]][apply(log_odds, 1, which.max)]
+  if(return_probs){
+    query_cds@meta.data <- cbind(query_cds@meta.data, export_list$probs)
+  }
   if (return_type=="object") {
     query_cds
   } else {

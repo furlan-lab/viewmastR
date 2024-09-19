@@ -114,7 +114,7 @@ pub fn run_custom<B>(
     directory: Option<String>,
     verbose: bool,
     device: B::Device,
-) -> ModelRExport
+) -> RExport
 where
     B: Backend,
     B::Device: Clone,
@@ -231,32 +231,26 @@ where
     }
 
     let tduration = start.elapsed();
-
-    // Query handling and predictions
+    // let query_len = query.len();
     let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
         MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    let query_len = query_dataset.len();
+    // Create the batchers.
     let batcher_query = SCBatcher::<B>::new(device.clone());
 
+    // Create the dataloaders.
     let dataloader_query = DataLoaderBuilder::new(batcher_query)
         .batch_size(config.batch_size)
-        .num_workers(config.num_workers)
         .build(query_dataset);
-
+    
     let model_valid = model.valid();
-    let mut predictions = Vec::with_capacity(query_len);
+    let mut probs = Vec::new();
 
+    // Assuming dataloader_query is built
     for batch in dataloader_query.iter() {
         let output = model_valid.forward(batch.counts);
-        let batch_predictions = output.argmax(1).squeeze::<1>(1);
-        predictions.extend(
-            batch_predictions
-                .to_data()
-                .value.iter()
-                .map(|&pred| pred.to_i32().expect("Failed to convert prediction to i32")),
-        );
+        output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
     }
-
+    
     // Save the model
     model
         .save_file(
@@ -266,14 +260,14 @@ where
         .expect("Failed to save trained model");
 
     // Collect and return the predictions
-    ModelRExport {
+    RExport {
         lr: config.lr,
-        hidden_size: vec![hidden_size],
+        hidden_size: vec![0],
         batch_size: config.batch_size,
         num_epochs: config.num_epochs,
         num_workers: config.num_workers,
         seed: config.seed,
-        predictions: predictions,
+        probs: probs,
         train_history,
         test_history,
         training_duration: tduration.as_secs_f64(),
@@ -294,7 +288,7 @@ pub fn run_custom_nd(
     num_epochs: usize,
     directory: Option<String>,
     verbose: bool,
-) -> ModelRExport {
+) -> RExport {
     use burn::backend::ndarray::{NdArray, NdArrayDevice};
 
     let device = NdArrayDevice::default();
@@ -323,7 +317,7 @@ pub fn run_custom_wgpu(
     num_epochs: usize,
     directory: Option<String>,
     verbose: bool,
-) -> ModelRExport {
+) -> RExport {
     use burn::backend::wgpu::{AutoGraphicsApi, Wgpu, WgpuDevice};
 
     let device = WgpuDevice::default();
@@ -352,7 +346,7 @@ pub fn run_custom_candle(
     num_epochs: usize,
     directory: Option<String>,
     verbose: bool,
-) -> ModelRExport {
+) -> RExport {
     use burn::backend::candle::{Candle, CandleDevice};
 
     let device = CandleDevice::default();

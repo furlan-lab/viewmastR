@@ -18,7 +18,7 @@ mod nb;
 
 use std::path::Path;
 use std::time::Instant;
-use crate::common::{ModelRExport, extract_vectors, extract_scalars, extract_scitemraw};
+use crate::common::*;
 use crate::inference::infer_helper;
 
 
@@ -96,7 +96,7 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
   let train_raw = extract_scitemraw(&train, None); // No default target, extract from list
   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
 
-  let model_export: ModelRExport;
+  let model_export: RExport;
   if backend == "candle"{
     model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   } 
@@ -108,11 +108,12 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
   }
 
   let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
-  let predictions = list!(model_export.predictions);
+  // let predictions = list!(model_export.predictions);
+  let probs = list!(model_export.probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>());
   let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
   let duration = start.elapsed();
   let duration: List = list!(total_duration = duration.as_secs_f64(), training_duration = model_export.training_duration);
-  return list!(params = params, predictions = predictions, history = history, duration = duration)
+  return list!(params = params, probs = probs, history = history, duration = duration)
 }
 
 
@@ -153,7 +154,7 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
 
     
-  let model_export: ModelRExport;
+  let model_export: RExport;
   if hidden_size.len() == 1 {
     if backend == "candle"{
       model_export = scrna_ann::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
@@ -177,11 +178,11 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
   }
   
   let params = list!(lr = model_export.lr, hidden_size = model_export.hidden_size, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
-  let predictions = list!(model_export.predictions);
+  let probs = list!(model_export.probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>());
   let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
   let duration = start.elapsed();
   let duration: List = list!(total_duration = duration.as_secs_f64(), training_duration = model_export.training_duration);
-  return list!(params = params, predictions = predictions, history = history, duration = duration)
+  return list!(params = params, probs = probs, history = history, duration = duration)
 }
 
 
@@ -204,11 +205,9 @@ fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_featur
   let num_classes = num_classes.as_integer().unwrap() as usize;
   let num_features = num_features.as_integer().unwrap() as usize;
   if verbose {eprintln!("Running inference")};
-  let (predictions, probs) = infer_helper(model_path_tested, num_classes, num_features, query_raw);
+  let probs = infer_helper(model_path_tested, num_classes, num_features, query_raw);
   if verbose {eprintln!("Returning results")};
-  return list!(predictions = predictions, probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
-
-  
+  return list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
 }
 
 

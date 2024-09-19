@@ -37,12 +37,12 @@ pub struct ModelConfig {
 }
 
 impl ModelConfig {
-    pub fn init_with<B: Backend>(&self, no_features: usize, record: ModelRecord<B>) -> Model<B> {
-        Model {
-            linear1: LinearConfig::new(no_features, self.num_classes).init_with(record.linear1),
-            activation: ReLU::new(),
-        }
-    }
+    // pub fn init_with<B: Backend>(&self, no_features: usize, record: ModelRecord<B>) -> Model<B> {
+    //     Model {
+    //         linear1: LinearConfig::new(no_features, self.num_classes).init_with(record.linear1),
+    //         activation: ReLU::new(),
+    //     }
+    // }
 
     pub fn init<B: Backend>(&self, no_features: usize) -> Model<B> {
         Model {
@@ -110,7 +110,7 @@ pub fn run_custom<B>(
     directory: Option<String>,
     verbose: bool,
     device: B::Device,
-) -> ModelRExport
+) -> RExport
 where
     B: Backend,
     B::Device: Clone,
@@ -227,44 +227,25 @@ where
     }
 
     let tduration = start.elapsed();
-
-
-    // Query handling and predictions with proper indexing
-    let query_with_index: Vec<(usize, SCItemRaw)> = query.into_iter().enumerate().collect();
-    let query_len = query_with_index.len();
-    let query_dataset: MapperDataset<InMemDataset<(usize, SCItemRaw)>, LocalCountstoMatrixWithIndex, SCItem> =
-        MapperDataset::new(InMemDataset::new(query_with_index), LocalCountstoMatrixWithIndex);
-
+    // let query_len = query.len();
+    let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
+        MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
+    // Create the batchers.
     let batcher_query = SCBatcher::<B>::new(device.clone());
+
+    // Create the dataloaders.
     let dataloader_query = DataLoaderBuilder::new(batcher_query)
         .batch_size(config.batch_size)
-        .num_workers(config.num_workers)
-        .build(query_dataset);  // query_dataset now returns (usize, SCItem)
-
+        .build(query_dataset);
+    
     let model_valid = model.valid();
-    let mut indexed_predictions: Vec<(usize, i32)> = Vec::with_capacity(query_len);
+    let mut probs = Vec::new();
 
-    // Create a Vec to store the original indices
-    let original_indices: Vec<usize> = (0..query_len).collect();
-    
     // Assuming dataloader_query is built
-    for (batch_index, batch) in dataloader_query.iter().enumerate() {
+    for batch in dataloader_query.iter() {
         let output = model_valid.forward(batch.counts);
-        let batch_predictions = output.argmax(1).squeeze::<1>(1);
-    
-        // Collect predictions along with their original indices
-        for (i, pred) in original_indices.iter().zip(batch_predictions.to_data().value.iter()) {
-            indexed_predictions.push((*i, pred.to_i32().expect("Failed to convert prediction to i32")));
-        }
+        output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
     }
-    
-    // Sort predictions by the original index to restore the correct order
-    indexed_predictions.sort_by_key(|&(index, _)| index);
-    let predictions: Vec<i32> = indexed_predictions.into_iter().map(|(_, pred)| pred).collect();
-    
-    // Sort predictions by the original index to restore the correct order
-    indexed_predictions.sort_by_key(|&(index, _)| index);
-    let predictions: Vec<i32> = indexed_predictions.into_iter().map(|(_, pred)| pred).collect();
 
     // Save the model
     model
@@ -275,14 +256,14 @@ where
         .expect("Failed to save trained model");
 
     // Collect and return the predictions
-    ModelRExport {
+    RExport {
         lr: config.lr,
         hidden_size: vec![0],
         batch_size: config.batch_size,
         num_epochs: config.num_epochs,
         num_workers: config.num_workers,
         seed: config.seed,
-        predictions: predictions,
+        probs: probs,
         train_history,
         test_history,
         training_duration: tduration.as_secs_f64(),
@@ -302,7 +283,7 @@ pub fn run_custom_nd(
     num_epochs: usize,
     directory: Option<String>,
     verbose: bool,
-) -> ModelRExport {
+) -> RExport {
     use burn::backend::ndarray::{NdArray, NdArrayDevice};
 
     let device = NdArrayDevice::default();
@@ -329,7 +310,7 @@ pub fn run_custom_wgpu(
     num_epochs: usize,
     directory: Option<String>,
     verbose: bool,
-) -> ModelRExport {
+) -> RExport {
     use burn::backend::wgpu::{AutoGraphicsApi, Wgpu, WgpuDevice};
 
     let device = WgpuDevice::default();
@@ -356,7 +337,7 @@ pub fn run_custom_candle(
     num_epochs: usize,
     directory: Option<String>,
     verbose: bool,
-) -> ModelRExport {
+) -> RExport {
     use burn::backend::candle::{Candle, CandleDevice};
 
     let device = CandleDevice::default();

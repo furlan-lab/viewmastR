@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 
 use burn::{
     data::{dataloader::{ Dataset, batcher::Batcher}, dataset::transform::Mapper},
@@ -43,6 +44,19 @@ impl History {
     }
 }
 
+#[derive(Debug)]
+pub struct RExport {
+    pub lr: f64,
+    pub hidden_size: Vec<usize>,
+    pub batch_size: usize,
+    pub num_epochs: usize,
+    pub num_workers: usize,
+    pub seed: u64,
+    pub probs: Vec<f32>,
+    pub train_history: History,
+    pub test_history: History,
+    pub training_duration: f64,
+}
 
 
 #[derive(Debug)]

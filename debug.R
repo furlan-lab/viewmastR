@@ -41,9 +41,24 @@ vg <- get_selected_genes(seu)
 seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 
 # View training history
-output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list")
-DimPlot(output_list$object, group.by = "viewmastR_pred")
+output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list", backend = "candle", max_epochs = 4)
+DimPlot(output_list$object, group.by = "viewmastR_pred", cols = seur@misc$colors)
 table(output_list$object$viewmastR_pred)
+
+
+ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
+export_list<-process_learning_obj_mlr(train = ti[["train"]], 
+                                      test = ti[["test"]], 
+                                      query = ti[["query"]], 
+                                      labels = ti[["labels"]], 
+                                      learning_rate = 1e-3, num_epochs = 4, 
+                                      directory = "/tmp/sc_local", verbose = TRUE, backend = "candle")
+
+seu<-viewmastR_infer(seu, "/Users/sfurlan/develop/viewmastR/model/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
+DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+
+
+
 ## (ALL TIMES elapsed)
 ## on M1 
 baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
