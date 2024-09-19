@@ -40,7 +40,7 @@ seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
 vg <- get_selected_genes(seu)
 seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 
-# View training history
+
 output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list", backend = "candle", max_epochs = 4)
 DimPlot(output_list$object, group.by = "viewmastR_pred", cols = seur@misc$colors)
 table(output_list$object$viewmastR_pred)
@@ -54,8 +54,17 @@ export_list<-process_learning_obj_mlr(train = ti[["train"]],
                                       learning_rate = 1e-3, num_epochs = 4, 
                                       directory = "/tmp/sc_local", verbose = TRUE, backend = "candle")
 
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4)
+DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
+
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4, return_probs = T)
+colnames(seu@meta.data)
+FeaturePlot_scCustom(seu, features = "prob_14_B")
+
+
 seu<-viewmastR_infer(seu, "/Users/sfurlan/develop/viewmastR/model/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
 DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+probs<-viewmastR_infer(seu, "/Users/sfurlan/develop/viewmastR/model/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = T)
 
 
 

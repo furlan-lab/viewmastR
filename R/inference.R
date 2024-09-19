@@ -26,7 +26,16 @@ infer_prep<-function(object, variable_features, software){
 #' @importFrom RcppMsgPack msgpackRead
 #' @export
 
-viewmastR_infer<-function(query_cds, model_path, vg, query_celldata_col = "viewmastR_inferred", labels = NULL, verbose = T, return_probs=F){
+viewmastR_infer<-function(query_cds, 
+                          model_path, 
+                          vg, 
+                          query_celldata_col = "viewmastR_inferred", 
+                          labels = NULL, 
+                          verbose = T, 
+                          return_probs=F, 
+                          return_type = c("object", "list")
+                          ){
+  # return_type <- match.arg(arg = NULL, return_type)
   software<-NULL
   if(class(query_cds)=="Seurat"){
     software<-"seurat"
@@ -39,17 +48,26 @@ viewmastR_infer<-function(query_cds, model_path, vg, query_celldata_col = "viewm
   query<-infer_prep(query_cds, vg, software)
   mod<-msgpackRead(model_path, simplify = T)
   num_classes <- mod$item$linear1$weight$param$shape[2]
-  d<-viewmastR:::infer_from_model(model_path,  query = query, num_classes = num_classes, num_features = length(vg), verbose = verbose)
-  if(return_probs){
-    d
-  } else {
+  export_list <- viewmastR:::infer_from_model(model_path,  query = query, num_classes = num_classes, num_features = length(vg), verbose = verbose)
+  log_odds = unlist(export_list$probs[[1]])
+  if(is.integer(length(log_odds) %% dim(query_cds)[2])){
+    log_odds = matrix(log_odds, nrow = dim(query_cds)[2])
     if(is.null(labels)){
-      query_cds[[query_celldata_col]]<-d$predictions+1
-      query_cds
-    } else {
-      query_cds[[query_celldata_col]]<-labels[d$predictions+1]
-      query_cds
+      labels = paste0("porb_celltype_", 1:dim(log_odds)[1])
     }
+    colnames(log_odds) <- paste0("prob_", labels)
+  } else {
+    stop("Error in log odds dimensions of function output")
+  }
+  export_list$probs = plogis(log_odds)
+  query_cds[[query_celldata_col]]<-training_list[["labels"]][apply(log_odds, 1, which.max)]
+  if(return_probs){
+    query_cds@meta.data <- cbind(query_cds@meta.data, export_list$probs)
+  }
+  if (return_type=="object") {
+    query_cds
+  } else {
+    list(object=query_cds, training_output = export_list)
   }
 }
   
