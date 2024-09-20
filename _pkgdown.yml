@@ -3,16 +3,17 @@ lang: en
 template:
   bootstrap: 5
   bootswatch: yeti
-  # bslib:
-  #   heading_font:
-  #     google:
-  #       family: Alegreya Sans SC
-  #       wght: 400
-  #   base_font:
-  #     google:
-  #       family: IBM Plex Sans
-  #   code_font:
-  #     google: Fira Mono
+  bslib:
+    heading_font:
+      google:
+        family: Alegreya Sans SC
+        wght: 400
+    base_font:
+      google:
+        family: IBM Plex Sans
+        wght: 200
+    code_font:
+      google: Fira Mono
 authors:
   Scott Furlan:
     href: https://furlan-lab.github.io
