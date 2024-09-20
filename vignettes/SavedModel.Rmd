@@ -44,44 +44,22 @@ library(ggplot2)
 })
 
 #query dataset
-seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
+seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
-
-```
-
-
-## Find common features
-
-```{r, dpi=300, fig.height=4, fig.width = 6}
-seu<-calculate_gene_dispersion(seu)
-plot_gene_dispersion(seu)
-seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-plot_gene_dispersion(seu)
-vgq<-get_selected_genes(seu)
-seur<-calculate_gene_dispersion(seur)
-plot_gene_dispersion(seur)
-seur<-select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-plot_gene_dispersion(seur)
-vgr<-get_selected_genes(seur)
-vg<-intersect(vgq, vgr)
-```
-
-## Here are the reference cell types
-```{r, dpi=300, fig.height=4, fig.width = 6}
-DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
+vg <- get_selected_genes(seu)
 ```
 
 ## Now you run viewmastR
 
 The model path is specified using the 'dir' argument
 ```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/Users/sfurlan/develop/viewmastR/model", max_epochs = 3)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/tmp/sc_local", max_epochs = 3)
 ```
 
 ## A look at the predictions
 ```{r, dpi=300, fig.height=4, fig.width = 6}
-DimPlot(seu, group.by = "/Users/sfurlan/develop/viewmastR/model", cols = seur@misc$colors)
+DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
 ```
 
 ## Run inference
@@ -90,14 +68,15 @@ We can use the function viewmastR_infer to run inference a saved model.  We will
 ```{r}
 
 seu<-viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
-
-
 DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
 
 ```
 
 
 ## A confusion matrix comparing the results using viewmastR to viewmastR_infer having saved the model to disc.
+
+Open question as to why a small number of cells are different :)
+
 ```{r, dpi=300, fig.height=6, fig.width=10}
 confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_pred), cols = seur@misc$colors)
 ```
