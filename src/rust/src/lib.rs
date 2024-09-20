@@ -21,7 +21,8 @@ use std::time::Instant;
 use crate::common::*;
 use crate::inference::infer_helper;
 
-
+// use std::convert::TryFrom;
+// use std::convert::TryInto;
 /// Process Robj learning objects for MLR
 /// @export
 /// @keywords internal
@@ -44,8 +45,10 @@ fn process_learning_obj_nb(train: Robj, test: Robj, query: Robj) -> List {
   let duration = start.elapsed();
   let duration_r: List = list!(total_duration = duration.as_secs_f64());
   let history: List = list!(train_acc = "ND", test_acc = "ND");
-  let params = list!();
-  return list!(params = params, predictions = list!(query_pred), history = history, duration = duration_r)
+  // let my_model = MyMultinomialNb(model);
+  // let model_export: Vec<f64> = my_model.try_into().unwrap();
+  let model = list!();
+  return list!(model = model, predictions = list!(query_pred), history = history, duration = duration_r)
 }
 
 

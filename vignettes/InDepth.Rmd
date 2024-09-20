@@ -49,6 +49,7 @@ suppressPackageStartupMessages({
   library(Seurat)
   library(ggplot2)
   library(scCustomize)
+  library(plotly)
 })
 
 # Load query and reference datasets
@@ -87,7 +88,7 @@ run2 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_gen
 run3 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "nd", return_type = "list")
 
 # Compare training times
-ggplot(data.frame(training_times = c(run1$training_output$duration$training_duration,
+gp<-ggplot(data.frame(training_times = c(run1$training_output$duration$training_duration,
                                     run2$training_output$duration$training_duration,
                                     run3$training_output$duration$training_duration), 
                   backend = c("candle", "wgpu", "nd")),
@@ -95,7 +96,16 @@ ggplot(data.frame(training_times = c(run1$training_output$duration$training_dura
   geom_col() + 
   theme_bw() + 
   labs(x = "Backend", y = "Training Time (s)") + 
-  NoLegend()
+  NoLegend() + ggtitle(paste("Arch: ", as.character(Sys.info()["machine"])))
+  
+ggplotly(gp)
+
+# To automatically set backend 
+if (as.character(Sys.info()["machine"])=="x86_64"){
+  backend <- "wgpu"
+} else {
+  backend <- "candle"
+}
 ```
 
 ## **5. Saving Training Subsets**
@@ -103,7 +113,7 @@ ggplot(data.frame(training_times = c(run1$training_output$duration$training_dura
 To inspect the training and test data used by `viewmastR` we provide the setup_training function if you so desire to evaluate these using other learning frameworks.
 
 ```{r, eval=F}
-ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix")
+ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix", backend = backend)
 
 # Convert labels to max class and save them
 train_label <- apply(ti$Ytrain_label, 1, which.max)
@@ -123,7 +133,7 @@ Run inference and obtain prediction probabilities:
 
 ```{r}
 ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix")
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "candle")
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = backend)
 
 # Obtain prediction probabilities
 seu <- viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = TRUE)
@@ -153,9 +163,9 @@ FeaturePlot_scCustom(seu, features = "Cluster1")
 The code below shows how you can run and compare these methods:
 
 ```{r}
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend = "candle")
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", query_celldata_col = "nb_pred", selected_genes = vg, backend = "candle")
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn_pred", selected_genes = vg, hidden_layers = c(200), backend = "candle")
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend = backend)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", query_celldata_col = "nb_pred", selected_genes = vg, backend = backend)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn_pred", selected_genes = vg, hidden_layers = c(200), backend = backend)
 
 # Visualize predictions
 DimPlot(seu, group.by = "mlr_pred")
@@ -166,6 +176,16 @@ DimPlot(seu, group.by = "nn_pred")
 accuracy_mlr <- length(which(seu$mlr_pred == seu$ground_truth)) / dim(seu)[2]
 accuracy_nb <- length(which(seu$nb_pred == seu$ground_truth)) / dim(seu)[2]
 accuracy_nn <- length(which(seu$nn_pred == seu$ground_truth)) / dim(seu)[2]
+
+# Compare accuracies
+gp<-ggplot(data.frame(accuracy = c(accuracy_mlr, accuracy_nb, accuracy_nn)*100, 
+                  algorithm = c("mlr", "nb", "nn")),
+       aes(x = algorithm, y = accuracy, fill = algorithm)) + 
+  geom_col() + 
+  theme_bw() + 
+  labs(x = "Algorithm", y = "Accuracy (%)") + 
+  NoLegend()
+ggplotly(gp)
 ```
 
 ## **Appendix: Session Information**

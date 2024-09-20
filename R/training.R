@@ -106,6 +106,11 @@ viewmastR <-function(query_cds,
   if(!file.exists(dir)){
     dir.create(dir)
   }
+  
+  if(is.null(query_celldata_col)){
+    query_celldata_col<-"viewmastR_pred"
+  }
+  
   if(FUNC=="mlr"){
     export_list<-process_learning_obj_mlr(train = training_list[["train"]], 
                                           test = training_list[["test"]], 
@@ -127,11 +132,17 @@ viewmastR <-function(query_cds,
     export_list<-process_learning_obj_nb(train = training_list[["train"]], 
                                           test = training_list[["test"]], 
                                           query = training_list[["query"]])
+    if(return_type == "probs"){
+      message("probabilities from multinomial naive bayes not implemented yet")
+    }
+    query_cds[[query_celldata_col]]<-training_list[["labels"]][export_list$predictions[[1]]+1]
+    if (return_type=="object") {
+      return(query_cds)
+    } else {
+      return(list(object=query_cds, training_output = export_list))
+    }
   }
-  
-  if(is.null(query_celldata_col)){
-    query_celldata_col<-"viewmastR_pred"
-  }
+
   
   log_odds = unlist(export_list$probs[[1]])
   if(length(log_odds) == dim(query_cds)[2]*length(training_list[["labels"]])){
@@ -147,9 +158,9 @@ viewmastR <-function(query_cds,
     query_cds@meta.data <- cbind(query_cds@meta.data, export_list$probs)
   }
   if (return_type=="object") {
-    query_cds
+    return(query_cds)
   } else {
-    list(object=query_cds, training_output = export_list)
+    return(list(object=query_cds, training_output = export_list))
   }
 }
 

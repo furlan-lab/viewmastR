@@ -6,7 +6,7 @@
 * minor bug - fixed return type 'matrix' in training function
 * minor bug - fixed tf_idf function
 * enhancement - added debug function that enables tracking dimensions across learning steps
-* enhancement - made a number of enhancements in rust code; now using updated burn library 0.14
+* enhancement - made a number of enhancements in rust code
 
 # viewmastR v0.2.2
 * minor changes not packaged as an actual release
