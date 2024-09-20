@@ -62,10 +62,13 @@ colnames(seu@meta.data)
 FeaturePlot_scCustom(seu, features = "prob_14_B")
 
 
-seu<-viewmastR_infer(seu, "/Users/sfurlan/develop/viewmastR/model/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
+debug(viewmastR_infer)
+seu<-viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
 DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
 probs<-viewmastR_infer(seu, "/Users/sfurlan/develop/viewmastR/model/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = T)
+table(seu$viewmastR_inferred)
 
+confusion_matrix(seu$viewmastR_inferred, seu$viewmastR_pred)
 
 
 ## (ALL TIMES elapsed)

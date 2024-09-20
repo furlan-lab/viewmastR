@@ -117,6 +117,7 @@ where
     B::IntElem: ToPrimitive,
     B::FloatElem: ToPrimitive,
 {
+    let _debug = true;
     let no_features = train.first().expect("Features not found").data.len();
     let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
         MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
@@ -182,6 +183,7 @@ where
 
             let output = TrainStep::step(&model, batch); // using the `step` method
             model = optim.step(config.lr, model, output.grads);
+            
             // // Calculate number of correct predictions on the last batch
             if iteration == batch_report_interval {
                 let predictions = output.item.output.argmax(1).squeeze(1);
@@ -204,7 +206,6 @@ where
         // Validation loop using `ValidStep`
         for (_iteration, batch) in dataloader_test.iter().enumerate() {
             let output = ValidStep::step(&model.valid(), batch.clone()); // using the `step` method
-
             // Calculate number of correct predictions
             let predictions = output.output.argmax(1).squeeze(1);
             let num_predictions = batch.targets.dims()[0];
@@ -242,8 +243,14 @@ where
     let mut probs = Vec::new();
 
     // Assuming dataloader_query is built
-    for batch in dataloader_query.iter() {
+    for (_count, batch) in dataloader_query.iter().enumerate() {
         let output = model_valid.forward(batch.counts);
+        // if verbose {
+        //     println!("Query output shape: {:?}", output.shape());
+        // }
+        // if debug & (count == 1) {
+        //     eprintln!("{:?}", output.clone().slice([0..9, 0..(num_classes-1)]));
+        // }
         output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
     }
 
