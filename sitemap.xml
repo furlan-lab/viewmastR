@@ -16,6 +16,9 @@
     <loc>https://furlan-lab.github.io/viewmastR/articles/HowTo.html</loc>
   </url>
   <url>
+    <loc>https://furlan-lab.github.io/viewmastR/articles/InDepth.html</loc>
+  </url>
+  <url>
     <loc>https://furlan-lab.github.io/viewmastR/articles/SavedModel.html</loc>
   </url>
   <url>
@@ -37,19 +40,10 @@
     <loc>https://furlan-lab.github.io/viewmastR/news/index.html</loc>
   </url>
   <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/GMT_to_list.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/add_souporcell_seurat.html</loc>
-  </url>
-  <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/augment_data.html</loc>
   </url>
   <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/calculate_gene_dispersion.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/cluster_LSI.html</loc>
   </url>
   <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/common_features.html</loc>
@@ -67,22 +61,10 @@
     <loc>https://furlan-lab.github.io/viewmastR/reference/detect_genes.html</loc>
   </url>
   <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/find_partitions.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/groupSums.html</loc>
-  </url>
-  <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/index.html</loc>
   </url>
   <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/infer_from_model.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/iterative_LSI.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/monocle3_to_seurat.html</loc>
   </url>
   <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/plot_training_data.html</loc>
@@ -94,16 +76,10 @@
     <loc>https://furlan-lab.github.io/viewmastR/reference/process_learning_obj_mlr.html</loc>
   </url>
   <url>
+    <loc>https://furlan-lab.github.io/viewmastR/reference/process_learning_obj_nb.html</loc>
+  </url>
+  <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/readR.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/run_mnist.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/run_mnist_ann.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/run_mnist_terminal.html</loc>
   </url>
   <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/select_genes.html</loc>
@@ -112,19 +88,10 @@
     <loc>https://furlan-lab.github.io/viewmastR/reference/setup_training.html</loc>
   </url>
   <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/seurat_to_monocle3.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/sfc.html</loc>
-  </url>
-  <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/sparseRowVariances.html</loc>
   </url>
   <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/splat_bulk_reference.html</loc>
-  </url>
-  <url>
-    <loc>https://furlan-lab.github.io/viewmastR/reference/test_backend.html</loc>
   </url>
   <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/tf_idf_transform.html</loc>
@@ -140,5 +107,8 @@
   </url>
   <url>
     <loc>https://furlan-lab.github.io/viewmastR/reference/viewmastR_infer.html</loc>
+  </url>
+  <url>
+    <loc>https://furlan-lab.github.io/viewmastR/reference/writeMMgz.html</loc>
   </url>
 </urlset>

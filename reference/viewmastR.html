@@ -10,7 +10,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">viewmastR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -28,8 +28,9 @@
     <a class="dropdown-item" href="../articles/HowTo.html">How to use viewmastR</a>
     <div class="dropdown-divider"></div>
     <h6 class="dropdown-header" data-toc-skip>Advanced</h6>
-    <a class="dropdown-item" href="../articles/Augment.html">How to augment data using viewmastR</a>
+    <a class="dropdown-item" href="../articles/InDepth.html">A deeper look at viewmastR</a>
     <a class="dropdown-item" href="../articles/BulkReference.html">How to use a bulk dataset as a reference for viewmastR</a>
+    <a class="dropdown-item" href="../articles/Augment.html">How to augment data using viewmastR</a>
     <a class="dropdown-item" href="../articles/SavedModel.html">How to use viewmastR with saved models</a>
   </div>
 </li>
@@ -74,7 +75,7 @@
 <span>  <span class="va">ref_cds</span>,</span>
 <span>  <span class="va">ref_celldata_col</span>,</span>
 <span>  query_celldata_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  FUNC <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mlr"</span>, <span class="st">"nn"</span><span class="op">)</span>,</span>
+<span>  FUNC <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mlr"</span>, <span class="st">"nn"</span>, <span class="st">"nb"</span><span class="op">)</span>,</span>
 <span>  norm_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"log"</span>, <span class="st">"binary"</span>, <span class="st">"size_only"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  selected_genes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  train_frac <span class="op">=</span> <span class="fl">0.8</span>,</span>
@@ -85,12 +86,13 @@
 <span>  max_epochs <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>  LSImethod <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">T</span>,</span>
-<span>  device <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  backend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wgpu"</span>, <span class="st">"nd"</span>, <span class="st">"candle"</span><span class="op">)</span>,</span>
 <span>  threshold <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  keras_model <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dir <span class="op">=</span> <span class="st">"/tmp/sc_local"</span>,</span>
 <span>  return_probs <span class="op">=</span> <span class="cn">F</span>,</span>
 <span>  return_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"object"</span>, <span class="st">"list"</span><span class="op">)</span>,</span>
+<span>  debug <span class="op">=</span> <span class="cn">F</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -163,6 +165,10 @@
 
 <dt>return_type</dt>
 <dd><p>The type of output to return. Options are "object" or "list". Default is "object".</p></dd>
+
+
+<dt>debug</dt>
+<dd><p>Run in debug mode</p></dd>
 
 
 <dt>...</dt>
