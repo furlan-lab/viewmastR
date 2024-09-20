@@ -21,6 +21,18 @@ You will need to have the devtools package installed...
 devtools::install_github("furlan-lab/viewmastR")
 ```
 
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+rm(list=ls())
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+  ROOT_DIR3<-"/fh/fast/furlan_s/experiments/LRPBMC/cds"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+  ROOT_DIR3<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/LRPBMC/cds"
+}
+```
 
 ## Load a dataset
 
@@ -33,13 +45,6 @@ library(scCustomize)
 library(magrittr)
 })
 
-if(grepl("^gizmo", Sys.info()["nodename"])){
-  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
-} else {
-  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
-}
 
 #query dataset
 seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
@@ -85,16 +90,7 @@ FeaturePlot_scCustom(seuA, features = "FOXP3")
 ## Now we train another PBMC dataset with labels for tregs that are questionable and see if we can find them
 ```{r}
 
-if(grepl("^gizmo", Sys.info()["nodename"])){
-  ROOT_DIR3<-"/fh/fast/furlan_s/experiments/LRPBMC/cds"
-} else {
-  ROOT_DIR3<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/LRPBMC/cds"
-}
-
-cds<-readRDS(file.path(ROOT_DIR3, "210330_5p_cds.RDS"))
-rownames(cds)<-SingleCellExperiment::rowData(cds)$gene_short_name
-seu<-monocle3_to_seurat(cds)
-
+seu<-readRDS(file.path(ROOT_DIR3, "240919_5p_seu.RDS"))
 
 seu<-calculate_gene_dispersion(seu)
 seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)

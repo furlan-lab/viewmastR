@@ -21,6 +21,19 @@ You will need to have the devtools package installed...
 devtools::install_github("furlan-lab/viewmastR")
 ```
 
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+rm(list=ls())
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/datasets/AML/LOR_classifier/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+  ROOT_DIR3<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/AML/LOR_classifier/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/patient_marrows/aggr/cds/indy"
+  ROOT_DIR3<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+allcounts = "/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchinsonCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt"
+```
 
 ## Load a few datasets
 
@@ -35,16 +48,6 @@ library(magrittr)
 library(SummarizedExperiment)
 })
 
-if(grepl("^gizmo", Sys.info()["nodename"])){
-  ROOT_DIR1<-"/fh/fast/furlan_s/datasets/AML/LOR_classifier/cds"
-  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
-  ROOT_DIR3<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
-} else {
-  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/AML/LOR_classifier/cds"
-  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/patient_marrows/aggr/cds/indy"
-  ROOT_DIR3<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
-}
-
 #malignant ref (bulk)
 seuMR<-readRDS(file.path(ROOT_DIR1, "240126_AML_object.RDS"))
 seMR<-readRDS(file.path(ROOT_DIR1, "240126_Combined_SE_Object.RDS"))
@@ -53,8 +56,7 @@ seMR<-readRDS(file.path(ROOT_DIR1, "240126_Combined_SE_Object.RDS"))
 seuHR <- readRDS(file.path(ROOT_DIR3, "230329_rnaAugmented_seurat.RDS"))
 
 #query dataset
-seuP<-readRDS(file.path(ROOT_DIR2, "220831_WC1.RDS"))
-
+seuP<-readRDS(file.path(ROOT_DIR2, "220831_ptdata.RDS"))
 
 ```
 
@@ -65,7 +67,7 @@ We can then see how this classifies cells from a scRNAseq experiment.  This is f
 
 ```{r}
 
-dat<-read.table("/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchinsonCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt", header = T)
+dat<-read.table(allcounts, header = T)
 rownames(dat)<-dat$X_TranscriptID
 dat$X_TranscriptID<-NULL
 metad<-data.frame(sample = strsplit(colnames(dat), "\\.") %>% sapply("[[", 1), celltype = strsplit(colnames(dat), "\\.") %>% sapply("[[", 2))
@@ -180,8 +182,8 @@ ElbowPlot(seuF, 100)
 seuF<- FindNeighbors(seuF, dims = 1:20)
 seuF <- FindClusters(seuF, resolution = 1.1)
 seuF <- RunUMAP(seuF, dims = 1:20, n.components = 2, min.dist = 0.2)
-DimPlot(seuF, group.by = "final_group")
-DimPlot(seuF, group.by = "category0")
+# DimPlot(seuF, group.by = "final_group")
+# DimPlot(seuF, group.by = "category0")
 seuF<-calculate_gene_dispersion(seuF)
 seuF<-select_genes(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
 vgr<-get_selected_genes(seuF)

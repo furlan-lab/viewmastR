@@ -7,6 +7,18 @@ editor_options:
   chunk_output_type: console
 ---
 
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+rm(list=ls())
+if (grepl("^gizmo", Sys.info()["nodename"])) {
+  ROOT_DIR1 <- "/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+
+```
+
 # A Deeper Look at `viewmastR`
 
 Before diving into how `viewmastR` works, let’s first set up the necessary environment and go through essential functions to streamline your training and analysis workflow.
@@ -32,21 +44,12 @@ devtools::install_github("furlan-lab/viewmastR")
 Here’s how you can retrieve and visualize the training data:
 
 ```{r}
-rm(list = ls())
 suppressPackageStartupMessages({
   library(viewmastR)
   library(Seurat)
   library(ggplot2)
   library(scCustomize)
 })
-
-if (grepl("^gizmo", Sys.info()["nodename"])) {
-  ROOT_DIR1 <- "/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
-  ROOT_DIR2 <- "/fh/fast/furlan_s/grp/data/ddata/BM_data"
-} else {
-  ROOT_DIR1 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
-  ROOT_DIR2 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
-}
 
 # Load query and reference datasets
 seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))

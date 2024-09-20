@@ -7,6 +7,19 @@ editor_options:
   chunk_output_type: console
 ---
 
+
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+rm(list=ls())
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+```
+
+
 ## Installing Rust
 
 First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
@@ -24,19 +37,12 @@ devtools::install_github("furlan-lab/viewmastR")
 ## Running viewmastR
 
 ```{r, dpi=300, fig.height=4, fig.width = 6}
-rm(list=ls())
 suppressPackageStartupMessages({
 library(viewmastR)
 library(Seurat)
 library(ggplot2)
 })
-if(grepl("^gizmo", Sys.info()["nodename"])){
-  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
-} else {
-  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
-  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
-}
+
 #query dataset
 seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
 #reference dataset
@@ -75,7 +81,7 @@ seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes 
 
 ## A look at the predictions
 ```{r, dpi=300, fig.height=4, fig.width = 6}
-DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
+DimPlot(seu, group.by = "/Users/sfurlan/develop/viewmastR/model", cols = seur@misc$colors)
 ```
 
 ## Run inference

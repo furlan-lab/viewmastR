@@ -7,6 +7,18 @@ editor_options:
   chunk_output_type: console
 ---
 
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+rm(list=ls())
+# Define dataset paths depending on your machine
+if (grepl("^gizmo", Sys.info()["nodename"])) {
+  ROOT_DIR1 <- "/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+
+```
 
 ViewmastR is a tool designed to predict cell type assignments in a query dataset based on reference data. In this tutorial, you'll learn how to install and use viewmastR, load data, and evaluate its predictions. 
 
@@ -34,21 +46,13 @@ ViewmastR predicts the cell types of your query dataset by leveraging the featur
 
 ```{r}
 # Load required packages
-rm(list=ls())
 suppressPackageStartupMessages({
   library(viewmastR)
   library(Seurat)
   library(ggplot2)
+  library(scCustomize)
 })
 
-# Define dataset paths depending on your machine
-if (grepl("^gizmo", Sys.info()["nodename"])) {
-  ROOT_DIR1 <- "/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
-  ROOT_DIR2 <- "/fh/fast/furlan_s/grp/data/ddata/BM_data"
-} else {
-  ROOT_DIR1 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
-  ROOT_DIR2 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
-}
 
 # Load query and reference datasets
 seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
@@ -138,6 +142,17 @@ We can now visualize how the training and validation losses change over the epoc
 plt <- plot_training_data(output_list)
 plt
 ```
+
+## **Probabilities**
+
+Finally, we can also look at prediction probabilities using the return_probs argument.  Doing so will add meta-data columns to the object prefixed with the string "probs_" for each class of prediction.  The values are transformed log-odds from the model prediction transformed using the `plogis` function in R.
+
+```{r}
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4, return_probs = T)
+FeaturePlot_scCustom(seu, features = "prob_14_B")
+FeaturePlot_scCustom(seu, features = "prob_16_CD8.N")
+```
+
 
 ## **Appendix**
 
