@@ -23,7 +23,8 @@ pkgdown::preview_site(path = "/reference")
 
 # rticles -----------------------------------------------------------------
 options(rmarkdown.html_vignette.check_title = FALSE)
-pkgdown::build_article("Test")
+pkgdown::build_article("HowTo")
+pkgdown::build_article("InDepth")
 pkgdown::build_articles_index()
 pkgdown::build_articles()
 pkgdown::preview_site(path = "/articles")

@@ -102,7 +102,7 @@ ggplot(data.frame(training_times = c(run1$training_output$duration$training_dura
 
 To inspect the training and test data used by `viewmastR` we provide the setup_training function if you so desire to evaluate these using other learning frameworks.
 
-```{r}
+```{r, eval=F}
 ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix")
 
 # Convert labels to max class and save them
@@ -119,33 +119,31 @@ data.table::fwrite(data.frame(test = test_label), "/path/to/test_labels.tsv.gz",
 
 ## **6. Analyzing Probabilities**
 
-Run inference to obtain prediction probabilities:
+Run inference and obtain prediction probabilities:
 
 ```{r}
+ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix")
 seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "candle")
 
 # Obtain prediction probabilities
-probs <- viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = TRUE)
-probmat <- t(sapply(probs$probs, rbind))
-probmat <- plogis(probmat)
-colnames(probmat) <- paste0("prob_", unique(seur$SFClassification)[order(unique(seur$SFClassification))])
-
-# Add probabilities to query object metadata
-seu@meta.data <- cbind(seu@meta.data, probmat)
-scCustomize::FeaturePlot_scCustom(seu, features = "prob_14_B")
+seu <- viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = TRUE)
+scCustomize::FeaturePlot_scCustom(seu, features = "prob_19_CD8.EM")
 ```
 
 ## **7. Evaluating Model Weights**
 
-To inspect model weights:
+To inspect model weights (note this only works for mlr - see below):
 
 ```{r}
 mod <- RcppMsgPack::msgpack_read("/tmp/sc_local/model.mpk", simplify = TRUE)
 weights <- mod$item$linear1$weight$param$value
 shape <- mod$item$linear1$weight$param$shape
-wmat <- t(matrix(weights, nrow = shape[2]))
+wmat <- data.frame(t(matrix(weights, nrow = shape[2])))
 rownames(wmat) <- ti$features
 colnames(wmat) <- ti$label_text
+top_NK_genes <- rownames(wmat)[sort(wmat$'21_NK', index.return=T, decreasing=T)$ix[1:20]]
+seu <-AddModuleScore(seu, features = list(top_nk_genes=top_NK_genes))
+FeaturePlot_scCustom(seu, features = "Cluster1")
 ```
 
 ## **8. Comparing Different Algorithms**
