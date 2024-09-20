@@ -155,7 +155,6 @@ where
 
     // Progress bar items
     let num_iterations = (num_batches_train as f64 / config.batch_size as f64).ceil() as u32;
-    let batch_report_interval = num_iterations.to_usize().unwrap() - 1;
     let length = 40;
     let eta = false;
 
@@ -179,13 +178,13 @@ where
             if verbose {
                 bar.update();
             }
-            
+            let batch_len = batch.counts.dims()[0];
 
             let output = TrainStep::step(&model, batch); // using the `step` method
             model = optim.step(config.lr, model, output.grads);
             
             // // Calculate number of correct predictions on the last batch
-            if iteration == batch_report_interval {
+            if iteration == batch_len - 1 {
                 let predictions = output.item.output.argmax(1).squeeze(1);
                 let num_predictions = output.item.targets.dims()[0];
                 let num_corrects = predictions
