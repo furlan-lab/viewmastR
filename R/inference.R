@@ -51,7 +51,8 @@ viewmastR_infer<-function(query_cds,
   export_list <- viewmastR:::infer_from_model(model_path,  query = query, num_classes = num_classes, num_features = length(vg), verbose = verbose)
   log_odds = unlist(export_list$probs)
   if(is.integer(length(log_odds) %% dim(query_cds)[2])){
-    log_odds = matrix(log_odds, nrow = dim(query_cds)[2])
+    log_odds = matrix(log_odds, ncol = dim(query_cds)[2])
+    log_odds = t(log_odds)
     if(is.null(labels)){
       labels = paste0("porb_celltype_", 1:dim(log_odds)[1])
     }

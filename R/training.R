@@ -135,7 +135,8 @@ viewmastR <-function(query_cds,
   
   log_odds = unlist(export_list$probs[[1]])
   if(length(log_odds) == dim(query_cds)[2]*length(training_list[["labels"]])){
-    log_odds = matrix(log_odds, nrow = dim(query_cds)[2])
+    log_odds = matrix(log_odds, ncol = dim(query_cds)[2])
+    log_odds = t(log_odds)
     colnames(log_odds) <- paste0("prob_", training_list[["labels"]])
   } else {
     stop("Error in log odds dimensions of function output")

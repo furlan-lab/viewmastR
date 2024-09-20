@@ -58,13 +58,11 @@ seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_gene
 DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
 
 seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4, return_probs = T)
-colnames(seu@meta.data)
 FeaturePlot_scCustom(seu, features = "prob_14_B")
 
-
-debug(viewmastR_infer)
 seu<-viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
 DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+
 probs<-viewmastR_infer(seu, "/Users/sfurlan/develop/viewmastR/model/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = T)
 table(seu$viewmastR_inferred)
 
@@ -86,6 +84,9 @@ edits3 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassifi
 #24.493 #fixed query prediction
 edits5 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
 #38.857 model save - removed clone (battery low)
+final_version <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+#23.590 final after rust optims
+
 
 ## on intel
 baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))

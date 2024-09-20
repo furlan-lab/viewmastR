@@ -245,12 +245,6 @@ where
     // Assuming dataloader_query is built
     for (_count, batch) in dataloader_query.iter().enumerate() {
         let output = model_valid.forward(batch.counts);
-        // if verbose {
-        //     println!("Query output shape: {:?}", output.shape());
-        // }
-        // if debug & (count == 1) {
-        //     eprintln!("{:?}", output.clone().slice([0..9, 0..(num_classes-1)]));
-        // }
         output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
     }
 
