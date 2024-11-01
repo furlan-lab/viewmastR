@@ -256,3 +256,105 @@ writeMMgz <- function(x, file) {
     col.names = FALSE
   )
 }
+
+
+
+
+#' Export Seurat Object Data to 10X-Style Format with Optional Reductions
+#'
+#' This function exports the data from a Seurat object into a 10X Genomics-style format. The output includes files for the expression matrix, feature (gene) information, barcodes, metadata, UMAP (or other reductions), and variable features. These files are written in a compressed format where applicable.
+#'
+#' @param seu A Seurat object containing the data to be exported.
+#' @param assay A character string indicating which assay to use from the Seurat object. Default is "RNA".
+#' @param dir A character string specifying the directory where the output files will be saved. The directory must already exist.
+#' @param get_reductions Logical, whether to include cell embeddings from reductions (e.g., UMAP, PCA, etc.) in the output. Default is TRUE.
+#'
+#' @details
+#' The function creates several files in a subdirectory called \code{3file} within the specified directory:
+#' \itemize{
+#'   \item \code{matrix.mtx.gz}: A compressed MatrixMarket file containing the assay data (expression matrix).
+#'   \item \code{features.tsv.gz}: A tab-separated file with feature (gene) information, including gene names.
+#'   \item \code{barcodes.tsv.gz}: A tab-separated file with cell barcodes.
+#'   \item \code{meta.csv}: A CSV file containing metadata from the Seurat object.
+#'   \item \code{<reduction>_reduction.tsv.gz}: A compressed file with cell embeddings for each reduction (e.g., UMAP, PCA), if \code{get_reductions} is set to TRUE.
+#'   \item \code{variablefeatures.tsv.gz}: A compressed file listing the variable features.
+#' }
+#'
+#' If reductions (like UMAP or PCA) are present in the Seurat object and \code{get_reductions} is TRUE, the cell embeddings from each reduction will be written to separate files in the format \code{<reduction>_reduction.tsv.gz}.
+#' If the UMAP or PCA embeddings are not found in the Seurat object and \code{get_reductions} is set to TRUE, the function will issue a warning but will still generate the other files.
+#' The function will create the \code{3file} subdirectory within the specified directory if it doesn't exist.
+#'
+#' @importFrom Seurat GetAssayData Cells VariableFeatures
+#' @importFrom utils write.csv
+#' @importFrom R.utils gzip
+#' @export
+#' @return The function does not return a value. It writes several files as a side effect.
+#'
+#' @examples
+#' \dontrun{
+#' library(Seurat)
+#' seu <- CreateSeuratObject(counts = matrix(rnorm(100), 10, 10))
+#' make3file(seu, assay = "RNA", dir = "output_directory")
+#' 
+#' # Export Seurat object with reductions
+#' make3file(seu, assay = "RNA", dir = "output_directory", get_reductions = TRUE)
+#' 
+#' # Export Seurat object without reductions
+#' make3file(seu, assay = "RNA", dir = "output_directory", get_reductions = FALSE)
+#' }
+#'
+#' @export
+make3file <- function(seu, assay = "RNA", dir, get_reductions = TRUE) {
+  # Check if the directory exists
+  if (!file.exists(dir)) {
+    stop("Must provide a valid directory.")
+  }
+  
+  # Create the 3file subdirectory if it doesn't exist
+  out_dir <- file.path(dir, "3file")
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir, recursive = TRUE)
+  }
+  
+  # Write matrix.mtx.gz file
+  mm <- file.path(out_dir, "matrix.mtx.gz")
+  writeMMgz(GetAssayData(seu, assay = assay), mm)
+  
+  # Write features.tsv.gz file (gene information)
+  genes <- data.frame(rownames(seu), rownames(seu), rep("Gene Expression", length(rownames(seu))))
+  gz2 <- gzfile(file.path(out_dir, "features.tsv.gz"), "w")
+  write.table(genes, gz2, sep = "\t", quote = FALSE, col.names = FALSE, row.names = FALSE)
+  close(gz2)
+  
+  # Write barcodes.tsv.gz file (cell barcodes)
+  gz3 <- gzfile(file.path(out_dir, "barcodes.tsv.gz"), "w")
+  cb <- Cells(seu)
+  writeLines(cb, gz3)
+  close(gz3)
+  
+  # Write metadata to meta.csv
+  meta <- file.path(out_dir, "meta.csv")
+  write.csv(seu@meta.data, meta, quote = FALSE)
+  
+  # Write reductions if requested
+  if (get_reductions) {
+    reds <- names(seu@reductions)
+    for (red in reds) {
+      # Retrieve the reduction embeddings
+      data <- seu@reductions[[red]]@cell.embeddings
+      # Open gzipped reduction file
+      gzr <- gzfile(file.path(out_dir, paste0(red, "_reduction.tsv.gz")), "w")
+      # Write the reduction embeddings to the file
+      write.table(data, gzr, sep = "\t", quote = FALSE, col.names = NA)
+      close(gzr)
+    }
+  }
+  
+  # Write variable features to variablefeatures.tsv.gz
+  gz4 <- gzfile(file.path(out_dir, "variablefeatures.tsv.gz"), "w")
+  writeLines(VariableFeatures(seu), gz4)
+  close(gz4)
+}
+
+
+

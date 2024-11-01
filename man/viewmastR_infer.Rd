@@ -11,7 +11,8 @@ viewmastR_infer(
   query_celldata_col = "viewmastR_inferred",
   labels = NULL,
   verbose = T,
-  return_probs = F
+  return_probs = F,
+  return_type = c("object", "list")
 )
 }
 \arguments{

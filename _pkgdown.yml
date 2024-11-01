@@ -57,6 +57,7 @@ reference:
   - splat_bulk_reference
   - confusion_matrix
   - plot_training_data
+  - make3file
 - title: Additional functions
   desc: Helper functions to add or modify elements
   contents:
@@ -79,3 +80,4 @@ articles:
   - BulkReference
   - Augment
   - SavedModel
+  - Extras

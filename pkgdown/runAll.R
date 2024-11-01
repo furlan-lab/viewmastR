@@ -3,8 +3,8 @@ pkgdown::clean_site(pkg = ".")
 pkgdown::init_site(pkg = ".")
 pkgdown::build_home_index()
 pkgdown::preview_page("index.html")
-pkgdown::build_article(name = "HowTo")
-pkgdown::preview_page("articles/HowTo.html")
+pkgdown::build_article(name = "Extras")
+pkgdown::preview_page("articles/Extras.html")
 
 # cleanup start -----------------------------------------------------------
 pkgdown::clean_site(pkg = ".")
