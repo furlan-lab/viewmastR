@@ -104,8 +104,9 @@ labels (and optionally probabilities) appended.
 }
 \description{
 The \code{viewmastR} function preprocesses one or two single-cell datasets (a reference and an optional query),
-splits the reference data into training and test sets, and optionally includes a query dataset for downstream analysis.
-It then applies specified modeling functions (e.g., MLR, NN, NB) to train and optionally predict on the query data.
+splits the reference data into training and test sets, and optionally includes the ability to run inference on a query dataset
+for downstream analysis. It then applies specified modeling functions (e.g., MLR, NN, NB) to train and optionally predict on the
+query data.
 }
 \details{
 The function first calls \code{\link{setup_training}} to preprocess and split the data into training, testing, and

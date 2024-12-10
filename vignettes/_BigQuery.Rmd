@@ -1,14 +1,14 @@
 ---
 title: "How to use viewmastR with large query objects"
 output: html_document
-date: "2024-02-14"
+date: "2024-12-10"
 always_allow_html: true
 editor_options: 
   chunk_output_type: console
 ---
 
 
-```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 rm(list=ls())
 if(grepl("^gizmo", Sys.info()["nodename"])){
   ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
@@ -30,7 +30,7 @@ First you need to have an updated Rust installation. Go to this [site](https://w
 You will need to have the devtools package installed...
 
 ```{r, eval=F}
-devtools::install_github("furlan-lab/viewmastR")
+devtools::install_github("furlan-lab/viewmastR", repos = "big")
 ```
 
 
@@ -50,10 +50,23 @@ seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 vg <- get_selected_genes(seu)
 ```
 
-## Build the model
+## Build the model and infer for small dataset (not using chunks and parallelization)
 ```{r}
-output_list <- viewmastR(seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list", backend = "candle", max_epochs = 4, large_query = T)
+results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 4, train_only = T)
+seu<-viewmastR_infer(seu, file.path(results$model_dir, "model.mpk"), vg, labels = levels(factor(seur$SFClassification)))
+DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+```
 
+## Build the model and infer for large dataset (dividing the query into chunks and using parallelization)
+
+using chunks and workers, you can infer from the model only chunks at a time using multiple workers in parallel.
+```{r}
+seu<-viewmastR_infer(seu, file.path(results$model_dir, "model.mpk"), query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 4, workers = 4)
+DimPlot(seu, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
+```
+
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_inferred_parallel), cols = seur@misc$colors)
 ```
 
 

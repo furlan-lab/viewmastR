@@ -10,30 +10,34 @@ viewmastR_infer(
   vg,
   query_celldata_col = "viewmastR_inferred",
   labels = NULL,
-  verbose = T,
-  return_probs = F,
-  return_type = c("object", "list")
+  verbose = TRUE,
+  return_probs = FALSE,
+  return_type = c("object", "list"),
+  chunks = 1,
+  workers = 1
 )
 }
 \arguments{
-\item{query_cds}{Seurat or cell_data_set object - The dataset for which cell labels are to be inferred.}
+\item{query_cds}{Seurat or cell_data_set object}
 
-\item{model_path}{character path to the trained model file.}
+\item{model_path}{character path to the trained model file}
 
-\item{vg}{character vector - Features used for inference (must be the same used during model creation).}
+\item{vg}{character vector of features used for inference}
 
-\item{query_celldata_col}{character vector - names of the column to store inferred cell labels in the query dataset. Default is "viewmastR_inferred".}
+\item{query_celldata_col}{character column name to store inferred cell labels}
 
-\item{labels}{character vector - optional labels corresponding to the class indices. Default is NULL.}
+\item{labels}{character vector of labels (optional)}
 
-\item{verbose}{bool - show messaging}
+\item{verbose}{logical, show messages}
 
-\item{return_probs}{logical If TRUE, returns the class probabilities. Default is FALSE.}
-}
-\value{
-If return_probs is TRUE, returns a data frame containing class probabilities.
-If return_probs is FALSE, updates the query_cds object with inferred cell labels and returns it.
+\item{return_probs}{logical, return class probabilities}
+
+\item{return_type}{one of "object" or "list"}
+
+\item{chunks}{integer number of chunks to split the data into for parallelization}
+
+\item{workers}{integer number of parallel workers}
 }
 \description{
-This function infers cell labels using a trained model and updates the input dataset with the inferred labels.
+Function to infer cell labels using a trained model
 }

@@ -28,8 +28,9 @@ dimension_check <- function (obj){
 #' Integrate and Train Models on Reference and (Optional) Query Datasets
 #'
 #' The \code{viewmastR} function preprocesses one or two single-cell datasets (a reference and an optional query), 
-#' splits the reference data into training and test sets, and optionally includes a query dataset for downstream analysis. 
-#' It then applies specified modeling functions (e.g., MLR, NN, NB) to train and optionally predict on the query data.
+#' splits the reference data into training and test sets, and optionally includes the ability to run inference on a query dataset 
+#' for downstream analysis. It then applies specified modeling functions (e.g., MLR, NN, NB) to train and optionally predict on the 
+#' query data.
 #'
 #' @param query_cds A \code{Seurat} or \code{cell_data_set} object representing the query dataset. If \code{NULL}, 
 #'   the function will operate in "reference-only" mode, using the reference dataset for training and testing only.
@@ -153,6 +154,10 @@ viewmastR <- function(query_cds,
   }
   
   if (train_only) {
+    if(FUNC == "nb") {
+      message("naive bayes is currently not implemented for training only")
+    return()
+  }
     # Use setup_training with query_cds = NULL
     training_list <- setup_training(
       query_cds = NULL,
@@ -212,46 +217,8 @@ viewmastR <- function(query_cds,
         verbose = verbose,
         backend = backend
       )
-    } else if(FUNC == "nb") {
-      export_list <- process_learning_obj_nb(
-        train = training_list[["train"]], 
-        test = training_list[["test"]], 
-        query = training_list[["query"]]
-      )
-      if(return_type == "probs") {
-        message("probabilities from multinomial naive bayes not implemented yet")
-      }
-      query_cds[[query_celldata_col]] <- training_list[["labels"]][export_list$predictions[[1]]+1]
-      if (return_type=="object") {
-        return(query_cds)
-      } else {
-        return(list(object=query_cds, training_output = export_list))
-      }
     }
-    
-    # Handle probabilities for mlr/nn
-    log_odds <- unlist(export_list$probs[[1]])
-    if(length(log_odds) == dim(query_cds)[2]*length(training_list[["labels"]])) {
-      log_odds <- matrix(log_odds, ncol = dim(query_cds)[2])
-      log_odds <- t(log_odds)
-      colnames(log_odds) <- paste0("prob_", training_list[["labels"]])
-    } else {
-      stop("Error in log odds dimensions of function output")
-    }
-    
-    export_list$probs <- plogis(log_odds)
-    query_cds[[query_celldata_col]] <- training_list[["labels"]][apply(log_odds, 1, which.max)]
-    
-    if(return_probs) {
-      query_cds@meta.data <- cbind(query_cds@meta.data, export_list$probs)
-    }
-    
-    if (return_type=="object") {
-      return(query_cds)
-    } else {
-      return(list(object=query_cds, training_output = export_list))
-    }
-    
+    return(list(object=NULL, training_output = export_list, model_dir = dir))
   } else {
     # When train_only = FALSE, we have query_cds provided
     training_list <- setup_training(
