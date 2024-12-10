@@ -2,7 +2,7 @@
 % Please edit documentation in R/training.R
 \name{viewmastR}
 \alias{viewmastR}
-\title{Run viewmastR using the new Rust implementation}
+\title{Integrate and Train Models on Reference and (Optional) Query Datasets}
 \usage{
 viewmastR(
   query_cds,
@@ -13,65 +13,136 @@ viewmastR(
   norm_method = c("log", "binary", "size_only", "none"),
   selected_genes = NULL,
   train_frac = 0.8,
-  tf_idf = F,
-  scale = F,
+  tf_idf = FALSE,
+  scale = FALSE,
   hidden_layers = c(500, 100),
   learning_rate = 0.001,
   max_epochs = 10,
   LSImethod = 1,
-  verbose = T,
+  verbose = TRUE,
   backend = c("wgpu", "nd", "candle"),
   threshold = NULL,
   keras_model = NULL,
   dir = "/tmp/sc_local",
-  return_probs = F,
+  return_probs = FALSE,
   return_type = c("object", "list"),
-  debug = F,
+  debug = FALSE,
+  train_only = FALSE,
+  addbias = FALSE,
   ...
 )
 }
 \arguments{
-\item{query_cds}{A cell data set (cds) to query.}
+\item{query_cds}{A \code{Seurat} or \code{cell_data_set} object representing the query dataset. If \code{NULL},
+the function will operate in "reference-only" mode, using the reference dataset for training and testing only.}
 
-\item{ref_cds}{A reference cell data set (cds).}
+\item{ref_cds}{A \code{Seurat} or \code{cell_data_set} object representing the reference dataset. This is required.}
 
-\item{ref_celldata_col}{The column in the reference cell data set containing cell data.}
+\item{ref_celldata_col}{A character string specifying the metadata column in \code{ref_cds} that contains the cell labels.}
 
-\item{query_celldata_col}{The column in the query cell data set containing cell data. Defaults to "viewmastR_pred" if not provided.}
+\item{query_celldata_col}{A character string specifying a metadata column name in \code{query_cds} (or reference in
+reference-only mode) where predicted labels should be stored. If \code{NULL}, defaults to \code{"viewmastR_pred"}.}
 
-\item{FUNC}{The machine learning model to use (multinomial linear regression - 'mlr' or multilayer neural network - 'nn'). Default is "mlr".}
+\item{FUNC}{A character string specifying the modeling function to apply. One of \code{"mlr"}, \code{"nn"}, or \code{"nb"}.}
 
-\item{norm_method}{The normalization method to use. Options are "log", "binary", "size_only", or "none".}
+\item{norm_method}{Character string indicating the normalization method. One of \code{"log"}, \code{"binary"},
+\code{"size_only"}, or \code{"none"}.}
 
-\item{selected_genes}{A vector of pre-selected genes for analysis. If NULL, common features between reference and query are used.}
+\item{selected_genes}{A character vector specifying genes to subset. If \code{NULL}, uses the set of common features
+(if query is provided) or selected genes directly (if reference-only).}
 
-\item{train_frac}{The fraction of data to use for training. Default is 0.8.}
+\item{train_frac}{A numeric value between 0 and 1 specifying the fraction of reference cells to use for training.
+The remainder are used for testing.}
 
-\item{tf_idf}{Boolean indicating whether to perform TF-IDF transformation. Default is FALSE.}
+\item{tf_idf}{Logical, whether to apply TF-IDF transformation after normalization.}
 
-\item{scale}{Boolean indicating whether to scale the data. Default is FALSE.}
+\item{scale}{Logical, whether to scale the data. If both \code{tf_idf} and \code{scale} are \code{TRUE}, TF-IDF takes precedence.}
 
-\item{hidden_layers}{A vector specifying the number of neurons in hidden layers for neural network models. Default is c(500, 100).  To use one hidden layer supply a vector of length 1.}
+\item{hidden_layers}{A numeric vector indicating the size of hidden layers (for the NN model). Only 1 or 2 layers are allowed.}
 
-\item{learning_rate}{The learning rate for training the model. Default is 1e-3.}
+\item{learning_rate}{Numeric, learning rate for model training.}
 
-\item{max_epochs}{The maximum number of epochs for training the model. Default is 10.}
+\item{max_epochs}{Integer, the maximum number of epochs for model training.}
 
-\item{LSImethod}{The method for Latent Semantic Indexing. Default is 1.}
+\item{LSImethod}{Integer, specifying the TF-IDF method variant if using TF-IDF.}
 
-\item{verbose}{Boolean indicating whether to display verbose output. Default is TRUE.}
+\item{verbose}{Logical, whether to print progress messages.}
 
-\item{dir}{The directory to save output files. Default is "/tmp/sc_local".}
+\item{backend}{A character string specifying the backend to use. One of \code{"wgpu"}, \code{"nd"}, \code{"candle"}.}
 
-\item{return_type}{The type of output to return. Options are "object" or "list". Default is "object".}
+\item{threshold}{Currently unused. Can be \code{NULL}.}
 
-\item{debug}{Run in debug mode}
+\item{keras_model}{Currently unused. Can be \code{NULL}.}
 
-\item{...}{Additional arguments.}
+\item{dir}{A character string specifying the directory to store model artifacts.}
+
+\item{return_probs}{Logical, whether to return predicted probabilities in the object's metadata.}
+
+\item{return_type}{A character string specifying the return type. One of \code{"object"} or \code{"list"}.
+If \code{"object"}, returns the updated \code{query_cds}. If \code{"list"}, returns a list containing
+\code{object} and \code{training_output}.}
+
+\item{debug}{Logical, whether to print debugging messages and dimension checks.}
+
+\item{train_only}{Logical, if \code{TRUE}, only the reference data is processed and no query data is included.}
+
+\item{addbias}{Logical, whether to add a bias term (a row of ones) to the data.}
+
+\item{...}{Additional arguments passed to \code{\link{setup_training}}.}
 }
 \value{
-If return_type is "object", returns the modified query cell data set or seurat object. If return_type is "list", returns a list containing the query cell data set and training output.
+Depending on \code{return_type}, returns either:
+\itemize{
+\item \code{return_type = "object"}: the input \code{query_cds} (or \code{ref_cds} if \code{query_cds = NULL}) with predicted
+labels (and optionally probabilities) appended.
+\item \code{return_type = "list"}: a list containing:
+\describe{
+\item{object}{The updated \code{query_cds} (or \code{ref_cds}).}
+\item{training_output}{The output from the model training process, including probabilities if applicable.}
+}
+}
 }
 \description{
-This function runs viewmastR using the new Rust implementation to generate various forms of training and test data from the given query and reference cell data sets.
+The \code{viewmastR} function preprocesses one or two single-cell datasets (a reference and an optional query),
+splits the reference data into training and test sets, and optionally includes a query dataset for downstream analysis.
+It then applies specified modeling functions (e.g., MLR, NN, NB) to train and optionally predict on the query data.
+}
+\details{
+The function first calls \code{\link{setup_training}} to preprocess and split the data into training, testing, and
+optionally query subsets. Then, based on the selected \code{FUNC}, it calls one of the model training and prediction
+functions (\code{process_learning_obj_mlr}, \code{process_learning_obj_ann}, \code{process_learning_obj_nb}).
+If \code{train_only = TRUE}, the query portion is skipped and no query predictions are made.
+
+For \code{"mlr"} and \code{"nn"} functions, predicted log odds are converted to probabilities using the logistic function.
+Predicted cell labels are assigned to the \code{query_cds} (or \code{ref_cds} if query is not provided).
+}
+\examples{
+\dontrun{
+# Training and predicting with reference and query data:
+res <- viewmastR(
+  query_cds = query_seurat_obj,
+  ref_cds = ref_seurat_obj,
+  ref_celldata_col = "cell_type",
+  FUNC = "mlr",
+  norm_method = "log",
+  train_frac = 0.8,
+  backend = "wgpu",
+  verbose = TRUE,
+  return_type = "object"
+)
+
+# Reference-only scenario:
+res_ref <- viewmastR(
+  query_cds = NULL,
+  ref_cds = ref_cds_obj,
+  ref_celldata_col = "cell_type",
+  FUNC = "nn",
+  norm_method = "none",
+  train_frac = 0.7,
+  scale = TRUE,
+  train_only = TRUE,
+  return_type = "list"
+)
+}
+
 }

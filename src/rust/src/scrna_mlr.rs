@@ -37,13 +37,6 @@ pub struct ModelConfig {
 }
 
 impl ModelConfig {
-    // pub fn init_with<B: Backend>(&self, no_features: usize, record: ModelRecord<B>) -> Model<B> {
-    //     Model {
-    //         linear1: LinearConfig::new(no_features, self.num_classes).init_with(record.linear1),
-    //         activation: ReLU::new(),
-    //     }
-    // }
-
     pub fn init<B: Backend>(&self, no_features: usize) -> Model<B> {
         Model {
             activation: ReLU::new(),
@@ -98,12 +91,10 @@ struct SCTrainingConfig {
     pub optimizer: AdamConfig,
 }
 
-
-
 pub fn run_custom<B>(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,
-    query: Vec<SCItemRaw>,
+    query: Option<Vec<SCItemRaw>>, // Query now optional
     num_classes: usize,
     learning_rate: f64,
     num_epochs: usize,
@@ -119,13 +110,12 @@ where
 {
     let _debug = true;
     let no_features = train.first().expect("Features not found").data.len();
-    let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-        MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
-    let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-        MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
+    let train_dataset = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
+    let test_dataset = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
+
     let num_batches_train = train_dataset.len();
     let artifact_dir = directory.clone().unwrap_or_else(|| panic!("Folder not found: {:?}", directory));
-    
+
     // Create the configuration.
     let config_model = ModelConfig::new(num_classes);
     let config_optimizer = AdamConfig::new();
@@ -135,11 +125,11 @@ where
     let mut model: Model<Autodiff<B>> = config.model.init(no_features);
     let mut optim = config.optimizer.init::<Autodiff<B>, Model<Autodiff<B>>>();
 
-    // Create the batchers.
+    // Create batchers.
     let batcher_train = SCBatcher::<Autodiff<B>>::new(device.clone());
     let batcher_valid = SCBatcher::<B>::new(device.clone());
 
-    // Create the dataloaders.
+    // Create dataloaders.
     let dataloader_train = DataLoaderBuilder::new(batcher_train)
         .batch_size(config.batch_size)
         .num_workers(config.num_workers)
@@ -173,17 +163,16 @@ where
             eprintln!("[Epoch {} progress...]", epoch);
         }
 
-        // Training loop using `TrainStep`
+        // Training loop
         for (iteration, batch) in dataloader_train.iter().enumerate() {
             if verbose {
                 bar.update();
             }
             let batch_len = batch.counts.dims()[0];
 
-            let output = TrainStep::step(&model, batch); // using the `step` method
+            let output = TrainStep::step(&model, batch);
             model = optim.step(config.lr, model, output.grads);
-            
-            // // Calculate number of correct predictions on the last batch
+
             if iteration == batch_len - 1 {
                 let predictions = output.item.output.argmax(1).squeeze(1);
                 let num_predictions = output.item.targets.dims()[0];
@@ -195,17 +184,19 @@ where
                     .to_usize()
                     .expect("Conversion to usize failed");
 
-                // Update accuracy and loss tracking
-                train_accuracy.batch_update(num_corrects, num_predictions, output.item.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
+                train_accuracy.batch_update(
+                    num_corrects,
+                    num_predictions,
+                    output.item.loss.into_scalar().to_f64().expect("Conversion to f64 failed")
+                );
             }
         }
 
         train_accuracy.epoch_update(&mut train_history);
 
-        // Validation loop using `ValidStep`
+        // Validation loop
         for (_iteration, batch) in dataloader_test.iter().enumerate() {
-            let output = ValidStep::step(&model.valid(), batch.clone()); // using the `step` method
-            // Calculate number of correct predictions
+            let output = ValidStep::step(&model.valid(), batch.clone());
             let predictions = output.output.argmax(1).squeeze(1);
             let num_predictions = batch.targets.dims()[0];
             let num_corrects = predictions
@@ -216,8 +207,11 @@ where
                 .to_usize()
                 .expect("Conversion to usize failed");
 
-            // Update accuracy and loss tracking
-            test_accuracy.batch_update(num_corrects, num_predictions, output.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
+            test_accuracy.batch_update(
+                num_corrects,
+                num_predictions,
+                output.loss.into_scalar().to_f64().expect("Conversion to f64 failed")
+            );
         }
         test_accuracy.epoch_update(&mut test_history);
 
@@ -227,24 +221,23 @@ where
     }
 
     let tduration = start.elapsed();
-    // let query_len = query.len();
-    let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-        MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    // Create the batchers.
-    let batcher_query = SCBatcher::<B>::new(device.clone());
 
-    // Create the dataloaders.
-    let dataloader_query = DataLoaderBuilder::new(batcher_query)
-        .batch_size(config.batch_size)
-        .build(query_dataset);
-    
-    let model_valid = model.valid();
+    // Query evaluation is now optional
     let mut probs = Vec::new();
+    if let Some(query_items) = query {
+        let query_dataset = MapperDataset::new(InMemDataset::new(query_items), LocalCountstoMatrix);
+        let batcher_query = SCBatcher::<B>::new(device.clone());
+        let dataloader_query = DataLoaderBuilder::new(batcher_query)
+            .batch_size(config.batch_size)
+            .build(query_dataset);
 
-    // Assuming dataloader_query is built
-    for (_count, batch) in dataloader_query.iter().enumerate() {
-        let output = model_valid.forward(batch.counts);
-        output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
+        let model_valid = model.valid();
+        for (_count, batch) in dataloader_query.iter().enumerate() {
+            let output = model_valid.forward(batch.counts);
+            for val in output.to_data().value.iter() {
+                probs.push(val.to_f32().expect("failed to unwrap probs"));
+            }
+        }
     }
 
     // Save the model
@@ -255,7 +248,7 @@ where
         )
         .expect("Failed to save trained model");
 
-    // Collect and return the predictions
+    // Collect and return the results
     RExport {
         lr: config.lr,
         hidden_size: vec![0],
@@ -263,21 +256,20 @@ where
         num_epochs: config.num_epochs,
         num_workers: config.num_workers,
         seed: config.seed,
-        probs: probs,
+        probs,
         train_history,
         test_history,
         training_duration: tduration.as_secs_f64(),
     }
 }
 
-
-
-
+// Updated versions of run_custom_nd, run_custom_wgpu, and run_custom_candle 
+// to reflect the optional query parameter.
 
 pub fn run_custom_nd(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,
-    query: Vec<SCItemRaw>,
+    query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
     learning_rate: f64,
     num_epochs: usize,
@@ -300,11 +292,10 @@ pub fn run_custom_nd(
     )
 }
 
-
 pub fn run_custom_wgpu(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,
-    query: Vec<SCItemRaw>,
+    query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
     learning_rate: f64,
     num_epochs: usize,
@@ -327,11 +318,10 @@ pub fn run_custom_wgpu(
     )
 }
 
-
 pub fn run_custom_candle(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,
-    query: Vec<SCItemRaw>,
+    query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
     learning_rate: f64,
     num_epochs: usize,

@@ -101,13 +101,13 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
 
   let model_export: RExport;
   if backend == "candle"{
-    model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+    model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   } 
   else if backend == "wpgu"{
-    model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+    model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   } 
   else {
-    model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+    model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   }
 
   let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
@@ -160,23 +160,23 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
   let model_export: RExport;
   if hidden_size.len() == 1 {
     if backend == "candle"{
-      model_export = scrna_ann::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
     } 
     else if backend == "wpgu"{
-      model_export = scrna_ann::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
     } 
     else {
-      model_export = scrna_ann::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
     }
   } else {
     if backend == "candle"{
-      model_export = scrna_ann2l::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann2l::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
     } 
     else if backend == "wpgu"{
-      model_export = scrna_ann2l::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann2l::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
     } 
     else {
-      model_export = scrna_ann2l::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann2l::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
     }
   }
   
