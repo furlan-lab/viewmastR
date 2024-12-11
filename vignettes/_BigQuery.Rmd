@@ -52,7 +52,7 @@ vg <- get_selected_genes(seu)
 
 ## Build the model and infer for small dataset (not using chunks and parallelization)
 ```{r}
-results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 4, train_only = T)
+results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 4, train_only = T, backend = "candle")
 seu<-viewmastR_infer(seu, file.path(results$model_dir, "model.mpk"), vg, labels = levels(factor(seur$SFClassification)))
 DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
 ```
@@ -67,6 +67,16 @@ DimPlot(seu, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
 
 ```{r, dpi=300, fig.height=6, fig.width=10}
 confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_inferred_parallel), cols = seur@misc$colors)
+```
+
+
+```{r}
+seur<-viewmastR_infer(seur, file.path(results$model_dir, "model.mpk"), query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 40, workers = 8)
+DimPlot(seur, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
+```
+
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seur$SFClassification), gt = factor(seur$viewmastR_inferred_parallel), cols = seur@misc$colors)
 ```
 
 

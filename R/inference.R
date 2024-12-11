@@ -2,39 +2,91 @@
 #' @importFrom pbmcapply pbmclapply
 #' @keywords internal
 
-#' @importFrom pbmcapply pbmclapply
+#' @importFrom future plan
+#' @importFrom future multicore
+#' @importFrom future.apply future_lapply
+#' @importFrom progressr handlers handler_progress
+#' @importFrom progressr progressor
+#' @importFrom progressr with_progress
 #' @keywords internal
-infer_prep <- function(object, variable_features, software, chunks = 1, workers = 1) {
-  # If we are not parallelizing (or only one worker), run sequentially
+
+
+#' @importFrom future plan
+#' @importFrom future multicore
+#' @importFrom future.apply future_lapply
+#' @importFrom progressr progressor with_progress handlers handler_progress
+#' @keywords internal
+
+#' @importFrom future plan
+#' @importFrom future multicore multisession
+#' @importFrom future.apply future_lapply
+#' @importFrom progressr progressor with_progress handlers handler_progress
+#' @keywords internal
+
+infer_prep <- function(object, variable_features, software, chunks = 1, workers = 1, 
+                       show_progress = TRUE) {
+  # Extract counts once
+  norm_counts <- get_norm_counts(object)[variable_features, , drop = FALSE]
+  
+  # No parallelization
   if (workers <= 1) {
-    qcounts <- t(as.matrix(get_norm_counts(object)[variable_features, ]))
-    query <- lapply(seq_len(nrow(qcounts)), function(idx) {
-      list(data = as.numeric(qcounts[idx, ]))
-    })
-    return(list(query)) # Return as a single chunk for consistency
+    qcounts <- t(norm_counts)
+    nrows <- nrow(qcounts)
+    query <- vector("list", nrows)
+    for (i in seq_len(nrows)) {
+      query[[i]] <- list(data = qcounts[i, ])
+    }
+    return(list(query))
   }
   
-  # Parallel mode: split cells into chunks
-  n_cells <- ncol(get_norm_counts(object))
+  # Set a parallel plan suitable for your platform
+  # On Windows use multisession, on UNIX use multicore
+  if (tolower(Sys.info()[['sysname']]) == "windows") {
+    plan(multisession, workers = workers)
+  } else {
+    plan(multicore, workers = workers)
+  }
+  
+  # Pre-transpose so tasks just do indexing
+  tnorm_counts <- t(norm_counts)
+  
+  # Determine chunks
+  n_cells <- nrow(tnorm_counts)
   chunk_size <- ceiling(n_cells / chunks)
+  cell_chunks <- split(seq_len(n_cells), ceiling(seq_len(n_cells) / chunk_size))
   
-  # Create cell index chunks
-  all_cells <- seq_len(n_cells)
-  cell_chunks <- split(all_cells, ceiling(seq_along(all_cells) / chunk_size))
+  # Set up progress handlers if requested
+  if (show_progress) {
+    handlers(
+      handler_progress(
+        format = "[:bar] :percent ETA: :eta",
+        clear = FALSE,
+        show_after = 0
+      )
+    )
+  } else {
+    handlers("null") # no progress to reduce overhead
+  }
   
-  # Retrieve chunked queries in parallel
-  chunked_query <- pbmclapply(cell_chunks, function(cells) {
-    mat <- t(get_norm_counts(object)[variable_features, cells, drop = FALSE])
-    # Create query list for this chunk
-    lapply(seq_len(nrow(mat)), function(idx) {
-      list(data = as.numeric(mat[idx, ]))
-    })
-  }, mc.cores = workers)
-  
-  # Here, chunked_query is a list of chunks, each chunk is a list of cell entries
-  # We do NOT flatten; we keep the chunk structure.
-  return(chunked_query)
+  with_progress({
+    p <- progressor(steps = length(cell_chunks))
+    
+    chunked_query <- future_lapply(cell_chunks, function(cells) {
+      mat <- tnorm_counts[cells, , drop = FALSE]
+      nrows <- nrow(mat)
+      # Manual loop instead of asplit/lapply
+      chunk_result <- vector("list", nrows)
+      for (i in seq_len(nrows)) {
+        chunk_result[[i]] <- list(data = mat[i, ])
+      }
+      p() # Update progress once per chunk
+      chunk_result
+    }, future.seed = TRUE)
+    
+    return(chunked_query)
+  })
 }
+
 
 
 #' Function to infer cell labels using a trained model
@@ -53,6 +105,9 @@ infer_prep <- function(object, variable_features, software, chunks = 1, workers 
 #' @importFrom future plan
 #' @importFrom future multisession
 #' @importFrom future.apply future_lapply
+#' @importFrom progressr handlers handler_progress
+#' @importFrom progressr progressor
+#' @importFrom progressr with_progress
 #' @export
 viewmastR_infer <- function(query_cds,
                             model_path,
@@ -88,35 +143,30 @@ viewmastR_infer <- function(query_cds,
     if (verbose) message("Running inference on chunks in parallel")
     # library(future)
     # library(future.apply)
+    
     plan(multisession, workers = workers)  # or plan(cluster, workers=workers) on Windows
-    # 
-    chunk_results <- future_lapply(query_chunks, function(chunk) {
-      viewmastR::infer_from_model(
-        model_path = model_path,
-        query = chunk,
-        num_classes = num_classes,
-        num_features = length(vg),
-        verbose = FALSE
+    
+    # Set up a handler that shows ETA
+    handlers(
+      handler_progress(
+        format = "[:bar] :percent ETA: :eta",
+        clear = FALSE,
+        show_after = 0
       )
+    )
+    
+    with_progress({
+      p <- progressor(steps = length(query_chunks))
+      chunk_results <- future_lapply(query_chunks, function(chunk) {
+        viewmastR::infer_from_model(
+          model_path = model_path,
+          query = chunk,
+          num_classes = num_classes,
+          num_features = length(vg),
+          verbose = FALSE
+        )
+      })
     })
-    # chunk_results <- pbmclapply(query_chunks, function(chunk) {
-    #   library(viewmastR)
-    #   viewmastR::infer_from_model(
-    #     model_path = model_path,
-    #     query = chunk,
-    #     num_classes = num_classes,
-    #     num_features = length(vg),
-    #     verbose = FALSE
-    #   )
-    # }, mc.cores = workers)
-    chunk_results <- lapply(query_chunks, function(chunk) {
-       viewmastR:::infer_from_model(
-         model_path = model_path,
-         query = chunk,
-         num_classes = num_classes,
-         num_features = length(vg),
-         verbose = FALSE)
-       })
     
     # Combine the probabilities from all chunks
     probs_list <- lapply(chunk_results, `[[`, "probs")
