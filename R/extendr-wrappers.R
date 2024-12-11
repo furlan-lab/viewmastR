@@ -34,7 +34,7 @@ process_learning_obj_mlr <- function(train, test, query, labels, learning_rate, 
 #' infer from saved model
 #' @export
 #' @keywords internal
-infer_from_model <- function(model_path, query, num_classes, num_features, verbose) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, verbose)
+infer_from_model <- function(model_path, query, num_classes, num_features, verbose, batch_size) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, verbose, batch_size)
 
 #' Process Robj learning objects for MLR
 #' @export

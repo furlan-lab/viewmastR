@@ -193,8 +193,12 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
 /// @export
 /// @keywords internal
 #[extendr]
-fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, verbose: Robj) -> List{
+fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, verbose: Robj, batch_size: Robj,) -> List{
   let verbose =  verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
+  // let verbose: bool = verbose
+  //       .as_logical_vector()
+  //       .and_then(|v| v.first().copied())
+  //       .unwrap_or(false);
   if verbose {eprintln!("Loading model")};
   let model_path_tested = match model_path.as_str_vector() {
     Some(string_vec) => string_vec.first().unwrap().to_string(),
@@ -203,12 +207,20 @@ fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_featur
   if !Path::new(&model_path_tested).exists(){
     panic!("Could not find folder: '{:?}'", model_path)
   }
+  // let batch_size = batch_size.as_real_vector().unwrap().first().unwrap_or(None) as usize;
+  let batch_size = batch_size
+        .as_real()
+        .map(|x| x as usize)
+        .or_else(|| batch_size.as_integer().map(|x| x as usize))
+        .unwrap_or_else(|| {
+            panic!("Batch size must be a real number or integer");
+        });
   if verbose {eprintln!("Loading data")};
   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
   let num_classes = num_classes.as_integer().unwrap() as usize;
   let num_features = num_features.as_integer().unwrap() as usize;
   if verbose {eprintln!("Running inference")};
-  let probs = infer_helper(model_path_tested, num_classes, num_features, query_raw);
+  let probs = infer_helper(model_path_tested, num_classes, num_features, query_raw, Some(batch_size));
   if verbose {eprintln!("Returning results")};
   return list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
 }

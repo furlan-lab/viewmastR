@@ -3,6 +3,7 @@
 export(augment_data)
 export(calc_dispersion_m2)
 export(calculate_gene_dispersion)
+export(check_genes_in_object)
 export(common_features)
 export(common_variant_genes)
 export(computeSparseRowVariances)

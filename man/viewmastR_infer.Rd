@@ -2,7 +2,7 @@
 % Please edit documentation in R/inference.R
 \name{viewmastR_infer}
 \alias{viewmastR_infer}
-\title{Function to infer cell labels using a trained model}
+\title{Infer Cell Labels Using a Trained Model}
 \usage{
 viewmastR_infer(
   query_cds,
@@ -14,30 +14,91 @@ viewmastR_infer(
   return_probs = FALSE,
   return_type = c("object", "list"),
   chunks = 1,
-  workers = 1
+  workers = 1,
+  batch_size = NULL,
+  show_progress = TRUE
 )
 }
 \arguments{
-\item{query_cds}{Seurat or cell_data_set object}
+\item{query_cds}{A \code{Seurat} or \code{cell_data_set} object. The dataset for
+which cell labels are to be inferred.}
 
-\item{model_path}{character path to the trained model file}
+\item{model_path}{A character string specifying the path to the trained model file.}
 
-\item{vg}{character vector of features used for inference}
+\item{vg}{A character vector of variable features to be used for inference. These
+features must be present in the \code{query_cds}.}
 
-\item{query_celldata_col}{character column name to store inferred cell labels}
+\item{query_celldata_col}{A character string specifying the column name in
+\code{query_cds} metadata (for Seurat) or \code{colData}(for Monocle3)
+to store the inferred cell labels. Default is \code{"viewmastR_inferred"}.}
 
-\item{labels}{character vector of labels (optional)}
+\item{labels}{A character vector of labels corresponding to the class indices. If
+\code{NULL}, generic labels are generated.}
 
-\item{verbose}{logical, show messages}
+\item{verbose}{A logical indicating whether to print informative messages. Default
+is \code{TRUE}.}
 
-\item{return_probs}{logical, return class probabilities}
+\item{return_probs}{A logical indicating whether to return class probabilities in
+addition to inferred labels. Default is \code{FALSE}.}
 
-\item{return_type}{one of "object" or "list"}
+\item{return_type}{A character string, either \code{"object"} or \code{"list"}. If
+\code{"object"}, the updated \code{query_cds} is returned. If \code{"list"}, a
+list containing the updated object and the raw inference results is returned.
+Default is \code{"object"}.}
 
-\item{chunks}{integer number of chunks to split the data into for parallelization}
+\item{chunks}{An integer indicating the number of chunks to split the data into for
+parallelization. Default is 1 (no chunking).}
 
-\item{workers}{integer number of parallel workers}
+\item{workers}{An integer specifying the number of parallel workers to use. Default
+is 1 (no parallelization).}
+
+\item{batch_size}{An integer specifying the batch size used during inference. If
+\code{NULL}, a heuristic is used to determine a suitable batch size based on the
+data and number of chunks.}
+
+\item{show_progress}{A logical indicating whether to show a progress bar with total
+elapsed time. Default is \code{TRUE}.}
+}
+\value{
+Depending on \code{return_type}:
+\itemize{
+\item \code{"object"}: Returns the updated \code{query_cds} with inferred labels
+in \code{query_celldata_col} and optionally probabilities in the metadata.
+\item \code{"list"}: Returns a list containing:
+\item{\code{object}}{The updated \code{query_cds}.}
+\item{\code{training_output}}{The raw inference results including probabilities.}
+}
 }
 \description{
-Function to infer cell labels using a trained model
+This function prepares query data and runs cell-type label inference in parallel,
+using a pre-trained model stored at a specified \code{model_path}. It can handle both
+Seurat and Monocle3 objects, extract relevant feature data, split the work into
+parallel chunks, and display a progress bar with total elapsed time.
+}
+\details{
+The function first checks that all variable features specified in \code{vg}
+are present in \code{query_cds}, extracts normalized counts, and determines whether
+to run sequentially or in parallel. When parallelization is enabled (\code{workers > 1}),
+the dataset is split into chunks, and each chunk is processed and run through the
+model inference in parallel. A progress bar is displayed showing the number of
+completed chunks and total elapsed time.
+
+The underlying model is loaded from the specified \code{model_path}, and class
+probabilities (log-odds) are computed for each cell. The function then assigns the
+most likely label to each cell. Optionally, the probabilities are added to the
+object's metadata.
+}
+\examples{
+\dontrun{
+# Assuming `seu` is a Seurat object and `model_path` is a path to a trained model
+result <- viewmastR_infer(
+  query_cds = seu,
+  model_path = "path/to/model.msgpack",
+  vg = VariableFeatures(seu)
+)
+}
+
+}
+\seealso{
+\code{\link[Seurat]{Seurat}}, \code{\link[monocle3]{cell_data_set}}
 }

@@ -11,12 +11,12 @@ use burn::{
     module::Module
 };
 
-pub fn infer_helper(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>) -> Vec<f32>{
+pub fn infer_helper(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, batch_size: Option<usize>) -> Vec<f32>{
     type MyBackend = Wgpu<AutoGraphicsApi, f32>;
     let device = WgpuDevice::default();
     let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
         .load(model_path.into())
-        .expect("Should be able to load the model weights from the provided file");
+        .expect("Failed to load model weights");
 
     // Directly initialize a new model with the loaded record/weights
     let config_model = ModelConfig::new(num_classes);
@@ -28,7 +28,7 @@ pub fn infer_helper(model_path: String, num_classes: usize, num_features: usize,
 
     // Create the dataloaders.
     let dataloader_query = DataLoaderBuilder::new(batcher_query)
-        .batch_size(64)
+        .batch_size(batch_size.unwrap_or(64))
         .build(query_dataset);
 
     // let model_valid = model.valid();
@@ -37,7 +37,9 @@ pub fn infer_helper(model_path: String, num_classes: usize, num_features: usize,
     // Assuming dataloader_query is built
     for batch in dataloader_query.iter() {
         let output = model.forward(batch.counts);
-        output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
+        // output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
+        let output_data = output.to_data().value;
+        probs.extend(output_data.iter().map(|x| x.to_f32().unwrap()));
     }
     probs
 
