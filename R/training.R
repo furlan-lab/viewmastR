@@ -152,7 +152,18 @@ viewmastR <-function(query_cds,
   } else {
     stop("Error in log odds dimensions of function output")
   }
-  export_list$probs = plogis(log_odds)
+  
+  softmax_rows <- function(mat) {
+    shifted <- mat - apply(mat, 1, max)  # stability
+    exp_shifted <- exp(shifted)
+    exp_shifted / rowSums(exp_shifted)
+  }
+  
+  #logit_mat <- matrix(log_odds, nrow = num_cells, ncol = num_classes, byrow = TRUE)
+  prob_mat  <- softmax_rows(log_odds)
+  
+  # export_list$probs = plogis(log_odds)
+  export_list$probs = prob_mat
   query_cds[[query_celldata_col]]<-training_list[["labels"]][apply(log_odds, 1, which.max)]
   if(return_probs){
     query_cds@meta.data <- cbind(query_cds@meta.data, export_list$probs)

@@ -1,3 +1,8 @@
+# viewmastR v0.2.4
+
+* bug - incorrectly printed training accuracy in specific situations
+* bug - fixed an error in probability calculations
+
 # viewmastR v0.2.3
 
 * new feature - naive bayes implementation

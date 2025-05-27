@@ -177,17 +177,13 @@ where
         }
 
         // Training loop using `TrainStep`
-        for (iteration, batch) in dataloader_train.iter().enumerate() {
-            if verbose {
-                bar.update();
-            }
-            
-            let batch_len = batch.counts.dims()[0];
-            let output = TrainStep::step(&model, batch); // using the `step` method
-            model = optim.step(config.lr, model, output.grads);
-            
-            // // Calculate number of correct predictions on the last batch
-            if iteration == batch_len - 1 {
+        for batch in dataloader_train.iter(){
+                if verbose {
+                    bar.update();
+                }
+                let output = TrainStep::step(&model, batch); // using the `step` method
+                model = optim.step(config.lr, model, output.grads);
+
                 let predictions = output.item.output.argmax(1).squeeze(1);
                 let num_predictions = output.item.targets.dims()[0];
                 let num_corrects = predictions
@@ -201,7 +197,6 @@ where
                 // Update accuracy and loss tracking
                 train_accuracy.batch_update(num_corrects, num_predictions, output.item.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
             }
-        }
 
         train_accuracy.epoch_update(&mut train_history);
 
