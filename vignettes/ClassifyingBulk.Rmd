@@ -1,0 +1,86 @@
+---
+title: "Classifying long-read RNA (Isoseq) using short-read bulk RNAseq"
+output: html_document
+date: "2025-05-27"
+always_allow_html: true
+editor_options: 
+  
+  chunk_output_type: console
+---
+
+## Installing Rust
+
+First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
+
+
+## Installing viewmastR
+
+You will need to have the devtools package installed...
+
+```{r, eval=F}
+devtools::install_github("furlan-lab/viewmastR")
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+rm(list=ls())
+if(grepl("^gizmo", Sys.info()["nodename"])){
+# 
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/AML/1031/coembed/res"
+}
+
+```
+
+## Load a few datasets
+
+```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
+suppressPackageStartupMessages({
+library(viewmastR)
+library(Seurat)
+library(ggplot2)
+library(scCustomize)
+library(magrittr)
+  library(dplyr)
+})
+
+#short-read ref (bulk)
+atlas <- file.path(ROOT_DIR1, "250527_AllRNAasSeu.RDS")
+seu <- readRDS(atlas)
+
+
+
+
+
+get_bulk_counts <- function(file, gene_targets){
+  counts <- read.table(file, header = T)
+  counts <- counts[counts$associated_gene %in% gene_targets,]
+  sums <- counts |> group_by(associated_gene) |> summarize(sum = sum(fl_assoc))
+  #out <- data.frame(gene_targets = gene_targets)
+  out <- rep(0, length(gene_targets))
+  out[match(sums$associated_gene, gene_targets)] <- sums$sum
+  names(out)<-gene_targets
+  out
+}
+files <- c("/Volumes/furlan_s/sfurlan/250302_leuklong/250228_SF_iso-seq/LL1_S1/LL1_S1_classification.txt", "/Volumes/furlan_s/sfurlan/250302_leuklong/250228_SF_iso-seq/LL2_S18/LL2_S18_classification.txt", "/Volumes/furlan_s/sfurlan/250302_leuklong/250228_SF_iso-seq/LL3_S42/LL3_S42_classification.txt",
+"/Volumes/furlan_s/sfurlan/250302_leuklong/250228_SF_iso-seq/LL4_SAdd/LL4_SAdd_classification.txt")
+
+cnts <- lapply(files, function(file) get_bulk_counts(file, rownames(seu)))
+cnts <- do.call(cbind, cnts)
+colnames(cnts)<-c("S1", "S18", "S42", "SAdd")
+
+seuQ <- CreateSeuratObject(cnts)
+
+```
+
+
+```{r}
+undebug(viewmastR)
+LL <- viewmastR(seuQ, seu, ref_celldata_col = "category1", selected_genes = VariableFeatures(seu), max_epochs = 30, return_probs = T, return_type = "list")
+
+melted <- reshape::melt(LL$training_output$probs)
+colnames(melted) <- c("sample", "class", "prob")
+
+g <- ggplot(melted, aes(x=sample, y=prob, fill=class))+geom_col()+theme_bw()+scale_fill_manual(values=c(as.character(pals::polychrome()), pals::glasbey()[4:20]))
+plotly::ggplotly(g)
+```
+
