@@ -47,9 +47,30 @@ viewmastR_infer<-function(query_cds,
   if(verbose){message("Preparing query")}
   query<-infer_prep(query_cds, vg, software)
   mod<-msgpackRead(model_path, simplify = T)
-  num_classes <- mod$item$linear1$weight$param$shape[2]
+  num_classes <- get_modelpak_info()
+  # num_classes <- mod$item$linear1$weight$param$shape[2]
   export_list <- viewmastR:::infer_from_model(model_path,  query = query, num_classes = num_classes, num_features = length(vg), verbose = verbose)
   log_odds = unlist(export_list$probs)
+  if(length(log_odds) == dim(query_cds)[2]*length(training_list[["labels"]])){
+    log_odds = matrix(log_odds, ncol = dim(query_cds)[2])
+    log_odds = t(log_odds)
+    colnames(log_odds) <- paste0("prob_", training_list[["labels"]])
+  } else {
+    stop("Error in log odds dimensions of function output")
+  }
+  
+  softmax_rows <- function(mat) {
+    shifted <- mat - apply(mat, 1, max)  # stability
+    exp_shifted <- exp(shifted)
+    exp_shifted / rowSums(exp_shifted)
+  }
+  
+  #logit_mat <- matrix(log_odds, nrow = num_cells, ncol = num_classes, byrow = TRUE)
+  prob_mat  <- softmax_rows(log_odds)
+  
+  
+  
+  
   if(is.integer(length(log_odds) %% dim(query_cds)[2])){
     log_odds = matrix(log_odds, ncol = dim(query_cds)[2])
     log_odds = t(log_odds)
@@ -71,4 +92,6 @@ viewmastR_infer<-function(query_cds,
     list(object=query_cds, training_output = export_list)
   }
 }
-  
+
+
+

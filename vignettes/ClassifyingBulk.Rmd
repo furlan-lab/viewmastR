@@ -75,7 +75,7 @@ seuQ <- CreateSeuratObject(cnts)
 
 ```{r}
 undebug(viewmastR)
-LL <- viewmastR(seuQ, seu, ref_celldata_col = "category1", selected_genes = VariableFeatures(seu), max_epochs = 30, return_probs = T, return_type = "list")
+LL <- viewmastR(seuQ, seu, ref_celldata_col = "category1", selected_genes = VariableFeatures(seu), max_epochs = 30, return_probs = T, return_type = "list", FUNC = "nn", hidden_layers = c(200))
 
 melted <- reshape::melt(LL$training_output$probs)
 colnames(melted) <- c("sample", "class", "prob")
@@ -83,4 +83,217 @@ colnames(melted) <- c("sample", "class", "prob")
 g <- ggplot(melted, aes(x=sample, y=prob, fill=class))+geom_col()+theme_bw()+scale_fill_manual(values=c(as.character(pals::polychrome()), pals::glasbey()[4:20]))
 plotly::ggplotly(g)
 ```
+
+
+```{r}
+augment_bulk <- function(obj,
+                          assay = "RNA",
+                          group_col,
+                          target_n   = 6,      # desired samples per group
+                          prune      = TRUE,   # drop extras if > target_n
+                          min_reads  = 1e6,
+                          size_sd    = NULL,   # NULL = use empirical SD
+                          lib_size_fn = median, # or mean
+                          threads = 1) {
+  counts <- GetAssayData(obj, layer = "counts", assay = assay)
+  meta <- obj@meta.data
+  rm(obj)
+  gc()
+  stopifnot(all(colnames(counts) == rownames(meta)))
+
+  groups <- meta[[group_col]]
+  tbl    <- table(groups)
+
+  ## ---- 1. prune over-represented groups --------------------------------
+  if (prune && any(tbl > target_n)) {
+    over <- names(tbl)[tbl > target_n]
+    keep <- unlist(lapply(over, function(g){
+      samples <- which(groups == g)
+      sample(samples, target_n)     # keep exactly target_n
+    }))
+    keep <- c(keep, which(!groups %in% over))
+    counts <- counts[, keep, drop = FALSE]
+    meta   <- meta[keep, , drop = FALSE]
+    groups <- meta[[group_col]]
+  }
+
+  ## ---- 2. determine how many to synthesise in each group ---------------
+  tbl <- table(groups)
+  to_make <- target_n - tbl            # positive numbers ⇒ need to add
+  to_make <- to_make[to_make > 0]
+
+  if (!length(to_make)) {
+    message("All groups already at or above target_n. Nothing to do.")
+    return(list(counts = counts, meta = meta))
+  }
+
+  ## ---- 3. prepare containers ------------------------------------------
+  synth_list <- vector("list", sum(to_make))
+  synth_meta <- vector("list", sum(to_make))
+  cnt <- 1L
+
+  ## ---- 4. loop over groups needing augmentation ------------------------
+  global_sizes <- colSums(counts)
+  ## ---- tiny per-group summaries in the main process --------------------
+  group_summaries <- lapply(names(to_make), function(g) {
+    g_idx <- which(groups == g)
+    g_cnts <- counts[, g_idx, drop = FALSE]
+  
+    list(
+      g         = g,
+      p_g       = rowSums(g_cnts) / sum(g_cnts),
+      lib_sizes = colSums(g_cnts),
+      n_synth   = unname(to_make[g])
+    )
+  })
+
+
+  
+  ## ---- parallel generation using only small objects --------------------
+  
+  ## optional: global fallback SD if a group has only 1 sample
+  global_sd <- sd(colSums(counts))
+  
+  gs <- group_summaries[[1]]
+  ## ---- parallel generation (workers see *only* the summary) -------------
+  grp_results <- pbmcapply::pbmclapply(
+    group_summaries, mc.cores = threads, 
+    FUN = function(gs) {
+      g         <- gs$g
+      p_g       <- gs$p_g
+      lib_sizes <- gs$lib_sizes
+      n_synth   <- gs$n_synth
+      
+  
+      ## pick an SD
+      sd_here <- if (length(lib_sizes) > 1L) {
+        if (is.null(size_sd)) stats::sd(lib_sizes) else size_sd
+      } else {
+        if (is.null(size_sd)) global_sd else size_sd
+      }
+  
+      ## containers
+      mat_list  <- vector("list", n_synth)
+      meta_list <- vector("list", n_synth)
+  
+      for (j in seq_len(n_synth)) {
+        L_star <- round(rnorm(1, lib_size_fn(lib_sizes), sd_here))
+        L_star <- max(min_reads, L_star)
+  
+        new_sample <- stats::rmultinom(1, size = L_star, prob = p_g)
+        colnames(new_sample) <- paste0("synthetic_", g, "_", j)
+  
+        mat_list[[j]] <- new_sample
+  
+        mdf <- data.frame(row.names = colnames(new_sample),
+                          synthetic  = TRUE,
+                          stringsAsFactors = FALSE)
+        mdf[[group_col]] <- g
+        meta_list[[j]] <- mdf
+      }
+  
+      list(mat  = Matrix::Matrix(do.call(cbind, mat_list), sparse = TRUE),
+           meta = do.call(rbind,   meta_list))
+    }
+    # recycle = FALSE,           # don’t recycle the same summary by accident
+    # export  = NULL             # ship nothing else
+  )
+  ## ---- 5. merge --------------------------------------------------------
+  synth_mat   <- do.call(cbind, unlist(lapply(grp_results, `[[`, "mat"),  recursive = FALSE))
+  synth_meta <- do.call(rbind,  lapply(grp_results, `[[`, "meta"))
+  rm(grp_results)
+  gc()
+  
+  meta$synthetic       <- FALSE          # originals
+  synth_meta$synthetic <- TRUE           # synthetics
+
+  ## ensure the same column order everywhere
+  all_counts <- cbind(counts, synth_mat)
+  rm(synth_mat)
+  gc()
+  all_meta   <- dplyr::bind_rows(meta, synth_meta)
+  all_meta   <- all_meta[colnames(all_counts), , drop = FALSE]
+
+  ## ---- 7. create and return a new Seurat object -----------------------
+  new_obj <- CreateSeuratObject(
+    counts    = all_counts,
+    assay     = assay,        # keeps the same assay slot name
+    meta.data = all_meta
+  )
+
+  return(new_obj)
+}
+
+
+get_sd <- function(lib_sizes, global_sizes, size_sd = NULL,
+                   cv = 0.05,   # 5 % CV default
+                   min_sd = 1e6 # min 1 M reads
+                   ) {
+  if (!is.null(size_sd))            # user-supplied override
+    return(size_sd)
+
+  if (length(lib_sizes) > 1L)       # usual case
+    return(stats::sd(lib_sizes))
+
+  ## ---- single-sample fall-back ----------------------------------------
+  # A: CV on the single observed size
+  sd_cv  <- cv * lib_sizes
+
+  # B: global SD across all samples
+  sd_gbl <- stats::sd(global_sizes)
+
+  # combine: use the larger of the two, but respect the minimum floor
+  max(min_sd, sd_cv, sd_gbl, na.rm = TRUE)
+}
+
+
+
+```
+
+
+
+```{r}
+
+seuA <- augment_bulk(seu, group_col = "category1", target_n = 150)
+
+
+
+seuA <- NormalizeData(seuA, verbose = F) %>% ScaleData(verbose = F) 
+VariableFeatures(seuA)<- VariableFeatures(seu)
+seuA <- RunPCA(seuA, npcs = 100, verbose = F)
+ElbowPlot(seu, ndims = 100)
+seuA$lib2 <- seuA$Lib_Prep
+# table(seuA$lib2, useNA="always")
+seuA$lib2[is.na(seuA$lib2)]<-"synth"
+seuA <- RunHarmony(seuA, "lib2")
+ElbowPlot(seuA, reduction = "harmony", ndims = 100)
+seuA <- seuA %>%
+    FindNeighbors(dims = 1:50, reduction = "harmony") %>%
+    FindClusters(resolution = 2) 
+seuA <- seuA %>% RunUMAP(reduction = "harmony", dims = 1:50)
+seuA <- seuA %>% RunTSNE(reduction = "harmony", dims = 1:50, tsne.method = "FIt-SNE")
+g <- DimPlot(seuA, group.by = "category1", reduction = "tsne", cols = c(as.character(pals::polychrome()), pals::glasbey()[4:20]), pt.size = 2)
+plotly::ggplotly(g)
+
+
+```
+
+```{r}
+
+LL <- viewmastR(seuQ, seuA, ref_celldata_col = "category1", selected_genes = VariableFeatures(seuA), max_epochs = 10, return_probs = T, return_type = "list", FUNC = "nn", hidden_layers = c(1000, 200), dir = )
+#LL <- viewmastR(seuQ, seuA, ref_celldata_col = "category1", selected_genes = VariableFeatures(seuA), max_epochs = 50, return_probs = T, return_type = "list", FUNC = "mlr")
+
+melted <- reshape::melt(LL$training_output$probs)
+colnames(melted) <- c("sample", "class", "prob")
+
+g <- ggplot(melted, aes(x=sample, y=prob, fill=class))+geom_col()+theme_bw()+scale_fill_manual(values=c(as.character(pals::polychrome()), pals::glasbey()[4:20]))
+plotly::ggplotly(g)
+
+debug(viewmastR_infer)
+pack <- RcppMsgPack::msgpack_read("/tmp/sc_local/model.mpk")
+length(pack$item)
+
+viewmastR_infer(seuQ, model_path =  "/tmp/sc_local/model.mpk", vg = VariableFeatures(seu), return_probs = T)
+```
+
 
