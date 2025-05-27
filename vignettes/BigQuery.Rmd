@@ -76,7 +76,8 @@ confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmast
 ```
 
 
-By optimising chunk size, workers and batch size, you can achieve faster results on big datasets. Here we are just inferring on the larger reference set (which is not advisable in normal practice)
+## Bigger dataset
+By optimising chunk size, workers and batch size, you can achieve faster results on big datasets. Here we are just inferring back on the larger reference set (because it is larger, but this is not advisable in normal practice)
 ```{r}
 seur<-viewmastR_infer(seur, file.path(results$model_dir, "model.mpk"), query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 20, workers = 16, batch_size = 3000)
 DimPlot(seur, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
