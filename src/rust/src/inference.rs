@@ -13,12 +13,12 @@ use burn::{
     module::Module
 };
 
-pub fn infer_helper_mlr(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>) -> Vec<f32>{
+pub fn infer_helper_mlr(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, batch_size: Option<usize>) -> Vec<f32>{
     type MyBackend = Wgpu<AutoGraphicsApi, f32>;
     let device = WgpuDevice::default();
     let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
         .load(model_path.into())
-        .expect("Should be able to load the model weights from the provided file");
+        .expect("Failed to load model weights");
 
     // Directly initialize a new model with the loaded record/weights
     let config_model = MLR_ModelConfig::new(num_classes);
@@ -30,7 +30,7 @@ pub fn infer_helper_mlr(model_path: String, num_classes: usize, num_features: us
 
     // Create the dataloaders.
     let dataloader_query = DataLoaderBuilder::new(batcher_query)
-        .batch_size(64)
+        .batch_size(batch_size.unwrap_or(64))
         .build(query_dataset);
 
     // let model_valid = model.valid();
@@ -40,17 +40,19 @@ pub fn infer_helper_mlr(model_path: String, num_classes: usize, num_features: us
     for batch in dataloader_query.iter() {
         let output = model.forward(batch.counts);
         output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
+        // let output_data = output.to_data().value;
+        // probs.extend(output_data.iter().map(|x| x.to_f32().unwrap()));
     }
     probs
 
 }
 
-pub fn infer_helper_ann(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, hidden_size: usize) -> Vec<f32>{
+pub fn infer_helper_ann(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, hidden_size: usize, batch_size: Option<usize>) -> Vec<f32>{
     type MyBackend = Wgpu<AutoGraphicsApi, f32>;
     let device = WgpuDevice::default();
     let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
         .load(model_path.into())
-        .expect("Should be able to load the model weights from the provided file");
+        .expect("Failed to load model weights");
 
     // Directly initialize a new model with the loaded record/weights
     let config_model = ANN_ModelConfig::new(num_classes, 0, hidden_size, 0.0);
@@ -62,7 +64,7 @@ pub fn infer_helper_ann(model_path: String, num_classes: usize, num_features: us
 
     // Create the dataloaders.
     let dataloader_query = DataLoaderBuilder::new(batcher_query)
-        .batch_size(64)
+        .batch_size(batch_size.unwrap_or(64))
         .build(query_dataset);
 
     // let model_valid = model.valid();
@@ -72,18 +74,20 @@ pub fn infer_helper_ann(model_path: String, num_classes: usize, num_features: us
     for batch in dataloader_query.iter() {
         let output = model.forward(batch.counts);
         output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
+        // let output_data = output.to_data().value;
+        // probs.extend(output_data.iter().map(|x| x.to_f32().unwrap()));
     }
     probs
 
 }
 
 
-pub fn infer_helper_ann2l(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, hidden_size1: usize, hidden_size2: usize) -> Vec<f32>{
+pub fn infer_helper_ann2l(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, hidden_size1: usize, hidden_size2: usize, batch_size: Option<usize>) -> Vec<f32>{
     type MyBackend = Wgpu<AutoGraphicsApi, f32>;
     let device = WgpuDevice::default();
     let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
         .load(model_path.into())
-        .expect("Should be able to load the model weights from the provided file");
+        .expect("Failed to load model weights");
 
     // Directly initialize a new model with the loaded record/weights
     let config_model = ANN_2_ModelConfig::new(num_classes, 0, hidden_size1, hidden_size2, 0.0);
@@ -95,7 +99,7 @@ pub fn infer_helper_ann2l(model_path: String, num_classes: usize, num_features: 
 
     // Create the dataloaders.
     let dataloader_query = DataLoaderBuilder::new(batcher_query)
-        .batch_size(64)
+        .batch_size(batch_size.unwrap_or(64))
         .build(query_dataset);
 
     // let model_valid = model.valid();
@@ -105,6 +109,8 @@ pub fn infer_helper_ann2l(model_path: String, num_classes: usize, num_features: 
     for batch in dataloader_query.iter() {
         let output = model.forward(batch.counts);
         output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
+        // let output_data = output.to_data().value;
+        // probs.extend(output_data.iter().map(|x| x.to_f32().unwrap()));
     }
     probs
 

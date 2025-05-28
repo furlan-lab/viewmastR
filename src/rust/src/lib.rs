@@ -239,6 +239,7 @@ fn infer_from_model(
     hidden1     : Nullable<Robj>,
     hidden2     : Nullable<Robj>,
     verbose     : Robj,
+    batch_size: Robj
 ) -> List {
     // ── verbosity -----------------------------------------------------------
     let verbose = verbose
@@ -277,9 +278,17 @@ fn infer_from_model(
     let h1 = usize_from_nullable(hidden1);
     let h2 = usize_from_nullable(hidden2);
 
-    if verbose {
-        eprintln!("h1 = {:?}, h2 = {:?}", h1, h2);
-    }
+    // if verbose {
+    //     eprintln!("h1 = {:?}, h2 = {:?}", h1, h2);
+    // }
+
+    let batch_size = batch_size
+        .as_real()
+        .map(|x| x as usize)
+        .or_else(|| batch_size.as_integer().map(|x| x as usize))
+        .unwrap_or_else(|| {
+            panic!("Batch size must be a real number or integer");
+        });
 
     // ── query to Vec<SCItemRaw> --------------------------------------------
     if verbose {
@@ -297,6 +306,7 @@ fn infer_from_model(
             num_classes,
             num_features,
             query_raw,
+            Some(batch_size)
         ),
 
         "ann1" | "ann" => {
@@ -307,6 +317,7 @@ fn infer_from_model(
                 num_features,
                 query_raw,
                 size1,
+                Some(batch_size)
             )
         }
 
@@ -320,6 +331,7 @@ fn infer_from_model(
                 query_raw,
                 size1,
                 size2,
+                Some(batch_size)
             )
         }
 

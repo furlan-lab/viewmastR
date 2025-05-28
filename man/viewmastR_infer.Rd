@@ -10,9 +10,13 @@ viewmastR_infer(
   vg,
   query_celldata_col = "viewmastR_inferred",
   labels = NULL,
-  verbose = T,
-  return_probs = F,
-  return_type = c("object", "list")
+  verbose = TRUE,
+  return_probs = FALSE,
+  return_type = c("object", "list"),
+  chunks = 1,
+  workers = 1,
+  batch_size = NULL,
+  show_progress = TRUE
 )
 }
 \arguments{
@@ -29,11 +33,62 @@ viewmastR_infer(
 \item{verbose}{bool - show messaging}
 
 \item{return_probs}{logical If TRUE, returns the class probabilities. Default is FALSE.}
+
+\item{return_type}{A character string, either \code{"object"} or \code{"list"}. If
+\code{"object"}, the updated \code{query_cds} is returned. If \code{"list"}, a
+list containing the updated object and the raw inference results is returned.
+Default is \code{"object"}.}
+
+\item{chunks}{An integer indicating the number of chunks to split the data into for
+parallelization. Default is 1 (no chunking).}
+
+\item{workers}{An integer specifying the number of parallel workers to use. Default
+is 1 (no parallelization).}
+
+\item{batch_size}{An integer specifying the batch size used during inference. If
+\code{NULL}, a heuristic is used to determine a suitable batch size based on the
+data and number of chunks.}
+
+\item{show_progress}{A logical indicating whether to show a progress bar with total
+elapsed time. Default is \code{TRUE}.}
 }
 \value{
-If return_probs is TRUE, returns a data frame containing class probabilities.
-If return_probs is FALSE, updates the query_cds object with inferred cell labels and returns it.
+Depending on \code{return_type}:
+\itemize{
+\item \code{"object"}: Returns the updated \code{query_cds} with inferred labels
+in \code{query_celldata_col} and optionally probabilities in the metadata.
+\item \code{"list"}: Returns a list containing:
+\item{\code{object}}{The updated \code{query_cds}.}
+\item{\code{training_output}}{The raw inference results including probabilities.}
+}
 }
 \description{
 This function infers cell labels using a trained model and updates the input dataset with the inferred labels.
+}
+\details{
+The function first checks that all variable features specified in \code{vg}
+are present in \code{query_cds}, extracts normalized counts, and determines whether
+to run sequentially or in parallel. When parallelization is enabled (\code{workers > 1}),
+the dataset is split into chunks, and each chunk is processed and run through the
+model inference in parallel. A progress bar is displayed showing the number of
+completed chunks and total elapsed time.
+
+The underlying model is loaded from the specified \code{model_path}, and class
+probabilities (log-odds) are computed for each cell. The function then assigns the
+most likely label to each cell. Optionally, the probabilities are added to the
+object's metadata.
+}
+\examples{
+\dontrun{
+# Assuming `seu` is a Seurat object and `model_path` is a path to a trained model
+result <- viewmastR_infer(
+  query_cds = seu,
+  model_path = "path/to/model.msgpack",
+  vg = VariableFeatures(seu)
+)
+}
+
+}
+\seealso{
+\code{\link[Seurat]{Seurat}}, \code{\link[monocle3]{cell_data_set}}
 }

@@ -12,7 +12,7 @@ extract_mpk_shapes(file)
 \if{html}{\out{<div class="sourceCode">}}\preformatted{}\if{html}{\out{</div>}}}
 }
 \value{
-A \strong{data frame} with one row per tensor and columns:
+A list containing \strong{data frame} with one row per tensor and columns:
 \describe{
 \item{\code{layer}}{Dot-separated module path (e.g. \code{"linear1"} or
 \code{"encoder.block1.linear"}).}
@@ -23,6 +23,7 @@ A \strong{data frame} with one row per tensor and columns:
 dimensions.}
 \item{\code{shape}}{Human-readable string, e.g. \code{"384×1000"} for
 matrices or \code{"128"} for vectors.}
+also parsed elements including: num_classes, model_type, hidden_layer1, hidden_layer2
 }
 }
 \description{

@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use extendr_api::{r, NULL};
+
 use burn::{
     data::{dataloader::{ Dataset, batcher::Batcher}, dataset::transform::Mapper},
     tensor::{backend::Backend, Data, ElementConversion, Int, Tensor},
@@ -154,6 +156,9 @@ pub fn extract_scalars(data: &Robj, index: usize) -> Vec<usize> {
 
 
 pub fn extract_scitemraw(data: &Robj, target_value: Option<i32>) -> Vec<SCItemRaw> {
+    if data == &r!(NULL) {
+        return vec![];
+    }
     data.as_list().unwrap().iter().filter_map(|(_, item_robj)| {
         let list_items = item_robj.as_list().expect("Failed to unlist R object data");
         let data = list_items[0].as_real_vector().expect("Failed to extract data vector");
