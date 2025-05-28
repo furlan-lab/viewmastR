@@ -49,7 +49,7 @@ process_learning_obj_mlr <- function(train, test, query, labels, learning_rate, 
 #'         of logits returned by the Rust model.
 #'
 #' @export
-infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose)
+infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size)
 
 #' Process Robj learning objects for MLR
 #' @export

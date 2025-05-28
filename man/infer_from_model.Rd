@@ -12,7 +12,8 @@ infer_from_model(
   model_type,
   hidden1,
   hidden2,
-  verbose
+  verbose,
+  batch_size
 )
 }
 \arguments{

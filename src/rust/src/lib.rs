@@ -102,13 +102,13 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
 
   let model_export: RExport;
   if backend == "candle"{
-    model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+    model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   } 
   else if backend == "wpgu"{
-    model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+    model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   } 
   else {
-    model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+    model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
   }
 
   let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
@@ -161,23 +161,23 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
   let model_export: RExport;
   if hidden_size.len() == 1 {
     if backend == "candle"{
-      model_export = scrna_ann::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
     } 
     else if backend == "wpgu"{
-      model_export = scrna_ann::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
     } 
     else {
-      model_export = scrna_ann::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, learning_rate, num_epochs, Some(artifact_dir), verbose);
     }
   } else {
     if backend == "candle"{
-      model_export = scrna_ann2l::run_custom_candle(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann2l::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
     } 
     else if backend == "wpgu"{
-      model_export = scrna_ann2l::run_custom_wgpu(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann2l::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
     } 
     else {
-      model_export = scrna_ann2l::run_custom_nd(train_raw, test_raw, query_raw, labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
+      model_export = scrna_ann2l::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), hidden_size1, hidden_size2, learning_rate, num_epochs, Some(artifact_dir), verbose);
     }
   }
   
@@ -239,6 +239,7 @@ fn infer_from_model(
     hidden1     : Nullable<Robj>,
     hidden2     : Nullable<Robj>,
     verbose     : Robj,
+    batch_size: Robj
 ) -> List {
     // ── verbosity -----------------------------------------------------------
     let verbose = verbose
@@ -277,9 +278,17 @@ fn infer_from_model(
     let h1 = usize_from_nullable(hidden1);
     let h2 = usize_from_nullable(hidden2);
 
-    if verbose {
-        eprintln!("h1 = {:?}, h2 = {:?}", h1, h2);
-    }
+    // if verbose {
+    //     eprintln!("h1 = {:?}, h2 = {:?}", h1, h2);
+    // }
+
+    let batch_size = batch_size
+        .as_real()
+        .map(|x| x as usize)
+        .or_else(|| batch_size.as_integer().map(|x| x as usize))
+        .unwrap_or_else(|| {
+            panic!("Batch size must be a real number or integer");
+        });
 
     // ── query to Vec<SCItemRaw> --------------------------------------------
     if verbose {
@@ -297,6 +306,7 @@ fn infer_from_model(
             num_classes,
             num_features,
             query_raw,
+            Some(batch_size)
         ),
 
         "ann1" | "ann" => {
@@ -307,6 +317,7 @@ fn infer_from_model(
                 num_features,
                 query_raw,
                 size1,
+                Some(batch_size)
             )
         }
 
@@ -320,6 +331,7 @@ fn infer_from_model(
                 query_raw,
                 size1,
                 size2,
+                Some(batch_size)
             )
         }
 

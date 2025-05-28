@@ -116,7 +116,7 @@ pub struct SCTrainingConfig {
 pub fn run_custom<B>(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,
-    query: Vec<SCItemRaw>,
+    query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
     learning_rate: f64,
     hidden_size1: usize,
@@ -237,26 +237,41 @@ where
     }
 
     let tduration = start.elapsed();
-    // let query_len = query.len();
-    let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-        MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    // Create the batchers.
-    let batcher_query = SCBatcher::<B>::new(device.clone());
+    // // let query_len = query.len();
+    // let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
+    //     MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
+    // // Create the batchers.
+    // let batcher_query = SCBatcher::<B>::new(device.clone());
 
-    // Create the dataloaders.
-    let dataloader_query = DataLoaderBuilder::new(batcher_query)
-        .batch_size(config.batch_size)
-        .build(query_dataset);
+    // // Create the dataloaders.
+    // let dataloader_query = DataLoaderBuilder::new(batcher_query)
+    //     .batch_size(config.batch_size)
+    //     .build(query_dataset);
     
-    let model_valid = model.valid();
+    // let model_valid = model.valid();
     let mut probs = Vec::new();
 
-    // Assuming dataloader_query is built
-    for batch in dataloader_query.iter() {
-        let output = model_valid.forward(batch.counts);
-        output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
+    // // Assuming dataloader_query is built
+    // for batch in dataloader_query.iter() {
+    //     let output = model_valid.forward(batch.counts);
+    //     output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
+    // }
+    if let Some(query_items) = query {
+        let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
+        MapperDataset::new(InMemDataset::new(query_items), LocalCountstoMatrix);
+        let batcher_query = SCBatcher::<B>::new(device.clone());
+        let dataloader_query = DataLoaderBuilder::new(batcher_query)
+            .batch_size(config.batch_size)
+            .build(query_dataset);
+        let model_valid = model.valid();
+
+
+        // Assuming dataloader_query is built
+        for batch in dataloader_query.iter() {
+            let output = model_valid.forward(batch.counts);
+            output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
+        }
     }
-    
     // Save the model
     model
         .save_file(
@@ -285,7 +300,7 @@ where
 pub fn run_custom_nd(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,
-    query: Vec<SCItemRaw>,
+    query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
     hidden_size1: usize,
     hidden_size2: usize,
@@ -316,7 +331,7 @@ pub fn run_custom_nd(
 pub fn run_custom_wgpu(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,
-    query: Vec<SCItemRaw>,
+    query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
     hidden_size1: usize,
     hidden_size2: usize,
@@ -347,7 +362,7 @@ pub fn run_custom_wgpu(
 pub fn run_custom_candle(
     train: Vec<SCItemRaw>,
     test: Vec<SCItemRaw>,
-    query: Vec<SCItemRaw>,
+    query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
     hidden_size1: usize,
     hidden_size2: usize,
