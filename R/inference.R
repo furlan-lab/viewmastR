@@ -101,7 +101,7 @@ viewmastR_infer <- function(query_cds,
   }
 
   # Extract normalized counts
-  norm_counts <- get_norm_counts(query_cds[vg, ])
+  norm_counts <- get_norm_counts(query_cds)[vg, ]
 
 
   # If workers <= 1, run sequentially
