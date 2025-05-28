@@ -54,7 +54,6 @@ vg <- get_selected_genes(seu)
 
 This is also covered elsewhere
 ```{r}
-debug(viewmastR)
 results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 4, train_only = T, backend = "wgpu")
 
 

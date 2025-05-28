@@ -218,24 +218,7 @@ viewmastR <- function(query_cds,
         backend = backend
       )
     }
-
-    log_odds <- unlist(export_list$probs[[1]])
-    # Check if log_odds has the expected dimensions
-    if(length(log_odds) == dim(query_cds)[2] * length(training_list[["labels"]])){
-      log_odds = matrix(log_odds, ncol = dim(query_cds)[2])
-      log_odds = t(log_odds)
-      colnames(log_odds) <- paste0("prob_", training_list[["labels"]])
-    } else {
-      stop("Error in log odds dimensions of function output")
-    }
     
-    softmax_rows <- function(mat) {
-      shifted <- mat - apply(mat, 1, max)  # stability
-      exp_shifted <- exp(shifted)
-      exp_shifted / rowSums(exp_shifted)
-    }
-    
-    export_list$probs <- softmax_rows(log_odds)
     return(list(object=NULL, training_output = export_list, model_dir = dir))
   } else {
     # When train_only = FALSE, we have query_cds provided
@@ -344,265 +327,343 @@ viewmastR <- function(query_cds,
   }
 }
 
-#' Setup training datasets
-#' 
-#' This function sets up training datasets for use in machine learning models.
-#' 
-#' @param query_cds A cell data set (cds) to query.
-#' @param ref_cds A reference cell data set (cds).
-#' @param ref_celldata_col The column in the reference cell data set containing cell data.
-#' @param norm_method The normalization method to use. Options are "log", "binary", "size_only", or "none".
-#' @param selected_genes A vector of pre-selected genes for analysis.
-#' @param train_frac The fraction of data to use for training. 
-#' @param tf_idf Boolean indicating whether to perform TF-IDF transformation.
-#' @param scale Boolean indicating whether to scale the data.
-#' @param LSImethod The method for Latent Semantic Indexing.
-#' @param verbose Boolean indicating whether to display verbose output.
-#' @param addbias Boolean indicating whether to add bias.
-#' @param return_type The type of output to return. Options are "list", "matrix", or "S4obj".
-#' @param ... Additional arguments.
-#' 
-#' @return A list, matrix, or S4 object containing the training datasets.
-#' 
-#' @importFrom Matrix colSums
-#' @export
-#' @keywords internal
 
-setup_training <-function(query_cds, 
-                          ref_cds, 
-                          ref_celldata_col, 
-                          norm_method=c("log", "binary", "size_only", "none"),
-                          selected_genes=NULL,
-                          train_frac = 0.8,
-                          tf_idf=F,
-                          scale=F,
-                          LSImethod=1,
-                          verbose = T,
-                          addbias = F,
-                          # use_sparse = F, 
-                          return_type = c("list", "matrix", "S4obj"),
-                          debug = F,
-                          ...){
+#' Set up training, testing, and optional query datasets for model training
+#'
+#' This function prepares normalized and optionally scaled data matrices from reference and (optionally) query datasets. 
+#' If a \code{query_cds} is provided, it identifies common features between the reference and query datasets, normalizes 
+#' them, optionally performs TF-IDF or scaling, and returns both training/test splits from the reference and a query dataset. 
+#' If no \code{query_cds} is provided, the function behaves like a reference-only setup, returning just training and 
+#' testing splits.
+#'
+#' @param query_cds A \code{\link{Seurat}} or \code{\link{cell_data_set}} object representing the query dataset. 
+#'   If \code{NULL}, no query data is processed.
+#' @param ref_cds A \code{\link{Seurat}} or \code{\link{cell_data_set}} object representing the reference dataset.
+#' @param ref_celldata_col A character string indicating the metadata column in \code{ref_cds} to use as labels.
+#' @param norm_method A character string specifying the normalization method to use. One of \code{"log"}, 
+#'   \code{"binary"}, \code{"size_only"}, or \code{"none"}.
+#' @param selected_genes A character vector of gene names to subset. If \code{NULL}, uses all common features 
+#'   (if query is provided) or all selected features (if only reference is provided).
+#' @param train_frac A numeric value between 0 and 1 indicating the fraction of reference cells to use for training. 
+#'   The rest are used for testing.
+#' @param tf_idf A logical indicating whether to perform TF-IDF normalization on the count matrices.
+#' @param scale A logical indicating whether to scale the data. If \code{TRUE} and \code{tf_idf = TRUE}, 
+#'   TF-IDF takes precedence and scaling is ignored.
+#' @param LSImethod An integer specifying the TF-IDF method variant to use (passed to \code{\link{tf_idf_transform}}).
+#' @param verbose A logical indicating whether to print progress messages.
+#' @param addbias A logical indicating whether to add a bias row (ones) to the data matrices.
+#' @param return_type A character string specifying the return format. One of \code{"list"}, \code{"matrix"}, or \code{"S4obj"}.
+#' @param debug A logical indicating whether to print debugging messages.
+#' @param ... Additional arguments passed to internal functions.
+#'
+#' @details 
+#' This function handles two scenarios:
+#' \itemize{
+#'   \item If \code{query_cds} is provided, it extracts common features between \code{ref_cds} and \code{query_cds}, 
+#'   normalizes both datasets, performs optional TF-IDF or scaling, and returns training/testing splits from the reference 
+#'   along with a query dataset.
+#'   \item If \code{query_cds} is \code{NULL}, it behaves like a reference-only setup, returning just training and 
+#'   testing splits from \code{ref_cds}.
+#' }
+#'
+#' The returned object depends on \code{return_type}:
+#' \itemize{
+#'   \item \code{"matrix"}: A list of matrices containing \code{Xtrain_data}, \code{Xtest_data}, \code{Ytrain_label}, \code{Ytest_label}, 
+#'   optionally \code{query}, as well as \code{label_text} and \code{features}.
+#'   \item \code{"list"}: A list of lists, where each cell is represented as a \code{list} with \code{data} and \code{target} elements.
+#'   \item \code{"S4obj"}: A list of S4 objects \code{training_set}, \code{test_set}, and optionally \code{query_set}, 
+#'   each containing training items and metadata.
+#' }
+#'
+#' @return A list containing either matrices, lists of data items, or S4 objects, depending on \code{return_type}.
+#'
+#' @examples
+#' \dontrun{
+#' # Example with both reference and query data:
+#' result <- setup_training(
+#'   query_cds = query_seurat_obj,
+#'   ref_cds = ref_seurat_obj,
+#'   ref_celldata_col = "cell_type",
+#'   norm_method = "log",
+#'   train_frac = 0.8,
+#'   tf_idf = TRUE,
+#'   scale = FALSE,
+#'   return_type = "list"
+#' )
+#'
+#' # Example with reference only:
+#' result_ref <- setup_training(
+#'   query_cds = NULL,
+#'   ref_cds = ref_cds_obj,
+#'   ref_celldata_col = "cell_type",
+#'   norm_method = "none",
+#'   train_frac = 0.7,
+#'   scale = TRUE,
+#'   return_type = "matrix"
+#' )
+#' }
+#'
+#' @export
+
+setup_training <- function(query_cds = NULL, 
+                           ref_cds, 
+                           ref_celldata_col, 
+                           norm_method = c("log", "binary", "size_only", "none"),
+                           selected_genes = NULL,
+                           train_frac = 0.8,
+                           tf_idf = FALSE,
+                           scale = FALSE,
+                           LSImethod = 1,
+                           verbose = TRUE,
+                           addbias = FALSE,
+                           return_type = c("list", "matrix", "S4obj"),
+                           debug = FALSE,
+                           ...) {
   
-  if(verbose){
+  if (verbose) {
     message("Checking arguments and input")
   }
-  if (debug){
-    message("Dimension check:")
-    message(paste0("\t", dimension_check(training_list[["train"]][[1]])))
-    message(paste0("\t", dimension_check(training_list[["test"]][[1]])))
-    message(paste0("\t", dimension_check(training_list[["query"]][[1]])))
-    message(paste0("\t", dimension_check(training_list[["labels"]])))
-  }
-  #capture args for specific fxns
-  argg <- c(as.list(environment()), list(...))
-  layers=F
   
-  #deal with conflicting and other args
-  if(tf_idf & scale){
-    warning("Both tf_idf and scale selected. Cannot do this as they are both scaling methods. Using tf_idf alone")
-    scale<-F
-  }
-  norm_method=match.arg(norm_method)
-  
+  norm_method <- match.arg(norm_method)
   return_type <- match.arg(return_type)
   
-  #get class of object
-  if(class(query_cds) != class(ref_cds)){stop("input objects must be of the same class")}
-  software<-NULL
-  if(class(query_cds)=="Seurat"){
-    software<-"seurat"
-    labf<-as.factor(ref_cds@meta.data[[ref_celldata_col]])
+  # If both tf_idf and scale are TRUE, disable scale
+  if (tf_idf & scale) {
+    warning("Both tf_idf and scale selected. Using tf_idf alone.")
+    scale <- FALSE
   }
-  if(class(query_cds)=="cell_data_set"){
-    software<-"monocle3"
-    labf<-as.factor(colData(ref_cds)[[ref_celldata_col]])
+  
+  # Determine the software type and extract labels
+  software <- NULL
+  if (class(ref_cds) == "Seurat") {
+    software <- "seurat"
+    labf <- as.factor(ref_cds@meta.data[[ref_celldata_col]])
+  } else if (class(ref_cds) == "cell_data_set") {
+    software <- "monocle3"
+    labf <- as.factor(colData(ref_cds)[[ref_celldata_col]])
   }
-  if(is.null(software)){stop("software not found for input objects")}
+  if (is.null(software)) { stop("software not found for input objects") }
   
-  
-  #find common features
-  if(verbose){
-    message("Finding common features between reference and query")
-  }
-  common_list<-common_features(list(ref_cds, query_cds))
-  names(common_list)<-c("ref", "query")
-  rm(ref_cds)
-  gc()
-  
-  if(is.null(selected_genes)){
-    selected_common<-rownames(common_list[['query']])
-    selected_common<-selected_commmon[selected_common %in% rownames(common_list[['ref']])]
-  }else{
-    if(verbose){
-      message("Subsetting by pre-selected features")
+  # If query_cds is provided, find common features, otherwise use ref only
+  if (!is.null(query_cds)) {
+    if (class(query_cds) != class(ref_cds)) {
+      stop("Input objects (ref_cds, query_cds) must be of the same class")
     }
-    selected_common<-selected_genes
-    selected_common<-selected_common[selected_common %in% rownames(common_list[['query']])]
-    selected_common<-selected_common[selected_common %in% rownames(common_list[['ref']])]
-  }
-  
-  #make final X and query normalizing along the way
-  # #no tf_idf
-  if(norm_method!="none"){
-    if(verbose){
-      message("Calculated normalized counts")
+    if (verbose) {
+      message("Finding common features between reference and query")
     }
-    query<-get_norm_counts(common_list[['query']], norm_method = norm_method)[selected_common,]
-    X<-get_norm_counts(common_list[['ref']], norm_method = norm_method)[rownames(query),]
-  }else{
-    query<-get_norm_counts(common_list[['query']], )[selected_common,]
-    X<-get_norm_counts(common_list[['ref']], )[rownames(query),]
-  }
-  rm(common_list)
-  gc()
-  
-  #performe scaling methods
-  if(tf_idf){
-    if(verbose){
-      message("Performing TF-IDF")
+    common_list <- common_features(list(ref_cds, query_cds))
+    names(common_list) <- c("ref", "query")
+    
+    # Select genes from common features
+    if (is.null(selected_genes)) {
+      # All common features
+      selected_common <- rownames(common_list[["query"]])
+      selected_common <- selected_common[selected_common %in% rownames(common_list[["ref"]])]
+    } else {
+      if (verbose) {
+        message("Subsetting by pre-selected features")
+      }
+      selected_common <- selected_genes
+      selected_common <- selected_common[selected_common %in% rownames(common_list[["query"]])]
+      selected_common <- selected_common[selected_common %in% rownames(common_list[["ref"]])]
     }
-    X<-tf_idf_transform(X, LSImethod)
-    query<-tf_idf_transform(query, LSImethod)
-  }else{
-    if(scale){
-      X<-scale(X)
-      query <-scale(query)
+    
+    # Normalize counts
+    if (norm_method != "none") {
+      if (verbose) {
+        message("Calculating normalized counts")
+      }
+      query <- get_norm_counts(common_list[["query"]], norm_method = norm_method)[selected_common, ]
+      X <- get_norm_counts(common_list[["ref"]], norm_method = norm_method)[rownames(query), ]
+    } else {
+      query <- get_norm_counts(common_list[["query"]])[selected_common, ]
+      X <- get_norm_counts(common_list[["ref"]])[rownames(query), ]
     }
-  }
-  
-  #densifying adding bias
-  # if(!use_sparse){
-  #   if(verbose){
-  #     message("Converting to dense matrix :(")
-  #   }
-  #   if(addbias){
-  #     if(verbose){
-  #       message("Adding bias")
-  #     }
-  #     X <-rbind(rep(1, ncol(Xtrain)), X)
-  #     query <-rbind(rep(1, ncol(query)), query)
-  #   }
-  #   X<-as.matrix(X)
-  #   query<-as.matrix(query)
-  # } else {
-  #   if(addbias){
-  #     if(verbose){
-  #       message("Adding bias")
-  #     }
-  #     X <-rbind(rep(1, ncol(X)), X)
-  #     query <-rbind(rep(1, ncol(query)), query)
-  #   }
-  #   X<-as(X, "RsparseMatrix")
-  #   query<-as(query, "RsparseMatrix")
-  # }
-  
-  if(verbose){
-    message("Converting to dense matrix :(")
-  }
-  if(addbias){
-    if(verbose){
-      message("Adding bias")
+    rm(common_list)
+    gc()
+    
+    # Perform scaling methods
+    if (tf_idf) {
+      if (verbose) {
+        message("Performing TF-IDF")
+      }
+      X <- tf_idf_transform(X, LSImethod)
+      query <- tf_idf_transform(query, LSImethod)
+    } else {
+      if (scale) {
+        X <- scale(X)
+        query <- scale(query)
+      }
     }
-    X <-rbind(rep(1, ncol(Xtrain)), X)
-    query <-rbind(rep(1, ncol(query)), query)
-  }
-  X<-as.matrix(X)
-  query<-as.matrix(query)
-  gc()
-  
-  
-  #prep Y and deal with rownames
-  Ylab<-as.numeric(labf)-1
-  labels<-levels(labf)
-  Y<-matrix(model.matrix(~0+labf), ncol = length(labels))
-  colnames(Y)<-NULL
-  features<-rownames(X)
-  rownames(X)<-NULL
-  colnames(X)<-NULL
-  
-  #create test/train indices
-  train_idx<-sample(1:dim(X)[2], round(train_frac*dim(X)[2]))
-  test_idx<-which(!1:dim(X)[2] %in% train_idx)
-  # if(return_type == "matrices" && !use_sparse){
-  if(return_type == "matrix"){
-    return(list(Xtrain_data = t(X[,train_idx]), 
-                Xtest_data = t(X[,test_idx]), 
-                Ytrain_label = Y[train_idx,], 
-                Ytest_label = Y[test_idx,],
-                query = t(query),
-                label_text = labels,
-                features = features))
-    # } else if(return_type == "matrices" && use_sparse){
-    #   return(list(Xtrain_data = t_shallow(X[,train_idx]), 
-    #               Xtest_data = t_shallow(X[,test_idx]), 
-    #               Ytrain_label = Y[train_idx,], 
-    #               Ytest_label = Y[test_idx,],
-    #               query = t_shallow(query),
-    #               label_text = labels,
-    #               features = features))
-  } else if(return_type == "list") {
-    # } else if(return_type == "list" && !use_sparse) {
-    return(list(
-      train = lapply(train_idx, function(idx){
-        list(data= t(X[,idx])[1,], target = Ylab[idx])
-      }),
-      test = lapply(test_idx, function(idx){
-        list(data= t(X[,idx])[1,], target = Ylab[idx])
-      }),
-      query = lapply(1:dim(query)[2], function(idx){
-        list(data = t(query[,idx])[1,])
-      }),
-      labels = labels,
-      features = features))
-    # } else if(return_type == "list" && use_sparse) {
-    #   return(list(
-    #     train = lapply(train_idx, function(idx){
-    #       slice <- X[,idx]
-    #       indices <- which(!slice == 0)
-    #       list(values= slice[ indices] , indices=indices,
-    #            target = Ylab[idx])
-    #     }),
-    #     test = lapply(test_idx, function(idx){
-    #       slice <- X[,idx]
-    #       indices <- which(!slice == 0)
-    #       list(values= slice[ indices] , indices=indices,
-    #            target = Ylab[idx])
-    #     }),
-    #     query = lapply(1:dim(query)[2], function(idx){
-    #       slice <- query[,idx]
-    #       indices <- which(!slice == 0)
-    #       list(values= slice[ indices] , indices=indices)
-    #     }),
-    #     labels = labels,
-    #     features = features))
-  } else if (return_type == "S4obj") {
-    # setClass("training_item", slots=c(data="numeric", target="numeric"))
-    # setClass("training_set", slots=c(name="character", items="list", labels="character"))
-    training_set<-new("training_set", 
-                      name="train", 
-                      items=lapply(train_idx, function(idx){
-                        new("training_item", data = t(X[,idx])[1,], target = Ylab[idx])
+    
+    if (verbose) {
+      message("Converting to dense matrix :(")
+    }
+    if (addbias) {
+      if (verbose) {
+        message("Adding bias")
+      }
+      X <- rbind(rep(1, ncol(X)), X)
+      query <- rbind(rep(1, ncol(query)), query)
+    }
+    
+    X <- as.matrix(X)
+    query <- as.matrix(query)
+    
+    Ylab <- as.numeric(labf) - 1
+    labels <- levels(labf)
+    Y <- matrix(model.matrix(~0+labf), ncol = length(labels))
+    colnames(Y) <- NULL
+    features <- rownames(X)
+    rownames(X) <- NULL
+    colnames(X) <- NULL
+    
+    # Split into train/test
+    train_idx <- sample(1:dim(X)[2], round(train_frac * dim(X)[2]))
+    test_idx <- which(!1:dim(X)[2] %in% train_idx)
+    
+    # Return based on type
+    if (return_type == "matrix") {
+      return(list(
+        Xtrain_data = t(X[, train_idx]), 
+        Xtest_data  = t(X[, test_idx]), 
+        Ytrain_label = Y[train_idx, ], 
+        Ytest_label = Y[test_idx, ],
+        query = t(query),
+        label_text = labels,
+        features = features
+      ))
+    } else if (return_type == "list") {
+      return(list(
+        train = lapply(train_idx, function(idx) {
+          list(data = t(X[, idx])[1, ], target = Ylab[idx])
+        }),
+        test = lapply(test_idx, function(idx) {
+          list(data = t(X[, idx])[1, ], target = Ylab[idx])
+        }),
+        query = lapply(1:dim(query)[2], function(idx) {
+          list(data = t(query[, idx])[1, ])
+        }),
+        labels = labels,
+        features = features
+      ))
+    } else if (return_type == "S4obj") {
+      training_set <- new("training_set", 
+                          name = "train", 
+                          items = lapply(train_idx, function(idx) {
+                            new("training_item", data = t(X[, idx])[1, ], target = Ylab[idx])
+                          }),
+                          labels = labels,
+                          features = features)
+      test_set <- new("training_set", 
+                      name = "test", 
+                      items = lapply(test_idx, function(idx) {
+                        new("training_item", data = t(X[, idx])[1, ], target = Ylab[idx])
                       }),
-                      labels=labels,
-                      features=features)
-    test_set<-new("training_set", 
-                  name="test", 
-                  items=lapply(test_idx, function(idx){
-                    new("training_item", data = t(X[,idx])[1,], target = Ylab[idx])
-                  }),
-                  labels=labels,
-                  features=features)
-    query_set<-new("training_set", 
-                   name="query", 
-                   items=lapply(1:dim(query)[2], function(idx){
-                     new("training_item", data = t(query[,idx])[1,], target = 0)
-                   }),
-                   labels="Unknown",
-                   features=features)
-    return(list(training_set, test_set, query_set))
+                      labels = labels,
+                      features = features)
+      query_set <- new("training_set", 
+                       name = "query", 
+                       items = lapply(1:dim(query)[2], function(idx) {
+                         new("training_item", data = t(query[, idx])[1, ], target = 0)
+                       }),
+                       labels = "Unknown",
+                       features = features)
+      return(list(training_set, test_set, query_set))
+    }
+    
+  } else {
+    # Behaves like setup_training_ref if query_cds is NULL
+    # Ensure selected_genes are present
+    if (norm_method != "none") {
+      if (verbose) {
+        message("Calculating normalized counts")
+      }
+      X <- get_norm_counts(ref_cds[selected_genes, ], norm_method = norm_method)
+    } else {
+      X <- get_norm_counts(ref_cds[selected_genes, ])
+    }
+    
+    gc()
+    
+    if (tf_idf) {
+      if (verbose) {
+        message("Performing TF-IDF")
+      }
+      X <- tf_idf_transform(X, LSImethod)
+    } else {
+      if (scale) {
+        X <- scale(X)
+      }
+    }
+    
+    if (verbose) {
+      message("Converting to dense matrix :(")
+    }
+    if (addbias) {
+      if (verbose) {
+        message("Adding bias")
+      }
+      # In the ref-only scenario, originally code referred to Xtrain; corrected to X
+      X <- rbind(rep(1, ncol(X)), X)
+    }
+    X <- as.matrix(X)
+    gc()
+    
+    Ylab <- as.numeric(labf) - 1
+    labels <- levels(labf)
+    Y <- matrix(model.matrix(~0+labf), ncol = length(labels))
+    colnames(Y) <- NULL
+    features <- rownames(X)
+    rownames(X) <- NULL
+    colnames(X) <- NULL
+    
+    train_idx <- sample(1:dim(X)[2], round(train_frac*dim(X)[2]))
+    test_idx <- which(!1:dim(X)[2] %in% train_idx)
+    
+    if (return_type == "matrix") {
+      return(list(
+        Xtrain_data = t(X[, train_idx]), 
+        Xtest_data  = t(X[, test_idx]), 
+        Ytrain_label = Y[train_idx, ], 
+        Ytest_label = Y[test_idx, ],
+        query = NULL,
+        label_text = labels,
+        features = features
+      ))
+    } else if (return_type == "list") {
+      return(list(
+        train = lapply(train_idx, function(idx) {
+          list(data = t(X[, idx])[1, ], target = Ylab[idx])
+        }),
+        test = lapply(test_idx, function(idx) {
+          list(data = t(X[, idx])[1, ], target = Ylab[idx])
+        }),
+        labels = labels,
+        features = features
+      ))
+    } else if (return_type == "S4obj") {
+      training_set <- new("training_set",
+                          name = "train",
+                          items = lapply(train_idx, function(idx) {
+                            new("training_item", data = t(X[, idx])[1, ], target = Ylab[idx])
+                          }),
+                          labels = labels,
+                          features = features)
+      test_set <- new("training_set", 
+                      name = "test",
+                      items = lapply(test_idx, function(idx) {
+                        new("training_item", data = t(X[, idx])[1, ], target = Ylab[idx])
+                      }),
+                      labels = labels,
+                      features = features)
+      query_set <- NULL
+      return(list(training_set, test_set, query_set))
+    }
   }
 }
+
 
 
 

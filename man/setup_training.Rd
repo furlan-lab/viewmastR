@@ -2,56 +2,112 @@
 % Please edit documentation in R/training.R
 \name{setup_training}
 \alias{setup_training}
-\title{Setup training datasets}
+\title{Set up training, testing, and optional query datasets for model training}
 \usage{
 setup_training(
-  query_cds,
+  query_cds = NULL,
   ref_cds,
   ref_celldata_col,
   norm_method = c("log", "binary", "size_only", "none"),
   selected_genes = NULL,
   train_frac = 0.8,
-  tf_idf = F,
-  scale = F,
+  tf_idf = FALSE,
+  scale = FALSE,
   LSImethod = 1,
-  verbose = T,
-  addbias = F,
+  verbose = TRUE,
+  addbias = FALSE,
   return_type = c("list", "matrix", "S4obj"),
-  debug = F,
+  debug = FALSE,
   ...
 )
 }
 \arguments{
-\item{query_cds}{A cell data set (cds) to query.}
+\item{query_cds}{A \code{\link{Seurat}} or \code{\link{cell_data_set}} object representing the query dataset.
+If \code{NULL}, no query data is processed.}
 
-\item{ref_cds}{A reference cell data set (cds).}
+\item{ref_cds}{A \code{\link{Seurat}} or \code{\link{cell_data_set}} object representing the reference dataset.}
 
-\item{ref_celldata_col}{The column in the reference cell data set containing cell data.}
+\item{ref_celldata_col}{A character string indicating the metadata column in \code{ref_cds} to use as labels.}
 
-\item{norm_method}{The normalization method to use. Options are "log", "binary", "size_only", or "none".}
+\item{norm_method}{A character string specifying the normalization method to use. One of \code{"log"},
+\code{"binary"}, \code{"size_only"}, or \code{"none"}.}
 
-\item{selected_genes}{A vector of pre-selected genes for analysis.}
+\item{selected_genes}{A character vector of gene names to subset. If \code{NULL}, uses all common features
+(if query is provided) or all selected features (if only reference is provided).}
 
-\item{train_frac}{The fraction of data to use for training.}
+\item{train_frac}{A numeric value between 0 and 1 indicating the fraction of reference cells to use for training.
+The rest are used for testing.}
 
-\item{tf_idf}{Boolean indicating whether to perform TF-IDF transformation.}
+\item{tf_idf}{A logical indicating whether to perform TF-IDF normalization on the count matrices.}
 
-\item{scale}{Boolean indicating whether to scale the data.}
+\item{scale}{A logical indicating whether to scale the data. If \code{TRUE} and \code{tf_idf = TRUE},
+TF-IDF takes precedence and scaling is ignored.}
 
-\item{LSImethod}{The method for Latent Semantic Indexing.}
+\item{LSImethod}{An integer specifying the TF-IDF method variant to use (passed to \code{\link{tf_idf_transform}}).}
 
-\item{verbose}{Boolean indicating whether to display verbose output.}
+\item{verbose}{A logical indicating whether to print progress messages.}
 
-\item{addbias}{Boolean indicating whether to add bias.}
+\item{addbias}{A logical indicating whether to add a bias row (ones) to the data matrices.}
 
-\item{return_type}{The type of output to return. Options are "list", "matrix", or "S4obj".}
+\item{return_type}{A character string specifying the return format. One of \code{"list"}, \code{"matrix"}, or \code{"S4obj"}.}
 
-\item{...}{Additional arguments.}
+\item{debug}{A logical indicating whether to print debugging messages.}
+
+\item{...}{Additional arguments passed to internal functions.}
 }
 \value{
-A list, matrix, or S4 object containing the training datasets.
+A list containing either matrices, lists of data items, or S4 objects, depending on \code{return_type}.
 }
 \description{
-This function sets up training datasets for use in machine learning models.
+This function prepares normalized and optionally scaled data matrices from reference and (optionally) query datasets.
+If a \code{query_cds} is provided, it identifies common features between the reference and query datasets, normalizes
+them, optionally performs TF-IDF or scaling, and returns both training/test splits from the reference and a query dataset.
+If no \code{query_cds} is provided, the function behaves like a reference-only setup, returning just training and
+testing splits.
 }
-\keyword{internal}
+\details{
+This function handles two scenarios:
+\itemize{
+\item If \code{query_cds} is provided, it extracts common features between \code{ref_cds} and \code{query_cds},
+normalizes both datasets, performs optional TF-IDF or scaling, and returns training/testing splits from the reference
+along with a query dataset.
+\item If \code{query_cds} is \code{NULL}, it behaves like a reference-only setup, returning just training and
+testing splits from \code{ref_cds}.
+}
+
+The returned object depends on \code{return_type}:
+\itemize{
+\item \code{"matrix"}: A list of matrices containing \code{Xtrain_data}, \code{Xtest_data}, \code{Ytrain_label}, \code{Ytest_label},
+optionally \code{query}, as well as \code{label_text} and \code{features}.
+\item \code{"list"}: A list of lists, where each cell is represented as a \code{list} with \code{data} and \code{target} elements.
+\item \code{"S4obj"}: A list of S4 objects \code{training_set}, \code{test_set}, and optionally \code{query_set},
+each containing training items and metadata.
+}
+}
+\examples{
+\dontrun{
+# Example with both reference and query data:
+result <- setup_training(
+  query_cds = query_seurat_obj,
+  ref_cds = ref_seurat_obj,
+  ref_celldata_col = "cell_type",
+  norm_method = "log",
+  train_frac = 0.8,
+  tf_idf = TRUE,
+  scale = FALSE,
+  return_type = "list"
+)
+
+# Example with reference only:
+result_ref <- setup_training(
+  query_cds = NULL,
+  ref_cds = ref_cds_obj,
+  ref_celldata_col = "cell_type",
+  norm_method = "none",
+  train_frac = 0.7,
+  scale = TRUE,
+  return_type = "matrix"
+)
+}
+
+}
