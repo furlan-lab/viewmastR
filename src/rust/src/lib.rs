@@ -5,6 +5,7 @@
 
 
 use extendr_api::prelude::*;
+// use num_traits::cast;
 mod scrna_ann;
 mod scrna_ann2l;
 mod scrna_mlr;
@@ -19,7 +20,7 @@ mod nb;
 use std::path::Path;
 use std::time::Instant;
 use crate::common::*;
-use crate::inference::infer_helper;
+use crate::inference::{infer_helper_mlr, infer_helper_ann, infer_helper_ann2l};
 
 // use std::convert::TryFrom;
 // use std::convert::TryInto;
@@ -192,52 +193,163 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
 /// infer from saved model
 /// @export
 /// @keywords internal
-#[extendr]
-fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, verbose: Robj) -> List{
-  let verbose =  verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
-  if verbose {eprintln!("Loading model")};
-  let model_path_tested = match model_path.as_str_vector() {
-    Some(string_vec) => string_vec.first().unwrap().to_string(),
-    _ => panic!("Cound not parse folder: '{:?}'", model_path)
-  };
-  if !Path::new(&model_path_tested).exists(){
-    panic!("Could not find folder: '{:?}'", model_path)
-  }
-  if verbose {eprintln!("Loading data")};
-  let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
-  let num_classes = num_classes.as_integer().unwrap() as usize;
-  let num_features = num_features.as_integer().unwrap() as usize;
-  if verbose {eprintln!("Running inference")};
-  let probs = infer_helper(model_path_tested, num_classes, num_features, query_raw);
-  if verbose {eprintln!("Returning results")};
-  return list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
+// #[extendr]
+// fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, verbose: Robj) -> List{
+//   let verbose =  verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
+//   if verbose {eprintln!("Loading model")};
+//   let model_path_tested = match model_path.as_str_vector() {
+//     Some(string_vec) => string_vec.first().unwrap().to_string(),
+//     _ => panic!("Cound not parse folder: '{:?}'", model_path)
+//   };
+//   if !Path::new(&model_path_tested).exists(){
+//     panic!("Could not find folder: '{:?}'", model_path)
+//   }
+//   if verbose {eprintln!("Loading data")};
+//   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
+//   let num_classes = *num_classes.as_integer_vector().unwrap().first().unwrap() as usize;
+//   let num_features = *num_features.as_integer_vector().unwrap().first().unwrap() as usize;
+//   if verbose {eprintln!("Running inference")};
+//   let probs = infer_helper(model_path_tested, num_classes, num_features, query_raw);
+//   if verbose {eprintln!("Returning results")};
+//   return list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
+// }
+
+/// Infer from a saved model (MLR, 1-hidden ANN, or 2-hidden ANN)
+///
+/// @param model_path  Character scalar – path to the `.mpk` checkpoint
+/// @param query       A data-frame or matrix you can pass to `extract_scitemraw()`
+/// @param num_classes Integer scalar – number of output classes
+/// @param num_features Integer scalar – number of input features
+/// @param model_type  Character scalar: `"mlr"`, `"ann1"`, or `"ann2"`
+/// @param hidden1     (optional) Integer – size of the first hidden layer
+/// @param hidden2     (optional) Integer – size of the second hidden layer (only for `"ann2"`)
+/// @param verbose     Logical scalar – print progress to stderr?
+///
+/// @return A list with a single element `probs`, the flat numeric vector
+///         of logits returned by the Rust model.
+///
+/// @export
+#[extendr]          // @export
+fn infer_from_model(
+    model_path  : Robj,
+    query       : Robj,
+    num_classes : Robj,
+    num_features: Robj,
+    model_type  : Robj,
+    hidden1     : Nullable<Robj>,
+    hidden2     : Nullable<Robj>,
+    verbose     : Robj,
+) -> List {
+    // ── verbosity -----------------------------------------------------------
+    let verbose = verbose
+        .as_logical_vector()
+        .unwrap()
+        .first()
+        .unwrap()
+        .to_bool();
+
+    // ── scalars -------------------------------------------------------------
+    let model_path = model_path
+        .as_str_vector()
+        .and_then(|v| v.first().cloned())
+        .expect("`model_path` must be a string");
+    if !Path::new(&model_path).exists() {
+        panic!("Checkpoint not found: {model_path}");
+    }
+
+    let model_kind = model_type
+        .as_str_vector()
+        .and_then(|v| v.first().cloned())
+        .unwrap_or_else(|| "mlr")
+        .to_lowercase();
+
+    let num_classes = num_classes
+        .as_integer_vector()
+        .and_then(|v| v.first().copied())
+        .expect("`num_classes` must be an integer") as usize;
+
+    let num_features = num_features
+        .as_integer_vector()
+        .and_then(|v| v.first().copied())
+        .expect("`num_features` must be an integer") as usize;
+
+    // ── optional hidden sizes ----------------------------------------------
+    let h1 = usize_from_nullable(hidden1);
+    let h2 = usize_from_nullable(hidden2);
+
+    if verbose {
+        eprintln!("h1 = {:?}, h2 = {:?}", h1, h2);
+    }
+
+    // ── query to Vec<SCItemRaw> --------------------------------------------
+    if verbose {
+        eprintln!("Preparing query data");
+    }
+    let query_raw = extract_scitemraw(&query, Some(0));
+
+    // ── dispatch ------------------------------------------------------------
+    if verbose {
+        eprintln!("Running inference with model type \"{}\"", model_kind);
+    }
+    let probs: Vec<f32> = match model_kind.as_str() {
+        "mlr" => infer_helper_mlr(
+            model_path.to_string(),
+            num_classes,
+            num_features,
+            query_raw,
+        ),
+
+        "ann1" | "ann" => {
+            let size1 = h1.expect("`hidden1` must be supplied for ANN1 models");
+            infer_helper_ann(
+                model_path.to_string(),
+                num_classes,
+                num_features,
+                query_raw,
+                size1,
+            )
+        }
+
+        "ann2" => {
+            let size1 = h1.expect("`hidden1` must be supplied for ANN2 models");
+            let size2 = h2.expect("`hidden2` must be supplied for ANN2 models");
+            infer_helper_ann2l(
+                model_path.to_string(),
+                num_classes,
+                num_features,
+                query_raw,
+                size1,
+                size2,
+            )
+        }
+
+        other => panic!("Unknown `model_type`: {other}  (use \"mlr\", \"ann1\", or \"ann2\")"),
+    };
+
+    // ── return to R ---------------------------------------------------------
+    if verbose {
+        eprintln!("Returning results");
+    }
+    list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
 }
 
+// ---------- util -------------------------------------------------------------
+fn usize_from_nullable(n: Nullable<Robj>) -> Option<usize> {
+    match n {
+        Nullable::Null => None,
 
+        Nullable::NotNull(robj) => {
+            // Parse again as Nullable<Option<i32>>
+            let parsed: Nullable<Option<i32>> = robj.try_into().ok()?;
 
-//  Process all types of objects
-//  @export
-//  @keywords internal
-// #[extendr]
-
-// fn process_learning_obj(train: Robj, test: Robj, query: Robj, labels: Robj, model: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
-//     // Instantiate the LearningProcessor with the provided Robj data
-//   use train::LearningProcessor;
-//   let processor = LearningProcessor::new(
-//     train, 
-//     test, 
-//     query, 
-//     labels, 
-//     model, 
-//     num_epochs, 
-//     directory, 
-//     verbose, 
-//     backend
-//   );
-//   // Run the learning process and collect the results
-//   let results = processor.process();
-
-//   }
+            match parsed {
+                Nullable::Null          => None,          // shouldn’t occur
+                Nullable::NotNull(None) => None,          // NA
+                Nullable::NotNull(Some(x)) => Some(x as usize),
+            }
+        }
+    }
+}
 
 // Macro to generate exports.
 // This ensures exported functions are registered with R.

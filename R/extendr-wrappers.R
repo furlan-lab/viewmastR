@@ -34,7 +34,22 @@ process_learning_obj_mlr <- function(train, test, query, labels, learning_rate, 
 #' infer from saved model
 #' @export
 #' @keywords internal
-infer_from_model <- function(model_path, query, num_classes, num_features, verbose) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, verbose)
+#' Infer from a saved model (MLR, 1-hidden ANN, or 2-hidden ANN)
+#'
+#' @param model_path  Character scalar – path to the `.mpk` checkpoint
+#' @param query       A data-frame or matrix you can pass to `extract_scitemraw()`
+#' @param num_classes Integer scalar – number of output classes
+#' @param num_features Integer scalar – number of input features
+#' @param model_type  Character scalar: `"mlr"`, `"ann1"`, or `"ann2"`
+#' @param hidden1     (optional) Integer – size of the first hidden layer
+#' @param hidden2     (optional) Integer – size of the second hidden layer (only for `"ann2"`)
+#' @param verbose     Logical scalar – print progress to stderr?
+#'
+#' @return A list with a single element `probs`, the flat numeric vector
+#'         of logits returned by the Rust model.
+#'
+#' @export
+infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose)
 
 #' Process Robj learning objects for MLR
 #' @export
