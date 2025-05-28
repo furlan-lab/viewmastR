@@ -1,0 +1,90 @@
+---
+title: "How to use viewmastR with large query objects"
+output: html_document
+date: "2024-12-10"
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+rm(list=ls())
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+```
+
+
+## Installing Rust
+
+First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
+
+
+## Installing viewmastR
+
+You will need to have the devtools package installed...
+
+```{r, eval=F}
+devtools::install_github("furlan-lab/viewmastR")
+```
+
+
+## Running viewmastR
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+suppressPackageStartupMessages({
+library(viewmastR)
+library(Seurat)
+library(ggplot2)
+})
+
+#query dataset
+seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
+#reference dataset
+seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
+vg <- get_selected_genes(seu)
+```
+
+## Build the model and infer for small dataset (not using chunks and parallelization)
+
+This is also covered elsewhere
+```{r}
+debug(viewmastR)
+results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 4, train_only = T, backend = "wgpu")
+
+
+
+seu<-viewmastR_infer(seu, file.path(results$model_dir, "model.mpk"), vg, labels = levels(factor(seur$SFClassification)), batch_size = 250)
+DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+```
+
+## Build the model and infer for large dataset (dividing the query into chunks and using parallelization)
+
+By using chunks and workers, you can infer from the model only chunks at a time using multiple workers in parallel.
+```{r}
+seu<-viewmastR_infer(seu, file.path(results$model_dir, "model.mpk"), query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 4, workers = 4)
+DimPlot(seu, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
+```
+
+We see no difference if parallelization is used
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_inferred_parallel), cols = seur@misc$colors)
+```
+
+
+## Bigger dataset
+By optimising chunk size, workers and batch size, you can achieve faster results on big datasets. Here we are just inferring back on the larger reference set (because it is larger, but this is not advisable in normal practice)
+```{r}
+seur<-viewmastR_infer(seur, file.path(results$model_dir, "model.mpk"), query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 20, workers = 16, batch_size = 3000)
+DimPlot(seur, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
+```
+
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seur$SFClassification), gt = factor(seur$viewmastR_inferred_parallel), cols = seur@misc$colors)
+```
+
