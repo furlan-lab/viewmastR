@@ -7,24 +7,7 @@
 extract_mpk_shapes(file)
 }
 \arguments{
-\item{file}{name of model.mpk file
-
-\if{html}{\out{<div class="sourceCode">}}\preformatted{}\if{html}{\out{</div>}}}
-}
-\value{
-A list containing \strong{data frame} with one row per tensor and columns:
-\describe{
-\item{\code{layer}}{Dot-separated module path (e.g. \code{"linear1"} or
-\code{"encoder.block1.linear"}).}
-\item{\code{tensor}}{Name of the tensor inside that module
-(e.g. \code{weight}, \code{bias}).}
-\item{\code{rank}}{Tensor rank (length of the dimension vector).}
-\item{\code{dims}}{A list column – each element is an integer vector of
-dimensions.}
-\item{\code{shape}}{Human-readable string, e.g. \code{"384×1000"} for
-matrices or \code{"128"} for vectors.}
-also parsed elements including: num_classes, model_type, hidden_layer1, hidden_layer2
-}
+\item{file}{name of model.mpk file}
 }
 \description{
 Walks the arbitrary-depth module tree inside a
@@ -33,9 +16,4 @@ a tidy data frame listing each tensor (e.g., \code{weight}, \code{bias})
 and its dimensions.  Handles any number of linear (or other) layers
 and preserves nested sub-module names via a dot-separated path.
 }
-\examples{
-\dontrun{
-shapes <- extract_mpk_shapes(file)
-print(shapes)
-}
-}
+\keyword{internal}

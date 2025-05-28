@@ -402,7 +402,7 @@ viewmastR <- function(query_cds,
 #'   return_type = "matrix"
 #' )
 #' }
-#'
+#' @keywords internal
 #' @export
 
 setup_training <- function(query_cds = NULL, 

@@ -109,5 +109,5 @@ result_ref <- setup_training(
   return_type = "matrix"
 )
 }
-
 }
+\keyword{internal}

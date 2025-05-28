@@ -258,52 +258,47 @@ writeMMgz <- function(x, file) {
 }
 
 
-
-
-#' Export Seurat Object Data to 10X-Style Format with Optional Reductions
+#' Export a Seurat Object to 10X-Style Files
 #'
-#' This function exports the data from a Seurat object into a 10X Genomics-style format. The output includes files for the expression matrix, feature (gene) information, barcodes, metadata, UMAP (or other reductions), and variable features. These files are written in a compressed format where applicable.
+#' @description
+#' Write the counts matrix, features, barcodes, metadata, variable
+#' features and—optionally—reduction embeddings from a Seurat object in
+#' the 10X “3-file” layout.
 #'
-#' @param seu A Seurat object containing the data to be exported.
-#' @param assay A character string indicating which assay to use from the Seurat object. Default is "RNA".
-#' @param dir A character string specifying the directory where the output files will be saved. The directory must already exist.
-#' @param get_reductions Logical, whether to include cell embeddings from reductions (e.g., UMAP, PCA, etc.) in the output. Default is TRUE.
+#' @param seu            A Seurat object.
+#' @param assay          Which assay to export (default `"RNA"`).
+#' @param dir            Output directory (must already exist).
+#' @param get_reductions Logical; also export reduction embeddings
+#'                       (default `TRUE`).
 #'
 #' @details
-#' The function creates several files in a subdirectory called \code{3file} within the specified directory:
+#' The function creates a sub-directory called \code{3file} inside
+#' \code{dir} and writes:
+#'
 #' \itemize{
-#'   \item \code{matrix.mtx.gz}: A compressed MatrixMarket file containing the assay data (expression matrix).
-#'   \item \code{features.tsv.gz}: A tab-separated file with feature (gene) information, including gene names.
-#'   \item \code{barcodes.tsv.gz}: A tab-separated file with cell barcodes.
-#'   \item \code{meta.csv}: A CSV file containing metadata from the Seurat object.
-#'   \item \code{<reduction>_reduction.tsv.gz}: A compressed file with cell embeddings for each reduction (e.g., UMAP, PCA), if \code{get_reductions} is set to TRUE.
-#'   \item \code{variablefeatures.tsv.gz}: A compressed file listing the variable features.
+#'   \item{\file{matrix.mtx.gz}}{Compressed Matrix Market file containing the
+#'     counts matrix.}
+#'   \item{\file{features.tsv.gz}}{Gene (feature) table.}
+#'   \item{\file{barcodes.tsv.gz}}{Cell barcodes.}
+#'   \item{\file{meta.csv}}{Cell-level metadata.}
+#'   \item{\file{\<reduction\>_reduction.tsv.gz}}{Embeddings for each
+#'     reduction (UMAP, PCA, …); written only when
+#'     \code{get_reductions = TRUE}.}
+#'   \item{\file{variablefeatures.tsv.gz}}{Variable-gene list.}
 #' }
 #'
-#' If reductions (like UMAP or PCA) are present in the Seurat object and \code{get_reductions} is TRUE, the cell embeddings from each reduction will be written to separate files in the format \code{<reduction>_reduction.tsv.gz}.
-#' If the UMAP or PCA embeddings are not found in the Seurat object and \code{get_reductions} is set to TRUE, the function will issue a warning but will still generate the other files.
-#' The function will create the \code{3file} subdirectory within the specified directory if it doesn't exist.
+#' @return Invisibly returns \code{NULL}; called for its side effects.
 #'
 #' @importFrom Seurat GetAssayData Cells VariableFeatures
-#' @importFrom utils write.csv
+#' @importFrom utils   write.csv
 #' @importFrom R.utils gzip
-#' @export
-#' @return The function does not return a value. It writes several files as a side effect.
 #'
 #' @examples
 #' \dontrun{
-#' library(Seurat)
-#' seu <- CreateSeuratObject(counts = matrix(rnorm(100), 10, 10))
-#' make3file(seu, assay = "RNA", dir = "output_directory")
-#' 
-#' # Export Seurat object with reductions
-#' make3file(seu, assay = "RNA", dir = "output_directory", get_reductions = TRUE)
-#' 
-#' # Export Seurat object without reductions
-#' make3file(seu, assay = "RNA", dir = "output_directory", get_reductions = FALSE)
+#' make3file(seu, assay = "RNA", dir = "out", get_reductions = FALSE)
 #' }
-#'
 #' @export
+
 make3file <- function(seu, assay = "RNA", dir, get_reductions = TRUE) {
   # Check if the directory exists
   if (!file.exists(dir)) {

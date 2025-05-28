@@ -19,6 +19,8 @@ pkgdown::init_site()
 
 pkgdown::build_site_github_pages()
 
+
+
 rm(list = ls())
 suppressPackageStartupMessages({
   library(viewmastR)

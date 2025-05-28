@@ -255,27 +255,8 @@ if (show_progress) {
 #' and preserves nested sub-module names via a dot-separated path.
 #'
 #' @param file name of model.mpk file
-#'   ```
-#'
-#' @return A list containing **data frame** with one row per tensor and columns:
-#' \describe{
-#'   \item{`layer`}{Dot-separated module path (e.g. `"linear1"` or
-#'         `"encoder.block1.linear"`).}
-#'   \item{`tensor`}{Name of the tensor inside that module
-#'         (e.g. `weight`, `bias`).}
-#'   \item{`rank`}{Tensor rank (length of the dimension vector).}
-#'   \item{`dims`}{A list column – each element is an integer vector of
-#'         dimensions.}
-#'   \item{`shape`}{Human-readable string, e.g. `"384×1000"` for
-#'         matrices or `"128"` for vectors.}
-#'  also parsed elements including: num_classes, model_type, hidden_layer1, hidden_layer2
-#'}
-#' @examples
-#' \dontrun{
-#' shapes <- extract_mpk_shapes(file)
-#' print(shapes)
-#' }
 #' @importFrom RcppMsgPack msgpackRead
+#' @keywords internal
 #' @export
 
 extract_mpk_shapes <- function(file) {
