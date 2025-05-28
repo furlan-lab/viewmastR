@@ -25,156 +25,324 @@ dimension_check <- function (obj){
   }
 }
 
-#' Run viewmastR using the new Rust implementation
-#' 
-#' This function runs viewmastR using the new Rust implementation to generate various forms of training and test data from the given query and reference cell data sets.
-#' 
-#' @param query_cds A cell data set (cds) to query.
-#' @param ref_cds A reference cell data set (cds).
-#' @param ref_celldata_col The column in the reference cell data set containing cell data.
-#' @param query_celldata_col The column in the query cell data set containing cell data. Defaults to "viewmastR_pred" if not provided.
-#' @param FUNC The machine learning model to use (multinomial linear regression - 'mlr' or multilayer neural network - 'nn'). Default is "mlr".
-#' @param norm_method The normalization method to use. Options are "log", "binary", "size_only", or "none".
-#' @param selected_genes A vector of pre-selected genes for analysis. If NULL, common features between reference and query are used.
-#' @param train_frac The fraction of data to use for training. Default is 0.8.
-#' @param tf_idf Boolean indicating whether to perform TF-IDF transformation. Default is FALSE.
-#' @param scale Boolean indicating whether to scale the data. Default is FALSE.
-#' @param hidden_layers A vector specifying the number of neurons in hidden layers for neural network models. Default is c(500, 100).  To use one hidden layer supply a vector of length 1.
-#' @param learning_rate The learning rate for training the model. Default is 1e-3.
-#' @param max_epochs The maximum number of epochs for training the model. Default is 10.
-#' @param LSImethod The method for Latent Semantic Indexing. Default is 1.
-#' @param verbose Boolean indicating whether to display verbose output. Default is TRUE.
-#' @param dir The directory to save output files. Default is "/tmp/sc_local".
-#' @param return_type The type of output to return. Options are "object" or "list". Default is "object".
-#' @param debug Run in debug mode
-#' @param ... Additional arguments.
-#' 
-#' @return If return_type is "object", returns the modified query cell data set or seurat object. If return_type is "list", returns a list containing the query cell data set and training output.
-#' 
+#' Integrate and Train Models on Reference Dataset and (Optionally) Infer on Query Datasets
+#'
+#' The \code{viewmastR} function preprocesses one or two single-cell datasets (a reference and an optional query), 
+#' splits the reference data into training and test sets, and optionally includes the ability to run inference on a query dataset 
+#' for downstream analysis. It then applies specified modeling functions (e.g., MLR, NN, NB) to train and optionally predict on the 
+#' query data.
+#'
+#' @param query_cds A \code{Seurat} or \code{cell_data_set} object representing the query dataset. If \code{NULL}, 
+#'   the function will operate in "reference-only" mode, using the reference dataset for training and testing only.
+#' @param ref_cds A \code{Seurat} or \code{cell_data_set} object representing the reference dataset. This is required.
+#' @param ref_celldata_col A character string specifying the metadata column in \code{ref_cds} that contains the cell labels.
+#' @param query_celldata_col A character string specifying a metadata column name in \code{query_cds} (or reference in 
+#'   reference-only mode) where predicted labels should be stored. If \code{NULL}, defaults to \code{"viewmastR_pred"}.
+#' @param FUNC A character string specifying the modeling function to apply. One of \code{"mlr"}, \code{"nn"}, or \code{"nb"}.
+#' @param norm_method Character string indicating the normalization method. One of \code{"log"}, \code{"binary"}, 
+#'   \code{"size_only"}, or \code{"none"}.
+#' @param selected_genes A character vector specifying genes to subset. If \code{NULL}, uses the set of common features 
+#'   (if query is provided) or selected genes directly (if reference-only).
+#' @param train_frac A numeric value between 0 and 1 specifying the fraction of reference cells to use for training. 
+#'   The remainder are used for testing.
+#' @param tf_idf Logical, whether to apply TF-IDF transformation after normalization.
+#' @param scale Logical, whether to scale the data. If both \code{tf_idf} and \code{scale} are \code{TRUE}, TF-IDF takes precedence.
+#' @param hidden_layers A numeric vector indicating the size of hidden layers (for the NN model). Only 1 or 2 layers are allowed.
+#' @param learning_rate Numeric, learning rate for model training.
+#' @param max_epochs Integer, the maximum number of epochs for model training.
+#' @param LSImethod Integer, specifying the TF-IDF method variant if using TF-IDF.
+#' @param verbose Logical, whether to print progress messages.
+#' @param backend A character string specifying the backend to use. One of \code{"wgpu"}, \code{"nd"}, \code{"candle"}.
+#' @param threshold Currently unused. Can be \code{NULL}.
+#' @param keras_model Currently unused. Can be \code{NULL}.
+#' @param dir A character string specifying the directory to store model artifacts.
+#' @param return_probs Logical, whether to return predicted probabilities in the object's metadata.
+#' @param return_type A character string specifying the return type. One of \code{"object"} or \code{"list"}. 
+#'   If \code{"object"}, returns the updated \code{query_cds}. If \code{"list"}, returns a list containing 
+#'   \code{object} and \code{training_output}.
+#' @param debug Logical, whether to print debugging messages and dimension checks.
+#' @param train_only Logical, if \code{TRUE}, only the reference data is processed and no query data is included.
+#' @param addbias Logical, whether to add a bias term (a row of ones) to the data.
+#' @param ... Additional arguments passed to \code{\link{setup_training}}.
+#'
+#' @details 
+#' The function first calls \code{\link{setup_training}} to preprocess and split the data into training, testing, and 
+#' optionally query subsets. Then, based on the selected \code{FUNC}, it calls one of the model training and prediction 
+#' functions (\code{process_learning_obj_mlr}, \code{process_learning_obj_ann}, \code{process_learning_obj_nb}). 
+#' If \code{train_only = TRUE}, the query portion is skipped and no query predictions are made.
+#'
+#' For \code{"mlr"} and \code{"nn"} functions, predicted log odds are converted to probabilities using the logistic function. 
+#' Predicted cell labels are assigned to the \code{query_cds} (or \code{ref_cds} if query is not provided).
+#'
+#' @return 
+#' Depending on \code{return_type}, returns either:
+#' \itemize{
+#'   \item \code{return_type = "object"}: the input \code{query_cds} (or \code{ref_cds} if \code{query_cds = NULL}) with predicted 
+#'   labels (and optionally probabilities) appended.
+#'   \item \code{return_type = "list"}: a list containing:
+#'   \describe{
+#'     \item{object}{The updated \code{query_cds} (or \code{ref_cds}).}
+#'     \item{training_output}{The output from the model training process, including probabilities if applicable.}
+#'   }
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Training and predicting with reference and query data:
+#' res <- viewmastR(
+#'   query_cds = query_seurat_obj,
+#'   ref_cds = ref_seurat_obj,
+#'   ref_celldata_col = "cell_type",
+#'   FUNC = "mlr",
+#'   norm_method = "log",
+#'   train_frac = 0.8,
+#'   backend = "wgpu",
+#'   verbose = TRUE,
+#'   return_type = "object"
+#' )
+#'
+#' # Reference-only scenario:
+#' res_ref <- viewmastR(
+#'   query_cds = NULL,
+#'   ref_cds = ref_cds_obj,
+#'   ref_celldata_col = "cell_type",
+#'   FUNC = "nn",
+#'   norm_method = "none",
+#'   train_frac = 0.7,
+#'   scale = TRUE,
+#'   train_only = TRUE,
+#'   return_type = "list"
+#' )
+#' }
+#'
 #' @export
 
-viewmastR <-function(query_cds, 
-                     ref_cds, 
-                     ref_celldata_col, 
-                     query_celldata_col=NULL, 
-                     FUNC=c("mlr", "nn", 'nb'),
-                     norm_method=c("log", "binary", "size_only", "none"),
-                     selected_genes=NULL,
-                     train_frac = 0.8,
-                     tf_idf=F,
-                     scale=F,
-                     hidden_layers = c(500,100),
-                     learning_rate = 1e-3,
-                     max_epochs = 10,
-                     LSImethod=1,
-                     verbose = T,
-                     backend = c("wgpu", "nd", "candle"),
-                     threshold = NULL,
-                     keras_model = NULL, 
-                     dir = "/tmp/sc_local",
-                     return_probs = F,
-                     return_type = c("object", "list"), 
-                     debug = F, ...){
-  return_type <- match.arg(arg = NULL, return_type)
-  backend <- match.arg(arg = NULL, backend)
-  FUNC <-match.arg(arg = NULL, FUNC)
-  # if(return_type=="object" && return_probs == T) {stop("Cannot return both probabilities and a single cell object; rerun changing return_type to list if probabilities are sought.")}
-  if(!length(hidden_layers) %in% c(1,2)){stop("Only 1 or 2 hidden layers are allowed.")}
-  if (debug){
-    message("Dimension check:")
-    message(paste0("\t", dimension_check(query_cds)))
-    message(paste0("\t", dimension_check(ref_cds)))
-    message(paste0("\t", dimension_check(selected_genes)))
+
+viewmastR <- function(query_cds, 
+                      ref_cds, 
+                      ref_celldata_col, 
+                      query_celldata_col = NULL, 
+                      FUNC = c("mlr", "nn", "nb"),
+                      norm_method = c("log", "binary", "size_only", "none"),
+                      selected_genes = NULL,
+                      train_frac = 0.8,
+                      tf_idf = FALSE,
+                      scale = FALSE,
+                      hidden_layers = c(500,100),
+                      learning_rate = 1e-3,
+                      max_epochs = 10,
+                      LSImethod = 1,
+                      verbose = TRUE,
+                      backend = c("wgpu", "nd", "candle"),
+                      threshold = NULL,
+                      keras_model = NULL, 
+                      dir = "/tmp/sc_local",
+                      return_probs = FALSE,
+                      return_type = c("object", "list"), 
+                      debug = FALSE,
+                      train_only = FALSE,
+                      addbias = FALSE,
+                      ...) {
+  return_type <- match.arg(return_type)
+  backend <- match.arg(backend)
+  FUNC <- match.arg(FUNC)
+  norm_method <- match.arg(norm_method)
+
+  if(!length(hidden_layers) %in% c(1,2)) {
+    stop("Only 1 or 2 hidden layers are allowed.")
   }
-  training_list<-setup_training(query_cds, 
-                                ref_cds, 
-                                tf_idf=tf_idf,
-                                scale=scale,
-                                LSImethod=LSImethod,
-                                ref_celldata_col = ref_celldata_col, 
-                                selected_genes = selected_genes, 
-                                verbose=verbose, 
-                                return_type = "list")
-  # use_sparse = F)
-  if (debug){
-    message("Dimension check:")
-    message(paste0("\t", dimension_check(training_list[["train"]][[1]])))
-    message(paste0("\t", dimension_check(training_list[["test"]][[1]])))
-    message(paste0("\t", dimension_check(training_list[["query"]][[1]])))
-    message(paste0("\t", dimension_check(training_list[["labels"]])))
-  }
-  if(!file.exists(dir)){
-    dir.create(dir)
-  }
-  
-  if(is.null(query_celldata_col)){
-    query_celldata_col<-"viewmastR_pred"
-  }
-  
-  if(FUNC=="mlr"){
-    export_list<-process_learning_obj_mlr(train = training_list[["train"]], 
-                                          test = training_list[["test"]], 
-                                          query = training_list[["query"]], 
-                                          labels = training_list[["labels"]], 
-                                          learning_rate = learning_rate, num_epochs = max_epochs, 
-                                          directory = dir, verbose = verbose, backend = backend)
-  } 
-  if(FUNC=="nn"){
-    export_list<-process_learning_obj_ann(train = training_list[["train"]], 
-                                          test = training_list[["test"]], 
-                                          query = training_list[["query"]], 
-                                          labels = training_list[["labels"]],
-                                          hidden_size = hidden_layers,
-                                          learning_rate = learning_rate, num_epochs = max_epochs, 
-                                          directory = dir, verbose = verbose, backend = backend)
-  }
-  if(FUNC=="nb"){
-    export_list<-process_learning_obj_nb(train = training_list[["train"]], 
-                                          test = training_list[["test"]], 
-                                          query = training_list[["query"]])
-    if(return_type == "probs"){
-      message("probabilities from multinomial naive bayes not implemented yet")
+
+  ## TRAIN ONLY MODE
+  if (train_only) {
+    if(FUNC == "nb") {
+      message("naive bayes is currently not implemented for training only")
+      return()
     }
-    query_cds[[query_celldata_col]]<-training_list[["labels"]][export_list$predictions[[1]]+1]
+    # Use setup_training with query_cds = NULL
+    training_list <- setup_training(
+      query_cds = NULL,
+      ref_cds = ref_cds,
+      ref_celldata_col = ref_celldata_col,
+      norm_method = norm_method,
+      selected_genes = selected_genes,
+      train_frac = train_frac,
+      tf_idf = tf_idf,
+      scale = scale,
+      LSImethod = LSImethod,
+      verbose = verbose,
+      addbias = addbias,
+      return_type = "list",
+      debug = debug,
+      ...
+    )
+
+    if (debug) {
+      message("Dimension check (Training Only):")
+      message(paste0("\t", dimension_check(training_list[["train"]][[1]])))
+      message(paste0("\t", dimension_check(training_list[["test"]][[1]])))
+      message(paste0("\t", dimension_check(training_list[["labels"]])))
+    }
+
+    if(!file.exists(dir)) {
+      dir.create(dir)
+    }
+
+    if(is.null(query_celldata_col)) {
+      query_celldata_col <- "viewmastR_pred"
+    }
+
+    # Process training output based on FUNC
+    if(FUNC == "mlr") {
+      export_list <- process_learning_obj_mlr(
+        train = training_list[["train"]],
+        test = training_list[["test"]],
+        query = training_list[["query"]],
+        labels = training_list[["labels"]],
+        learning_rate = learning_rate,
+        num_epochs = max_epochs,
+        directory = dir,
+        verbose = verbose,
+        backend = backend
+      )
+    } else if(FUNC == "nn") {
+      export_list <- process_learning_obj_ann(
+        train = training_list[["train"]],
+        test = training_list[["test"]],
+        query = training_list[["query"]],
+        labels = training_list[["labels"]],
+        hidden_size = hidden_layers,
+        learning_rate = learning_rate,
+        num_epochs = max_epochs,
+        directory = dir,
+        verbose = verbose,
+        backend = backend
+      )
+    }
+
+    log_odds <- unlist(export_list$probs[[1]])
+    # Check if log_odds has the expected dimensions
+    if(length(log_odds) == dim(query_cds)[2] * length(training_list[["labels"]])){
+      log_odds = matrix(log_odds, ncol = dim(query_cds)[2])
+      log_odds = t(log_odds)
+      colnames(log_odds) <- paste0("prob_", training_list[["labels"]])
+    } else {
+      stop("Error in log odds dimensions of function output")
+    }
+    
+    softmax_rows <- function(mat) {
+      shifted <- mat - apply(mat, 1, max)  # stability
+      exp_shifted <- exp(shifted)
+      exp_shifted / rowSums(exp_shifted)
+    }
+    
+    export_list$probs <- softmax_rows(log_odds)
+    return(list(object=NULL, training_output = export_list, model_dir = dir))
+  } else {
+    # When train_only = FALSE, we have query_cds provided
+    training_list <- setup_training(
+      query_cds = query_cds,
+      ref_cds = ref_cds,
+      ref_celldata_col = ref_celldata_col,
+      norm_method = norm_method,
+      selected_genes = selected_genes,
+      train_frac = train_frac,
+      tf_idf = tf_idf,
+      scale = scale,
+      LSImethod = LSImethod,
+      verbose = verbose,
+      addbias = addbias,
+      return_type = "list",
+      debug = debug,
+      ...
+    )
+
+    if (debug) {
+      message("Dimension check:")
+      message(paste0("\t", dimension_check(training_list[["train"]][[1]])))
+      message(paste0("\t", dimension_check(training_list[["test"]][[1]])))
+      message(paste0("\t", dimension_check(training_list[["query"]][[1]])))
+      message(paste0("\t", dimension_check(training_list[["labels"]])))
+    }
+
+    if(!file.exists(dir)) {
+      dir.create(dir)
+    }
+
+    if(is.null(query_celldata_col)) {
+      query_celldata_col <- "viewmastR_pred"
+    }
+
+    if(FUNC == "mlr") {
+      export_list <- process_learning_obj_mlr(
+        train = training_list[["train"]],
+        test = training_list[["test"]],
+        query = training_list[["query"]],
+        labels = training_list[["labels"]],
+        learning_rate = learning_rate,
+        num_epochs = max_epochs,
+        directory = dir,
+        verbose = verbose,
+        backend = backend
+      )
+    } else if(FUNC == "nn") {
+      export_list <- process_learning_obj_ann(
+        train = training_list[["train"]],
+        test = training_list[["test"]],
+        query = training_list[["query"]],
+        labels = training_list[["labels"]],
+        hidden_size = hidden_layers,
+        learning_rate = learning_rate,
+        num_epochs = max_epochs,
+        directory = dir,
+        verbose = verbose,
+        backend = backend
+      )
+    } else if(FUNC == "nb") {
+      export_list <- process_learning_obj_nb(
+        train = training_list[["train"]],
+        test = training_list[["test"]],
+        query = training_list[["query"]]
+      )
+      if(return_type == "probs") {
+        message("probabilities from multinomial naive bayes not implemented yet")
+      }
+      query_cds[[query_celldata_col]] <- training_list[["labels"]][export_list$predictions[[1]]+1]
+      if (return_type=="object") {
+        return(query_cds)
+      } else {
+        return(list(object=query_cds, training_output = export_list))
+      }
+    }
+
+    log_odds <- unlist(export_list$probs[[1]])
+    # Check if log_odds has the expected dimensions
+    if(length(log_odds) == dim(query_cds)[2] * length(training_list[["labels"]])){
+      log_odds = matrix(log_odds, ncol = dim(query_cds)[2])
+      log_odds = t(log_odds)
+      colnames(log_odds) <- paste0("prob_", training_list[["labels"]])
+    } else {
+      stop("Error in log odds dimensions of function output")
+    }
+    
+    softmax_rows <- function(mat) {
+      shifted <- mat - apply(mat, 1, max)  # stability
+      exp_shifted <- exp(shifted)
+      exp_shifted / rowSums(exp_shifted)
+    }
+    
+    prob_mat  <- softmax_rows(log_odds)
+    query_cds[[query_celldata_col]]<-training_list[["labels"]][apply(prob_mat, 1, which.max)]
+    
+    if(return_probs){
+      query_cds@meta.data <- cbind(query_cds@meta.data, prob_mat)
+    }
     if (return_type=="object") {
       return(query_cds)
     } else {
-      return(list(object=query_cds, training_output = export_list))
+      return(list(object=query_cds, training_output = list(probs = prob_mat)))
     }
   }
-
-  
-  log_odds = unlist(export_list$probs[[1]])
-  if(length(log_odds) == dim(query_cds)[2]*length(training_list[["labels"]])){
-    log_odds = matrix(log_odds, ncol = dim(query_cds)[2])
-    log_odds = t(log_odds)
-    colnames(log_odds) <- paste0("prob_", training_list[["labels"]])
-  } else {
-    stop("Error in log odds dimensions of function output")
-  }
-  
-  softmax_rows <- function(mat) {
-    shifted <- mat - apply(mat, 1, max)  # stability
-    exp_shifted <- exp(shifted)
-    exp_shifted / rowSums(exp_shifted)
-  }
-  
-  #logit_mat <- matrix(log_odds, nrow = num_cells, ncol = num_classes, byrow = TRUE)
-  prob_mat  <- softmax_rows(log_odds)
-  
-  # export_list$probs = plogis(log_odds)
-  export_list$probs = prob_mat
-  query_cds[[query_celldata_col]]<-training_list[["labels"]][apply(log_odds, 1, which.max)]
-  if(return_probs){
-    query_cds@meta.data <- cbind(query_cds@meta.data, export_list$probs)
-  }
-  if (return_type=="object") {
-    return(query_cds)
-  } else {
-    return(list(object=query_cds, training_output = export_list))
-  }
 }
-
 
 #' Setup training datasets
 #' 
