@@ -2,6 +2,7 @@
 
 * bug - incorrectly printed training accuracy in specific situations
 * bug - fixed an error in probability calculations
+* performance improvement - enabled train_only mode so that inference can be done on large datasets separately; embedded minor performance enhancements throughout - See BigQuery Vignette
 
 # viewmastR v0.2.3
 
