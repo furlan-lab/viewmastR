@@ -75,7 +75,7 @@ fn computeSparseRowVariances(j: Robj, val: Robj, rm: Robj, n: Robj)-> Vec<f64>{
 /// @export
 /// @keywords internal
 #[extendr]
-fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
+fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, feature_names: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
   let backend = match backend.as_str_vector(){
     Some(string_vec) => string_vec.first().unwrap().to_string(),
     _ => panic!("Cound not find backend: '{:?}'", backend)
@@ -95,6 +95,7 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
     panic!("Could not find folder: '{:?}'", artifact_dir)
   }
   let labelvec = labels.as_str_vector().unwrap();
+  let feature_names_vec = feature_names.as_string_vector().unwrap();
 
   let test_raw = extract_scitemraw(&test, None);   // No default target, extract from list
   let train_raw = extract_scitemraw(&train, None); // No default target, extract from list
@@ -102,13 +103,13 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
 
   let model_export: RExport;
   if backend == "candle"{
-    model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+    model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), feature_names_vec, learning_rate, num_epochs, Some(artifact_dir), verbose);
   } 
   else if backend == "wpgu"{
-    model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+    model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), feature_names_vec, learning_rate, num_epochs, Some(artifact_dir), verbose);
   } 
   else {
-    model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+    model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), feature_names_vec, learning_rate, num_epochs, Some(artifact_dir), verbose);
   }
 
   let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
@@ -235,6 +236,7 @@ fn infer_from_model(
     query       : Robj,
     num_classes : Robj,
     num_features: Robj,
+    feature_names: Robj,
     model_type  : Robj,
     hidden1     : Nullable<Robj>,
     hidden2     : Nullable<Robj>,
@@ -273,6 +275,13 @@ fn infer_from_model(
         .as_integer_vector()
         .and_then(|v| v.first().copied())
         .expect("`num_features` must be an integer") as usize;
+    
+    let feature_names_vec = feature_names
+        .as_str_vector()
+        .map(|v| v.iter().map(|s| s.to_string()).collect::<Vec<String>>())
+        .unwrap_or_else(|| {
+            panic!("`feature_names` must be a character vector");
+        });
 
     // ── optional hidden sizes ----------------------------------------------
     let h1 = usize_from_nullable(hidden1);
@@ -304,7 +313,7 @@ fn infer_from_model(
         "mlr" => infer_helper_mlr(
             model_path.to_string(),
             num_classes,
-            num_features,
+            feature_names_vec,
             query_raw,
             Some(batch_size)
         ),

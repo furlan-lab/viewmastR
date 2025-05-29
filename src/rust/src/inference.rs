@@ -3,26 +3,31 @@ use crate::common::*;
 use crate::scrna_mlr::ModelConfig as MLR_ModelConfig;
 use crate::scrna_ann::ModelConfig as ANN_ModelConfig;
 use crate::scrna_ann2l::ModelConfig as ANN_2_ModelConfig;
-
+use crate::scrna_mlr::Model as MLRModel;
 use num_traits::ToPrimitive;
 
 use burn::{
     backend::wgpu::{WgpuDevice, Wgpu, AutoGraphicsApi},
     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset, dataset::transform::MapperDataset},
-    record::{NamedMpkFileRecorder, FullPrecisionSettings, Recorder},
+    record::{NamedMpkFileRecorder, FullPrecisionSettings, Recorder, Record},
     module::Module
 };
 
-pub fn infer_helper_mlr(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, batch_size: Option<usize>) -> Vec<f32>{
+pub fn infer_helper_mlr(model_path: String, num_classes: usize, feature_names_vec: Vec<String>, query: Vec<SCItemRaw>, batch_size: Option<usize>) -> Vec<f32>{
     type MyBackend = Wgpu<AutoGraphicsApi, f32>;
     let device = WgpuDevice::default();
-    let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
+    // let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
+    //     .load(model_path.into())
+    //     .expect("Failed to load model weights");
+    let model: MLRModel<MyBackend> = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
         .load(model_path.into())
         .expect("Failed to load model weights");
-
+    let feature_names = model.input_feature_names;
+    // let num_classes   = model.num_classes;  
     // Directly initialize a new model with the loaded record/weights
-    let config_model = MLR_ModelConfig::new(num_classes);
-    let model = config_model.init(num_features).load_record(record);
+    // let config_model = MLR_ModelConfig::new(num_classes, feature_names_vec);
+    // let model = config_model.init().load_record(record);
+    // let model = MLRModel::init(&device).load_record(record);
     let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
     MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
     // Create the batchers.

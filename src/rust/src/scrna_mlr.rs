@@ -16,7 +16,7 @@ use burn::{
         ReLU,
     },
     optim::{AdamConfig, Optimizer},
-    record::{FullPrecisionSettings, NamedMpkFileRecorder},
+    record::{FullPrecisionSettings, NamedMpkFileRecorder, Record},
     tensor::{Tensor, backend::Backend, Int},
     train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
@@ -25,29 +25,29 @@ use crate::common::*;
 use crate::pb::ProgressBar;
 
 
-#[derive(Module, Debug)]
+#[derive(Module, Debug, Record)]
 pub struct Model<B: Backend> {
-    linear1: Linear<B>,
-    activation: ReLU,
+    #[module] 
+    pub linear1: Linear<B>,
+    #[record(skip)]
+    pub activation: ReLU,
+    #[record(attr)]
+    pub input_feature_names: Vec<String>,
 }
 
 #[derive(Config, Debug)]
 pub struct ModelConfig {
     num_classes: usize,
+    input_feature_names: Vec<String>,
 }
 
 impl ModelConfig {
-    // pub fn init_with<B: Backend>(&self, no_features: usize, record: ModelRecord<B>) -> Model<B> {
-    //     Model {
-    //         linear1: LinearConfig::new(no_features, self.num_classes).init_with(record.linear1),
-    //         activation: ReLU::new(),
-    //     }
-    // }
-
-    pub fn init<B: Backend>(&self, no_features: usize) -> Model<B> {
+    pub fn init<B: Backend>(&self) -> Model<B> {
+        let no_features = self.input_feature_names.len();
         Model {
             activation: ReLU::new(),
             linear1: LinearConfig::new(no_features, self.num_classes).init(),
+            input_feature_names: self.input_feature_names.clone(),
         }
     }
 }
@@ -105,6 +105,7 @@ pub fn run_custom<B>(
     test: Vec<SCItemRaw>,
     query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
+    feature_names_vec: Vec<String>,
     learning_rate: f64,
     num_epochs: usize,
     directory: Option<String>,
@@ -118,7 +119,7 @@ where
     B::FloatElem: ToPrimitive,
 {
     let _debug = true;
-    let no_features = train.first().expect("Features not found").data.len();
+    // let no_features = train.first().expect("Features not found").data.len();
     // let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
     //     MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
     // let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
@@ -129,12 +130,12 @@ where
     let artifact_dir = directory.clone().unwrap_or_else(|| panic!("Folder not found: {:?}", directory));
     
     // Create the configuration.
-    let config_model = ModelConfig::new(num_classes);
+    let config_model = ModelConfig::new(num_classes, feature_names_vec.clone());
     let config_optimizer = AdamConfig::new();
     let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
 
     // Create the model and optimizer.
-    let mut model: Model<Autodiff<B>> = config.model.init(no_features);
+    let mut model: Model<Autodiff<B>> = config.model.init();
     let mut optim = config.optimizer.init::<Autodiff<B>, Model<Autodiff<B>>>();
 
     // Create the batchers.
@@ -299,6 +300,7 @@ pub fn run_custom_nd(
     test: Vec<SCItemRaw>,
     query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
+    feature_names_vec: Vec<String>,
     learning_rate: f64,
     num_epochs: usize,
     directory: Option<String>,
@@ -312,6 +314,7 @@ pub fn run_custom_nd(
         test,
         query,
         num_classes,
+        feature_names_vec,
         learning_rate,
         num_epochs,
         directory,
@@ -326,6 +329,7 @@ pub fn run_custom_wgpu(
     test: Vec<SCItemRaw>,
     query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
+    feature_names_vec: Vec<String>,
     learning_rate: f64,
     num_epochs: usize,
     directory: Option<String>,
@@ -339,6 +343,7 @@ pub fn run_custom_wgpu(
         test,
         query,
         num_classes,
+        feature_names_vec,
         learning_rate,
         num_epochs,
         directory,
@@ -353,6 +358,7 @@ pub fn run_custom_candle(
     test: Vec<SCItemRaw>,
     query: Option<Vec<SCItemRaw>>,
     num_classes: usize,
+    feature_names_vec: Vec<String>,
     learning_rate: f64,
     num_epochs: usize,
     directory: Option<String>,
@@ -366,6 +372,7 @@ pub fn run_custom_candle(
         test,
         query,
         num_classes,
+        feature_names_vec,
         learning_rate,
         num_epochs,
         directory,
