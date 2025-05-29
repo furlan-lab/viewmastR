@@ -13,7 +13,7 @@ use burn::{
         loss::CrossEntropyLoss,
         Linear,
         LinearConfig,
-        ReLU,
+        Relu,
     },
     optim::{AdamConfig, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder, Record},
@@ -21,19 +21,34 @@ use burn::{
     train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
+use burn::{module, record};   // <-- put near the other `use` lines
+
+
 use crate::common::*;
 use crate::pb::ProgressBar;
 
-
 #[derive(Module, Debug, Record)]
 pub struct Model<B: Backend> {
-    #[module] 
-    pub linear1: Linear<B>,
-    #[record(skip)]
-    pub activation: ReLU,
+    #[module]                 // leave as-is
+    linear1: Linear<B>,
+
+    #[record(skip)]           // plain attribute, no `burn::` prefix
+    activation: Relu,
+
     #[record(attr)]
-    pub input_feature_names: Vec<String>,
+    input_feature_names: Vec<String>,
 }
+
+
+// #[derive(Module, Debug, Record)]
+// pub struct Model<B: Backend> {
+//     #[module] 
+//     pub linear1: Linear<B>,
+//     #[burn::record(skip)]
+//     pub activation: Relu,
+//     #[burn::record(attr)]
+//     pub input_feature_names: Vec<String>,
+// }
 
 #[derive(Config, Debug)]
 pub struct ModelConfig {
@@ -45,8 +60,8 @@ impl ModelConfig {
     pub fn init<B: Backend>(&self) -> Model<B> {
         let no_features = self.input_feature_names.len();
         Model {
-            activation: ReLU::new(),
-            linear1: LinearConfig::new(no_features, self.num_classes).init(),
+            activation: Relu::new(),
+            linear1: LinearConfig::new(no_features, self.num_classes).init(device),
             input_feature_names: self.input_feature_names.clone(),
         }
     }
@@ -65,7 +80,7 @@ impl<B: Backend> Model<B> {
         targets: Tensor<B, 1, Int>,
     ) -> ClassificationOutput<B> {
         let output = self.forward(data);
-        let loss = CrossEntropyLoss::new(None).forward(output.clone(), targets.clone());
+        let loss = CrossEntropyLoss::new(None, &device).forward(output.clone(), targets.clone());
 
         ClassificationOutput::new(loss, output, targets)
     }
@@ -139,8 +154,8 @@ where
     let mut optim = config.optimizer.init::<Autodiff<B>, Model<Autodiff<B>>>();
 
     // Create the batchers.
-    let batcher_train = SCBatcher::<Autodiff<B>>::new(device.clone());
-    let batcher_valid = SCBatcher::<B>::new(device.clone());
+    let batcher_train = SCBatcher;
+    let batcher_valid = SCBatcher;
 
     // Create the dataloaders.
     let dataloader_train = DataLoaderBuilder::new(batcher_train)
@@ -255,7 +270,7 @@ where
 
      if let Some(query_items) = query {
         let query_dataset = MapperDataset::new(InMemDataset::new(query_items), LocalCountstoMatrix);
-        let batcher_query = SCBatcher::<B>::new(device.clone());
+        let batcher_query = SCBatcher;
         let dataloader_query = DataLoaderBuilder::new(batcher_query)
             .batch_size(config.batch_size)
             .build(query_dataset);

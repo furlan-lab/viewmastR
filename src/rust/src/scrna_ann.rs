@@ -13,7 +13,7 @@ use burn::{
         loss::CrossEntropyLoss,
         Linear,
         LinearConfig,
-        ReLU,
+        // ReLU,
     },
     optim::{AdamConfig, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder},

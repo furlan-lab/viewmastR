@@ -4,7 +4,7 @@ use extendr_api::{r, NULL};
 
 use burn::{
     data::{dataloader::{ Dataset, batcher::Batcher}, dataset::transform::Mapper},
-    tensor::{backend::Backend, Data, ElementConversion, Int, Tensor},
+    tensor::{backend::Backend, TensorData, Int, Tensor},
 };
 
 
@@ -147,13 +147,6 @@ pub fn extract_scalars(data: &Robj, index: usize) -> Vec<usize> {
         .collect()
 }
 
-// Function to flatten data and create a Tensor
-// pub fn create_tensor(data: Vec<Vec<f64>>) -> Tensor<Wgpu, 2> {
-//     let flattened_data: Vec<f32> = data.iter().flatten().map(|&x| x as f32).collect();
-//     let shape = Shape::from(vec![data.len() as i64, data[0].len() as i64]);
-//     Tensor::<Wgpu, 2>::from_data(Data::new(flattened_data, shape))
-// }
-
 
 pub fn extract_scitemraw(data: &Robj, target_value: Option<i32>) -> Vec<SCItemRaw> {
     if data == &r!(NULL) {
@@ -169,17 +162,6 @@ pub fn extract_scitemraw(data: &Robj, target_value: Option<i32>) -> Vec<SCItemRa
     }).collect()
 }
 
-pub struct SCBatcher<B: Backend> {
-    device: B::Device,
-}
-
-impl<B: Backend> SCBatcher<B> {
-    pub fn new(device: B::Device) -> Self {
-        Self { device }
-    }
-}
-
-
 
 
 #[derive(Clone, Debug)]
@@ -188,26 +170,38 @@ pub struct SCBatch<B: Backend> {
     pub targets: Tensor<B, 1, Int>,
 }
 
-impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
 
-    fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
-        let n: usize = items.first().unwrap().counts.len();
+pub struct SCBatcher;              
+
+
+impl<B: Backend> Batcher<B, SCItem, SCBatch<B>> for SCBatcher {
+    fn batch(&self, items: Vec<SCItem>, device: &B::Device) -> SCBatch<B> {
+        let n = items[0].counts.len();
+
+        // ---------------- counts ----------------
         let counts = items
             .iter()
-            .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
-            .map(|data| Tensor::<B, 1>::from_data(data.convert()).reshape([1, n]))
+            .map(|item| {
+                // &[..]   →  TensorData   →  convert  →  Tensor
+                let data = TensorData::from(&item.counts[..n]).convert::<f64>();
+                Tensor::<B, 1>::from_data(data, device).reshape([1, n])
+            })
             .collect();
-        
 
+        // ---------------- targets ---------------
         let targets = items
             .iter()
-            .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()])))
+            .map(|item| {
+                // implements From<[E; 1]>
+                let data = TensorData::from([item.label]);
+                Tensor::<B, 1, Int>::from_data(data, device)
+            })
             .collect();
 
-        let counts = Tensor::cat(counts, 0).to_device(&self.device);
-        let targets = Tensor::cat(targets, 0).to_device(&self.device);
-
-        SCBatch { counts, targets }
+        SCBatch {
+            counts:  Tensor::cat(counts, 0),
+            targets: Tensor::cat(targets, 0),
+        }
     }
 }
 
