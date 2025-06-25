@@ -11,6 +11,7 @@ mod scrna_ann2l;
 mod scrna_mlr;
 mod scrna_conv;
 mod utils;
+mod signal;
 mod pb;
 mod common;
 mod inference;
@@ -21,7 +22,8 @@ use std::path::Path;
 use std::time::Instant;
 use crate::common::*;
 use crate::inference::{infer_helper_mlr, infer_helper_ann, infer_helper_ann2l};
-
+// use burn::tensor::Tensor;
+// use burn::backend::ndarray::NdArray;
 // use std::convert::TryFrom;
 // use std::convert::TryInto;
 /// Process Robj learning objects for MLR
@@ -363,6 +365,98 @@ fn usize_from_nullable(n: Nullable<Robj>) -> Option<usize> {
     }
 }
 
+// use signal::{Consts, Params, train};
+// use utils::{rmat_to_tensor, lgamma_plus_one, B};
+
+
+// #[extendr]
+// fn fit_deconv(
+//     sigs     : Robj,
+//     bulk     : Robj,
+//     mol2read : Robj,
+//     w_vec    : Robj,
+//     init_log_exp: Robj,
+//     lr          : Robj,
+//     l1_lambda   : Robj,
+//     l2_lambda   : Robj,
+//     epochs      : Robj,
+// ) -> List {
+//     // ── convert inputs ─────────────────────────────────────────────────
+//     let s  = rmat_to_tensor(sigs).expect("bad `sigs` matrix");
+//     let k  = rmat_to_tensor(bulk).expect("bad `bulk` matrix");
+//     let c  = rmat_to_tensor(mol2read).expect("bad `mol2read` matrix");
+//     let init_log_exp = init_log_exp
+//         .as_real_vector()
+//         .and_then(|v| v.first().copied())
+//         .unwrap_or(-10.0);
+//     let lr = lr
+//         .as_real_vector()
+//         .and_then(|v| v.first().copied())
+//         .unwrap_or(0.001);
+//     let l1_lambda = l1_lambda
+//         .as_real_vector()
+//         .and_then(|v| v.first().copied())
+//         .unwrap_or(0.01);
+//     let l2_lambda = l2_lambda
+//         .as_real_vector()
+//         .and_then(|v| v.first().copied())
+//         .unwrap_or(0.01);
+//     let epochs = epochs
+//         .as_real_vector()
+//         .and_then(|v| v.first().copied())
+//         .unwrap_or(500.0) as usize;
+//     assert!(epochs>0,"epochs must be ≥1");
+//     let w: Vec<f32> = w_vec
+//         .as_real_vector()
+//         .expect("`w_vec` must be numeric")
+//         .iter()
+//         .map(|x| *x as f32)
+//         .collect();
+//     if w.len() != s.dims()[0] {
+//         panic!("length(w_vec) must equal nrow(sigs)");
+//     }
+//     let w_t = Tensor::<B, 1>::from_floats(w.as_slice());
+//     // lgamma(k+1) once up-front
+//     let lg = lgamma_plus_one(&k);
+
+//     // ── constants & params ─────────────────────────────────────────────
+//     let consts = Consts::<B> {
+//         sp       : Tensor::<B, 2>::cat(vec![s.clone(),
+//                     Tensor::<B,2>::ones([s.dims()[0], 1]) / (s.dims()[0] as f32)], 1),
+//         c        : c,
+//         k        : k,
+//         w        : w_t,
+//         lg_kp1   : lg,
+//     };
+//     let params = Params {
+//         n_genes      : consts.sp.dims()[0],
+//         n_types      : consts.sp.dims()[1] - 1,
+//         n_samps      : consts.k.dims()[1],
+//         init_log_exp : init_log_exp as f32,
+//         lr           : lr as f64,
+//         epochs       : epochs as usize,
+//         l1           : l1_lambda as f32,
+//         l2           : l2_lambda as f32,
+//     };
+
+//     // ── train ──────────────────────────────────────────────────────────
+//     let (mdl, loss) = train::<B>(consts, params);
+
+//     // exposures matrix back to R  (cell_types+Intercept) × samples
+//     let exp = mdl.exposures().to_data().convert::<f32>().value;
+//     let dims = mdl.exposures().dims();
+//     // 1. wrap the data in an R numeric vector
+//     let robj_exp = Robj::from(exp);
+
+//     // 2. build the integer dim attribute and attach it
+//     let dim_attr = Robj::from(vec![dims[0] as i32, dims[1] as i32]);
+//     robj_exp.set_attrib("dim", dim_attr);    
+
+//     list!(exposures = robj_exp,
+//           loss      = loss.into_iter().map(|x| x as f64).collect::<Vec<f64>>())
+// }
+
+
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
@@ -376,4 +470,5 @@ extendr_module! {
   // fn process_learning_obj;
   // fn run_nb_test;
   fn process_learning_obj_nb;
+  // fn fit_deconv;
 }
