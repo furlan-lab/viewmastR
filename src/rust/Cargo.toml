@@ -14,7 +14,7 @@ num-traits = "0.2"
 time = "0.3.35"
 extendr-api = "0.6"
 extendr-macros = "0.6"
-burn = { version =  "0.11.1" , features = ["wgpu",  "train", "ndarray", "candle"] }
+burn = { version =  "0.17.0" , features = ["wgpu",  "train", "ndarray", "candle"] }
 image = {version = "0.24.7", features = ["png"]}
 byteorder = "1.5.0"
 serde_json = "1.0"

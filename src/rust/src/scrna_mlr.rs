@@ -1,6 +1,6 @@
 use std::time::Instant;
 use num_traits::ToPrimitive;
-
+use burn::prelude::Backend;
 use burn::{
     backend::Autodiff,
     config::Config,
@@ -13,11 +13,11 @@ use burn::{
         loss::CrossEntropyLoss,
         Linear,
         LinearConfig,
-        ReLU,
+        // Relu,
     },
     optim::{AdamConfig, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder},
-    tensor::{Tensor, backend::Backend, Int},
+    tensor::{Tensor, Int, activation::relu, backend::AutodiffBackend},
     train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
@@ -28,8 +28,91 @@ use crate::pb::ProgressBar;
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
     linear1: Linear<B>,
-    activation: ReLU,
+    // activation: Relu,
+    n_classes: usize,
 }
+
+impl<B: Backend> Model<B> {
+    pub fn new(in_feats: usize, n_classes: usize, device: &B::Device) -> Self {
+        Self {
+            linear1: LinearConfig::new(in_feats, n_classes).init(device),
+            n_classes,
+        }
+    }
+
+    pub fn forward(&self, x: Tensor<B, 2>) -> Tensor<B, 2> {
+        relu(self.linear1.forward(x))
+    }
+
+    pub fn forward_classification(
+        &self,
+        x: Tensor<B, 2>,
+        y: Tensor<B, 1, Int>,
+        device: &B::Device,
+    ) -> ClassificationOutput<B> {
+        let logits = self.forward(x);
+        let loss   = CrossEntropyLoss::new(None, device).forward(logits.clone(), y.clone());
+        ClassificationOutput::new(loss, logits, y)
+    }
+}
+// --- training (autodiff backend) ---
+impl<B: AutodiffBackend>                                          // ← bound
+TrainStep<SCBatch<Autodiff<B>>, ClassificationOutput<Autodiff<B>>>
+    for Model<Autodiff<B>>
+{
+    fn step(
+        &self,
+        batch: SCBatch<Autodiff<B>>,
+    ) -> TrainOutput<ClassificationOutput<Autodiff<B>>> {
+        let device = batch.counts.device();
+        let item   = self.forward_classification(batch.counts, batch.targets, &device);
+        TrainOutput::new(self, item.loss.backward(), item)
+    }
+}
+
+// --- validation (plain backend) ---
+impl<B: Backend>
+ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
+    fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
+        let device = batch.counts.device();
+        self.forward_classification(batch.counts, batch.targets, &device)
+    }
+}
+
+
+// impl<B: Backend> Model<B> {
+//     pub fn forward(&self, data: Tensor<B, 2>) -> Tensor<B, 2> {
+//         self.linear1.forward(data)
+//     }
+// }
+
+// impl<B: Backend> Model<B> {
+//     pub fn forward_classification(
+//         &self,
+//         data: Tensor<B, 2>,
+//         targets: Tensor<B, 1, Int>,
+//         device: &B::Device,
+//     ) -> ClassificationOutput<B> {
+//         let output = self.forward(data);
+//         let loss = CrossEntropyLoss::new(None, device).forward(output.clone(), targets.clone());
+
+//         ClassificationOutput::new(loss, output, targets)
+//     }
+// }
+
+// impl<B: Backend + burn::tensor::backend::AutodiffBackend> TrainStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
+//     fn step(&self, batch: SCBatch<B> ) -> TrainOutput<ClassificationOutput<B>> {
+//         let item = self.forward_classification(batch.counts, batch.targets, device);
+//         TrainOutput::new(self, item.loss.backward(), item)
+//     }
+// }
+
+// impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
+//     fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
+//         self.forward_classification(batch.counts, batch.targets, device)
+//     }
+// }
+
 
 #[derive(Config, Debug)]
 pub struct ModelConfig {
@@ -37,50 +120,11 @@ pub struct ModelConfig {
 }
 
 impl ModelConfig {
-    // pub fn init_with<B: Backend>(&self, no_features: usize, record: ModelRecord<B>) -> Model<B> {
-    //     Model {
-    //         linear1: LinearConfig::new(no_features, self.num_classes).init_with(record.linear1),
-    //         activation: ReLU::new(),
-    //     }
-    // }
-
-    pub fn init<B: Backend>(&self, no_features: usize) -> Model<B> {
+    pub fn init<B: Backend>(&self, no_features: usize, device: B::Device) -> Model<B> {
         Model {
-            activation: ReLU::new(),
-            linear1: LinearConfig::new(no_features, self.num_classes).init(),
+            linear1: LinearConfig::new(no_features, self.num_classes).init(&device),
+            n_classes: self.num_classes,
         }
-    }
-}
-
-impl<B: Backend> Model<B> {
-    pub fn forward(&self, data: Tensor<B, 2>) -> Tensor<B, 2> {
-        self.linear1.forward(data)
-    }
-}
-
-impl<B: Backend> Model<B> {
-    pub fn forward_classification(
-        &self,
-        data: Tensor<B, 2>,
-        targets: Tensor<B, 1, Int>,
-    ) -> ClassificationOutput<B> {
-        let output = self.forward(data);
-        let loss = CrossEntropyLoss::new(None).forward(output.clone(), targets.clone());
-
-        ClassificationOutput::new(loss, output, targets)
-    }
-}
-
-impl<B: Backend + burn::tensor::backend::AutodiffBackend> TrainStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
-    fn step(&self, batch: SCBatch<B>) -> TrainOutput<ClassificationOutput<B>> {
-        let item = self.forward_classification(batch.counts, batch.targets);
-        TrainOutput::new(self, item.loss.backward(), item)
-    }
-}
-
-impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
-    fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
-        self.forward_classification(batch.counts, batch.targets)
     }
 }
 
@@ -112,7 +156,7 @@ pub fn run_custom<B>(
     device: B::Device,
 ) -> RExport
 where
-    B: Backend,
+    B: Backend + AutodiffBackend,
     B::Device: Clone,
     B::IntElem: ToPrimitive,
     B::FloatElem: ToPrimitive,
@@ -134,7 +178,7 @@ where
     let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
 
     // Create the model and optimizer.
-    let mut model: Model<Autodiff<B>> = config.model.init(no_features);
+    let mut model: Model<Autodiff<B>> = config.model.init(no_features, device.clone());
     let mut optim = config.optimizer.init::<Autodiff<B>, Model<Autodiff<B>>>();
 
     // Create the batchers.
@@ -142,6 +186,15 @@ where
     let batcher_valid = SCBatcher::<B>::new(device.clone());
 
     // Create the dataloaders.
+    // let dataloader_train = DataLoaderBuilder::new(batcher_train)
+    //     .batch_size(config.batch_size)
+    //     .num_workers(config.num_workers)
+    //     .build(train_dataset);
+
+    // let dataloader_test = DataLoaderBuilder::new(batcher_valid)
+    //     .batch_size(config.batch_size)
+    //     .num_workers(config.num_workers)
+    //     .build(test_dataset);
     let dataloader_train = DataLoaderBuilder::new(batcher_train)
         .batch_size(config.batch_size)
         .num_workers(config.num_workers)
@@ -151,6 +204,8 @@ where
         .batch_size(config.batch_size)
         .num_workers(config.num_workers)
         .build(test_dataset);
+
+
 
     let mut train_accuracy = ModelAccuracy::new();
     let mut test_accuracy = ModelAccuracy::new();
@@ -180,8 +235,10 @@ where
             if verbose {
                 bar.update();
             }
-            let output = TrainStep::step(&model, batch); // using the `step` method
-            model = optim.step(config.lr, model, output.grads);
+            // let output = TrainStep::step(&model, batch); // using the `step` method
+            // model = optim.step(config.lr, model, output.grads);
+            let output = TrainStep::step(&model, batch);
+            optim.step(&mut model, output.grads);      // ← no lr, &mut model
 
             let predictions = output.item.output.argmax(1).squeeze(1);
             let num_predictions = output.item.targets.dims()[0];
@@ -331,10 +388,10 @@ pub fn run_custom_wgpu(
     directory: Option<String>,
     verbose: bool,
 ) -> RExport {
-    use burn::backend::wgpu::{AutoGraphicsApi, Wgpu, WgpuDevice};
+    use burn::backend::wgpu::{Wgpu, WgpuDevice};
 
     let device = WgpuDevice::default();
-    run_custom::<Wgpu<AutoGraphicsApi, f32, i32>>(
+    run_custom::<Wgpu<f32, i32>>(
         train,
         test,
         query,
