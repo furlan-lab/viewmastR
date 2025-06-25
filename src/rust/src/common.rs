@@ -188,7 +188,7 @@ pub struct SCBatch<B: Backend> {
     pub targets: Tensor<B, 1, Int>,
 }
 
-impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
+impl<B: Backend> Batcher<B, SCItem, SCBatch<B>> for SCBatcher<B>  {
 
     fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
         let n: usize = items.first().unwrap().counts.len();
@@ -201,7 +201,7 @@ impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
 
         let targets = items
             .iter()
-            .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()])))
+            .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()]), &self.device))
             .collect();
 
         let counts = Tensor::cat(counts, 0).to_device(&self.device);

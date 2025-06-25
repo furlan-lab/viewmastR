@@ -17,7 +17,7 @@ use burn::{
     },
     optim::{AdamConfig, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder},
-    tensor::{Tensor, Int, activation::relu, backend::AutodiffBackend},
+    tensor::{Tensor, Int, activation::relu},
     train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
@@ -56,7 +56,7 @@ impl<B: Backend> Model<B> {
     }
 }
 // --- training (autodiff backend) ---
-impl<B: AutodiffBackend>                                          // ← bound
+impl<B: Backend>                                          // ← bound
 TrainStep<SCBatch<Autodiff<B>>, ClassificationOutput<Autodiff<B>>>
     for Model<Autodiff<B>>
 {
@@ -156,7 +156,7 @@ pub fn run_custom<B>(
     device: B::Device,
 ) -> RExport
 where
-    B: Backend + AutodiffBackend,
+    B: Backend,
     B::Device: Clone,
     B::IntElem: ToPrimitive,
     B::FloatElem: ToPrimitive,
@@ -238,7 +238,7 @@ where
             // let output = TrainStep::step(&model, batch); // using the `step` method
             // model = optim.step(config.lr, model, output.grads);
             let output = TrainStep::step(&model, batch);
-            optim.step(&mut model, output.grads);      // ← no lr, &mut model
+            optim.step(config.lr, model, output.grads);
 
             let predictions = output.item.output.argmax(1).squeeze(1);
             let num_predictions = output.item.targets.dims()[0];
