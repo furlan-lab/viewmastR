@@ -31,12 +31,12 @@ pub struct Model<B: Backend> {
 }
 
 impl<B: Backend> Model<B> {
-    pub fn new(in_feats: usize, n_classes: usize, device: &B::Device) -> Self {
-        Self {
-            linear1: LinearConfig::new(in_feats, n_classes).init(device),
-            n_classes,
-        }
-    }
+    // pub fn new(in_feats: usize, n_classes: usize, device: &B::Device) -> Self {
+    //     Self {
+    //         linear1: LinearConfig::new(in_feats, n_classes).init(device),
+    //         n_classes,
+    //     }
+    // }
 
     pub fn forward(&self, x: Tensor<B, 2>) -> Tensor<B, 2> {
         relu(self.linear1.forward(x))

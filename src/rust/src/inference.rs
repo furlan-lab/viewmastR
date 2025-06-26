@@ -110,9 +110,9 @@ pub fn infer_helper_ann(
 ) -> Vec<f32> {
     infer_with_builder::<AnnModel<B>, _>(
         &path,
-        |_device| {
+        |device| {
             //  ANN `init` *does not* take the device
-            AnnCfg::new(n_classes, 0, hidden, 0.0).init(n_feats)
+            AnnCfg::new(n_classes, 0, hidden, 0.0).init(n_feats, device.clone())
         },
         query,
         batch.unwrap_or(64),
@@ -130,8 +130,8 @@ pub fn infer_helper_ann2l(
 ) -> Vec<f32> {
     infer_with_builder::<Ann2Model<B>, _>(
         &path,
-        |_device| {
-            Ann2Cfg::new(n_classes, 0, h1, h2, 0.0).init(n_feats) // same: no device
+        |device| {
+            Ann2Cfg::new(n_classes, 0, h1, h2, 0.0).init(n_feats, device.clone()) // same: no device
         },
         query,
         batch.unwrap_or(64),
