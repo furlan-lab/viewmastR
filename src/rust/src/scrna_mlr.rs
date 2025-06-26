@@ -17,7 +17,7 @@ use burn::{
     },
     optim::{AdamConfig, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder},
-    tensor::{Tensor, Int, activation::relu},
+    tensor::{Tensor, Int},
     train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
@@ -40,7 +40,7 @@ impl<B: Backend> Model<B> {
     // }
 
     pub fn forward(&self, x: Tensor<B, 2>) -> Tensor<B, 2> {
-        relu(self.linear1.forward(x))
+        self.linear1.forward(x)
     }
 
     pub fn forward_classification(

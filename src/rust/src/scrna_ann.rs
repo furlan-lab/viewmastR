@@ -40,7 +40,8 @@ impl<B: Backend> Model<B> {
     // }
 
     pub fn forward(&self, x: Tensor<B, 2>) -> Tensor<B, 2> {
-        relu(self.linear1.forward(x))
+        let h1 = relu(self.linear1.forward(x));
+        self.linear2.forward(h1)
     }
 
     pub fn forward_classification(
