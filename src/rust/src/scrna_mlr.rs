@@ -133,7 +133,9 @@ where
     
     // Create the configuration.
     let config_model = ModelConfig::new(num_classes);
-    let config_optimizer = AdamConfig::new();
+    let config_optimizer = AdamConfig::new()
+        .with_weight_decay(None)
+        .with_epsilon(1e-4);
     let config = SCTrainingConfig::new(num_epochs, learning_rate, config_model, config_optimizer);
 
     // Create the model and optimizer.
