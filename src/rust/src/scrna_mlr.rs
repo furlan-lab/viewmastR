@@ -1,6 +1,7 @@
 use std::time::Instant;
 use num_traits::ToPrimitive;
 use burn::prelude::Backend;
+
 use burn::{
     backend::Autodiff,
     config::Config,
