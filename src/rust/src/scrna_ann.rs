@@ -1,6 +1,6 @@
 use std::time::Instant;
 use num_traits::ToPrimitive;
-
+use burn::prelude::Backend;
 use burn::{
     backend::Autodiff,
     config::Config,
@@ -13,11 +13,10 @@ use burn::{
         loss::CrossEntropyLoss,
         Linear,
         LinearConfig,
-        ReLU,
     },
     optim::{AdamConfig, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder},
-    tensor::{Tensor, backend::Backend, Int},
+    tensor::{Tensor, Int, activation::relu},
     train::{ClassificationOutput, TrainOutput, TrainStep, ValidStep},
 };
 
@@ -28,7 +27,7 @@ use crate::pb::ProgressBar;
 pub struct Model<B: Backend> {
     linear1: Linear<B>,
     linear2: Linear<B>,
-    activation: ReLU,
+    n_classes: usize,
 }
 
 
@@ -86,20 +85,6 @@ impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
     fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
         self.forward_classification(batch.counts, batch.targets)
     }
-}
-
-#[derive(Config)]
-pub struct SCTrainingConfig {
-    pub num_epochs: usize,
-    #[config(default = 64)]
-    pub batch_size: usize,
-    #[config(default = 4)]
-    pub num_workers: usize,
-    #[config(default = 42)]
-    pub seed: u64,
-    pub lr: f64,
-    pub model: ModelConfig,
-    pub optimizer: AdamConfig,
 }
 
 

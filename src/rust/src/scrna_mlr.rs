@@ -13,7 +13,6 @@ use burn::{
         loss::CrossEntropyLoss,
         Linear,
         LinearConfig,
-        // Relu,
     },
     optim::{AdamConfig, Optimizer},
     record::{FullPrecisionSettings, NamedMpkFileRecorder},
@@ -28,7 +27,6 @@ use crate::pb::ProgressBar;
 #[derive(Module, Debug)]
 pub struct Model<B: Backend> {
     linear1: Linear<B>,
-    // activation: Relu,
     n_classes: usize,
 }
 
@@ -56,8 +54,7 @@ impl<B: Backend> Model<B> {
     }
 }
 // --- training (autodiff backend) ---
-impl<B: Backend>                                          // ← bound
-TrainStep<SCBatch<Autodiff<B>>, ClassificationOutput<Autodiff<B>>>
+impl<B: Backend> TrainStep<SCBatch<Autodiff<B>>, ClassificationOutput<Autodiff<B>>>
     for Model<Autodiff<B>>
 {
     fn step(
@@ -80,40 +77,6 @@ ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
 }
 
 
-// impl<B: Backend> Model<B> {
-//     pub fn forward(&self, data: Tensor<B, 2>) -> Tensor<B, 2> {
-//         self.linear1.forward(data)
-//     }
-// }
-
-// impl<B: Backend> Model<B> {
-//     pub fn forward_classification(
-//         &self,
-//         data: Tensor<B, 2>,
-//         targets: Tensor<B, 1, Int>,
-//         device: &B::Device,
-//     ) -> ClassificationOutput<B> {
-//         let output = self.forward(data);
-//         let loss = CrossEntropyLoss::new(None, device).forward(output.clone(), targets.clone());
-
-//         ClassificationOutput::new(loss, output, targets)
-//     }
-// }
-
-// impl<B: Backend + burn::tensor::backend::AutodiffBackend> TrainStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
-//     fn step(&self, batch: SCBatch<B> ) -> TrainOutput<ClassificationOutput<B>> {
-//         let item = self.forward_classification(batch.counts, batch.targets, device);
-//         TrainOutput::new(self, item.loss.backward(), item)
-//     }
-// }
-
-// impl<B: Backend> ValidStep<SCBatch<B>, ClassificationOutput<B>> for Model<B> {
-//     fn step(&self, batch: SCBatch<B>) -> ClassificationOutput<B> {
-//         self.forward_classification(batch.counts, batch.targets, device)
-//     }
-// }
-
-
 #[derive(Config, Debug)]
 pub struct ModelConfig {
     num_classes: usize,
@@ -129,7 +92,7 @@ impl ModelConfig {
 }
 
 #[derive(Config)]
-struct SCTrainingConfig {
+pub struct SCTrainingConfig {
     pub num_epochs: usize,
     #[config(default = 64)]
     pub batch_size: usize,
@@ -163,10 +126,6 @@ where
 {
     let _debug = true;
     let no_features = train.first().expect("Features not found").data.len();
-    // let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-    //     MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
-    // let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-    //     MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let train_dataset = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
     let test_dataset = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let num_batches_train = train_dataset.len();
@@ -186,15 +145,6 @@ where
     let batcher_valid = SCBatcher::<B>::new(device.clone());
 
     // Create the dataloaders.
-    // let dataloader_train = DataLoaderBuilder::new(batcher_train)
-    //     .batch_size(config.batch_size)
-    //     .num_workers(config.num_workers)
-    //     .build(train_dataset);
-
-    // let dataloader_test = DataLoaderBuilder::new(batcher_valid)
-    //     .batch_size(config.batch_size)
-    //     .num_workers(config.num_workers)
-    //     .build(test_dataset);
     let dataloader_train = DataLoaderBuilder::new(batcher_train)
         .batch_size(config.batch_size)
         .num_workers(config.num_workers)
@@ -204,8 +154,6 @@ where
         .batch_size(config.batch_size)
         .num_workers(config.num_workers)
         .build(test_dataset);
-
-
 
     let mut train_accuracy = ModelAccuracy::new();
     let mut test_accuracy = ModelAccuracy::new();
@@ -222,6 +170,7 @@ where
     let start = Instant::now();
 
     // Training and validation loop
+    // let mut value = optim.step(config.lr, model, output.grads);
     for epoch in 1..=config.num_epochs {
         train_accuracy.epoch_reset(epoch);
         test_accuracy.epoch_reset(epoch);
@@ -235,26 +184,30 @@ where
             if verbose {
                 bar.update();
             }
-            // let output = TrainStep::step(&model, batch); // using the `step` method
-            // model = optim.step(config.lr, model, output.grads);
-            let output = TrainStep::step(&model, batch);
-            optim.step(config.lr, model, output.grads);
+            // let output = TrainStep::step(&model, batch);
+            // optim.step(config.lr, model, output.grads);
+            // ── 1. run a training step ─────────────────────────────
+            let TrainOutput { item, grads } = TrainStep::step(&model, batch);
 
-            let predictions = output.item.output.argmax(1).squeeze(1);
-            let num_predictions = output.item.targets.dims()[0];
+            // ── 2. metrics, bookkeeping, etc.  (still using `item`) ─
+            let predictions = item.output.argmax(1).squeeze(1);
+            let num_predictions = item.targets.dims()[0];
             let num_corrects = predictions
-                .equal(output.item.targets)
+                .equal(item.targets)
                 .int()
                 .sum()
                 .into_scalar()
                 .to_usize()
                 .expect("Conversion to usize failed");
-
             // Update accuracy and loss tracking
             train_accuracy.batch_update(num_corrects, 
                                         num_predictions, 
-                                        output.item.loss.into_scalar().to_f64().expect("Conversion to f64 failed")
+                                        item.loss.into_scalar().to_f64().expect("Conversion to f64 failed")
             );
+
+            // ── 3. update the model ────────────────────────────────
+            model = optim.step(config.lr, model, grads);
+            // drop(item);
         }
 
         train_accuracy.epoch_update(&mut train_history);
@@ -274,7 +227,6 @@ where
                 .expect("Conversion to usize failed");
 
             // Update accuracy and loss tracking
-            // test_accuracy.batch_update(num_corrects, num_predictions, output.loss.into_scalar().to_f64().expect("Conversion to f64 failed"));
             test_accuracy.batch_update(
                     num_corrects,
                     num_predictions,
@@ -289,27 +241,9 @@ where
     }
 
     let tduration = start.elapsed();
-    // let query_len = query.len();
-    // let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-    //     MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    // // Create the batchers.
-    // let batcher_query = SCBatcher::<B>::new(device.clone());
-
-    // // Create the dataloaders.
-    // let dataloader_query = DataLoaderBuilder::new(batcher_query)
-    //     .batch_size(config.batch_size)
-    //     .build(query_dataset);
-    
-    // let model_valid = model.valid();
     let mut probs = Vec::new();
 
-    // // Assuming dataloader_query is built
-    // for (_count, batch) in dataloader_query.iter().enumerate() {
-    //     let output = model_valid.forward(batch.counts);
-    //     output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
-    // }
-
-     if let Some(query_items) = query {
+    if let Some(query_items) = query {
         let query_dataset = MapperDataset::new(InMemDataset::new(query_items), LocalCountstoMatrix);
         let batcher_query = SCBatcher::<B>::new(device.clone());
         let dataloader_query = DataLoaderBuilder::new(batcher_query)
@@ -319,8 +253,8 @@ where
         let model_valid = model.valid();
         for (_count, batch) in dataloader_query.iter().enumerate() {
             let output = model_valid.forward(batch.counts);
-            for val in output.to_data().value.iter() {
-                probs.push(val.to_f32().expect("failed to unwrap probs"));
+            for val in output.to_data().iter::<f32>() {
+                probs.push(val);
             }
         }
     }

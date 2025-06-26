@@ -4,7 +4,7 @@ use extendr_api::{r, NULL};
 
 use burn::{
     data::{dataloader::{ Dataset, batcher::Batcher}, dataset::transform::Mapper},
-    tensor::{backend::Backend, Data, ElementConversion, Int, Tensor},
+    tensor::{backend::Backend, ElementConversion, Int, Tensor},
 };
 
 
@@ -29,6 +29,7 @@ pub struct SCItemRaw {
     pub data: Vec<f64>, 
     pub target: i32,
 }
+
 
 
 #[derive(Debug)]
@@ -190,22 +191,33 @@ pub struct SCBatch<B: Backend> {
 
 impl<B: Backend> Batcher<B, SCItem, SCBatch<B>> for SCBatcher<B>  {
 
-    fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
-        let n: usize = items.first().unwrap().counts.len();
-        let counts = items
-            .iter()
-            .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
-            .map(|data| Tensor::<B, 1>::from_data(data.convert()).reshape([1, n]))
-            .collect();
+    fn batch(&self, items: Vec<SCItem>, device: &B::Device) -> SCBatch<B> {
+        // let n: usize = items.first().unwrap().counts.len();
+        // let counts = items
+        //     .iter()
+        //     .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
+        //     .map(|data| Tensor::<B, 1>::from_data(data.convert()).reshape([1, n]), device)
+        //     .collect();
         
-
-        let targets = items
+        let row_tensors: Vec<Tensor<B, 2>> = items
             .iter()
-            .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()]), &self.device))
+            .map(|item| {
+                // convert Vec<f64> -> Vec<B::FloatElem> in a backend-agnostic way
+                let row: Vec<_> = item.counts.iter().map(|&x| x.elem::<B::FloatElem>()).collect();
+                Tensor::<B, 2>::from_floats(row.as_slice(), device)
+            })
             .collect();
 
-        let counts = Tensor::cat(counts, 0).to_device(&self.device);
-        let targets = Tensor::cat(targets, 0).to_device(&self.device);
+        let counts = Tensor::cat(row_tensors, 0).to_device(&self.device);
+
+        // let targets = items
+        //     .iter()
+        //     .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()]), &self.device))
+        //     .collect();
+        let labels: Vec<i32> = items.iter().map(|item| item.label).collect();
+        let targets = Tensor::<B, 1, Int>::from_ints(labels.as_slice(), device).to_device(&self.device);
+        // let counts = Tensor::cat(counts, 0).to_device(&self.device);
+        // let targets = Tensor::cat(targets, 0).to_device(&self.device);
 
         SCBatch { counts, targets }
     }
