@@ -192,7 +192,7 @@ pub struct SCBatch<B: Backend> {
 impl<B: Backend> Batcher<B, SCItem, SCBatch<B>> for SCBatcher<B>  {
 
     fn batch(&self, items: Vec<SCItem>, device: &B::Device) -> SCBatch<B> {
-        // let n: usize = items.first().unwrap().counts.len();
+        let n: usize = items.first().unwrap().counts.len();
         // let counts = items
         //     .iter()
         //     .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
@@ -204,7 +204,7 @@ impl<B: Backend> Batcher<B, SCItem, SCBatch<B>> for SCBatcher<B>  {
             .map(|item| {
                 // convert Vec<f64> -> Vec<B::FloatElem> in a backend-agnostic way
                 let row: Vec<_> = item.counts.iter().map(|&x| x.elem::<B::FloatElem>()).collect();
-                Tensor::<B, 2>::from_floats(row.as_slice(), device)
+                Tensor::<B, 1>::from_floats(row.as_slice(), device).reshape([1, n])
             })
             .collect();
 
