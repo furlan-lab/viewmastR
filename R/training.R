@@ -866,7 +866,7 @@ common_variant_seurat <-function(cds1,
   if(is.null(cds1@misc$dispersion)){
     cds1<-calculate_gene_dispersion(cds1)
   }
-  cds1<-select_genes(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  cds1<-select_features(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
     if(verbose) {message("Plotting feature dispersion for first object")}
     p<-plot_gene_dispersion(cds1)
@@ -881,7 +881,7 @@ common_variant_seurat <-function(cds1,
     p<-plot_gene_dispersion(cds2)
     print(p)
   }
-  cds2<-select_genes(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  cds2<-select_features(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
     if(verbose) {message("Plotting gene dispersion for second object")}
     p<-plot_gene_dispersion(cds2)
@@ -904,7 +904,7 @@ common_variant_m3 <-function(cds1,
                              plot=F){
   if(verbose) {message("Calculating feature dispersion for monocle3 object")}
   cds1<-calculate_gene_dispersion(cds1)
-  cds1<-select_genes(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  cds1<-select_features(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
     if(verbose) {message("Plotting feature dispersion for first object")}
     p<-plot_gene_dispersion(cds1)
@@ -917,7 +917,7 @@ common_variant_m3 <-function(cds1,
     p<-plot_gene_dispersion(cds2)
     print(p)
   }
-  cds2<-select_genes(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  cds2<-select_features(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
     if(verbose) {message("Plotting gene dispersion for second object")}
     p<-plot_gene_dispersion(cds2)

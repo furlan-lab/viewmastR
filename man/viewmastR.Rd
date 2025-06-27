@@ -48,7 +48,7 @@ reference-only mode) where predicted labels should be stored. If \code{NULL}, de
 \item{norm_method}{Character string indicating the normalization method. One of \code{"log"}, \code{"binary"},
 \code{"size_only"}, or \code{"none"}.}
 
-\item{selected_features}{A character vector specifying features to subset. If \code{NULL}, uses the set of common features
+\item{selected_features}{A character vector specifying genes to subset. If \code{NULL}, uses the set of common features
 (if query is provided) or selected genes directly (if reference-only).}
 
 \item{train_frac}{A numeric value between 0 and 1 specifying the fraction of reference cells to use for training.

@@ -55,7 +55,7 @@ provides two different algorithms for dimensionality reduction via
 \code{calculate_dispersion} is an optional step in the trajectory building
 process before \code{preprocess_cds}.  After calculating dispersion for
 a cell_data_set using the \code{calculate_gene_dispersion} function, the
-\code{select_genes} function allows the user to identify a set of genes
+\code{select_features} function allows the user to identify a set of genes
 that will be used in downstream dimensionality reduction methods.  These
 genes and their disperion and mean expression can be plotted using the
 \code{plot_gene_dispersion} function.

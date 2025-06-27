@@ -32,7 +32,7 @@ If \code{NULL}, no query data is processed.}
 \item{norm_method}{A character string specifying the normalization method to use. One of \code{"log"},
 \code{"binary"}, \code{"size_only"}, or \code{"none"}.}
 
-\item{selected_features}{A character vector of features to subset. If \code{NULL}, uses all common features
+\item{selected_features}{A character vector of gene names to subset. If \code{NULL}, uses all common features
 (if query is provided) or all selected features (if only reference is provided).}
 
 \item{train_frac}{A numeric value between 0 and 1 indicating the fraction of reference cells to use for training.
