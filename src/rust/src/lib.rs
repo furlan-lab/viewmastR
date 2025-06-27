@@ -383,8 +383,9 @@ fn infer_from_model(
     };
 
     // ── run the generic inference ----------------------------------------
-    if verbose { eprintln!("Running inference as {:?}", net); }
-    
+    if verbose { eprintln!("Running inference using a {:?} model", net); }
+    if verbose { eprintln!("Using backend: {:?}", backend); }
+
     // Use the appropriate backend based on the `backend` parameter
     let probs = match backend.as_str() {
         "wgpu" => infer_wgpu(

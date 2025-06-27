@@ -74,7 +74,13 @@ viewmastR_infer <- function(query_cds,
                             chunks = 1,
                             workers = 1,
                             batch_size = NULL,
-                            show_progress = TRUE) {
+                            show_progress = TRUE,
+                            backend = c("auto", "wgpu", "nd", "candle")
+                            ) {
+  backend <- match.arg(backend)
+  if(backend=="auto"){
+    backend <- optimize_backend()
+  }
   return_type <- match.arg(arg = NULL, return_type)
   # Determine the software type
   if (inherits(query_cds, "Seurat")) {
@@ -125,7 +131,8 @@ viewmastR_infer <- function(query_cds,
       hidden1 = as.integer(model_shapes$hidden_layer1),
       hidden2 = as.integer(model_shapes$hidden_layer2),
       verbose = verbose,
-      batch_size = batch_size
+      batch_size = batch_size,
+      backend = backend
     )
     log_odds <- unlist(export_list$probs)
 
@@ -193,7 +200,8 @@ if (show_progress) {
           hidden1 = as.integer(model_shapes$hidden_layer1),
           hidden2 = as.integer(model_shapes$hidden_layer2),
           verbose = verbose,
-          batch_size = batch_size
+          batch_size = batch_size,
+          backend = backend
         )
         p() # Progress update per chunk
         res

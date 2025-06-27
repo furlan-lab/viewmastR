@@ -16,7 +16,8 @@ viewmastR_infer(
   chunks = 1,
   workers = 1,
   batch_size = NULL,
-  show_progress = TRUE
+  show_progress = TRUE,
+  backend = c("auto", "wgpu", "nd", "candle")
 )
 }
 \arguments{

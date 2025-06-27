@@ -21,7 +21,7 @@ readR <- function(obj) invisible(.Call(wrap__readR, obj))
 #' @keywords internal
 computeSparseRowVariances <- function(j, val, rm, n) .Call(wrap__computeSparseRowVariances, j, val, rm, n)
 
-infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size)
+infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend)
 
 #' A *single* entry-point that covers MLR and ANN/ANN-2L.
 #'
@@ -30,11 +30,6 @@ infer_from_model <- function(model_path, query, num_classes, num_features, model
 #' @export
 #' @keywords internal
 process_learning_obj <- function(model_type, train, test, query, labels, feature_names, hidden_size, learning_rate, num_epochs, directory, verbose, backend) .Call(wrap__process_learning_obj, model_type, train, test, query, labels, feature_names, hidden_size, learning_rate, num_epochs, directory, verbose, backend)
-
-#' Process Robj learning objects for MLR
-#' @export
-#' @keywords internal
-process_learning_obj_nb <- function(train, test, query) .Call(wrap__process_learning_obj_nb, train, test, query)
 
 
 # nolint end
