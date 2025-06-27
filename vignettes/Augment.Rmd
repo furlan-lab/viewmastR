@@ -93,16 +93,16 @@ FeaturePlot_scCustom(seuA, features = "FOXP3")
 seu<-readRDS(file.path(ROOT_DIR3, "240919_5p_seu.RDS"))
 
 seu<-calculate_gene_dispersion(seu)
-seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgq<-get_selected_genes(seu)
+seu<-select_features(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_features(seu)
 
 seuA<-calculate_gene_dispersion(seuA)
-seuA<-select_genes(seuA, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgr<-get_selected_genes(seuA)
+seuA<-select_features(seuA, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_features(seuA)
 
 vg<-intersect(vgq, vgr)
 
-seu<-viewmastR(seu, seuA, ref_celldata_col = "celltype", selected_genes = vg)
+seu<-viewmastR(seu, seuA, ref_celldata_col = "celltype", selected_features = vg)
 
 DimPlot_scCustom(seu, group.by = "mCelltype")
 #need to fix spelling error

@@ -96,14 +96,14 @@ DimPlot(seuF, group.by = "celltype", cols = as.character(pals::polychrome(20)))
 DimPlot(seuF, group.by = "sample", cols = as.character(pals::polychrome(20)))
 
 seuF<-calculate_gene_dispersion(seuF)
-seuF<-select_genes(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgr<-get_selected_genes(seuF)
+seuF<-select_features(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_features(seuF)
 seuHR<-calculate_gene_dispersion(seuHR)
-seuHR<-select_genes(seuHR, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgq<-get_selected_genes(seuHR)
+seuHR<-select_features(seuHR, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_features(seuHR)
 vg<-intersect(vgq, vgr)
 
-seuHR<-viewmastR::viewmastR(query_cds = seuHR, ref_cds = seuF, ref_celldata_col = "celltype", selected_genes = vg)
+seuHR<-viewmastR::viewmastR(query_cds = seuHR, ref_cds = seuF, ref_celldata_col = "celltype", selected_features = vg)
 cols<-c(seuHR@misc$colors[c(14,18,20,6,5,3,7,1,5,2,11)], "cyan", seuHR@misc$colors[c(21)])
 names(cols)<-levels(factor(seuF$celltype))
 
@@ -119,13 +119,13 @@ This patient is post transplant with evidence of chimerism.  Let's run viewmastR
 
 ```{r}
 seuP<-calculate_gene_dispersion(seuP)
-seuP<-select_genes(seuP, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgr<-get_selected_genes(seuP)
+seuP<-select_features(seuP, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_features(seuP)
 seuHR<-calculate_gene_dispersion(seuHR)
-seuHR<-select_genes(seuHR, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgq<-get_selected_genes(seuHR)
+seuHR<-select_features(seuHR, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_features(seuHR)
 vg<-intersect(vgq, vgr)
-seuP<-viewmastR::viewmastR(query_cds = seuP, ref_cds = seuHR, ref_celldata_col = "SFClassification", selected_genes = vg)
+seuP<-viewmastR::viewmastR(query_cds = seuP, ref_cds = seuHR, ref_celldata_col = "SFClassification", selected_features = vg)
 
 DimPlot_scCustom(seuP, group.by = "viewmastR_pred", colors_use = seuHR@misc$colors)
 ```
@@ -183,14 +183,14 @@ seuF<- FindNeighbors(seuF, dims = 1:20)
 seuF <- FindClusters(seuF, resolution = 1.1)
 seuF <- RunUMAP(seuF, dims = 1:20, n.components = 2, min.dist = 0.2)
 seuF<-calculate_gene_dispersion(seuF)
-seuF<-select_genes(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgr<-get_selected_genes(seuF)
+seuF<-select_features(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_features(seuF)
 seuP<-calculate_gene_dispersion(seuP)
-seuP<-select_genes(seuP, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgq<-get_selected_genes(seuP)
+seuP<-select_features(seuP, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_features(seuP)
 vg<-intersect(vgq, vgr)
 
-seuP<-viewmastR::viewmastR(query_cds = seuP, ref_cds = seuF, ref_celldata_col = "final_group", selected_genes = vg)
+seuP<-viewmastR::viewmastR(query_cds = seuP, ref_cds = seuF, ref_celldata_col = "final_group", selected_features = vg)
 
 thresh<-100
 seuP$pred_thresh<-seuP$viewmastR_pred

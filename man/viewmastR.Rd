@@ -11,19 +11,19 @@ viewmastR(
   query_celldata_col = NULL,
   FUNC = c("mlr", "nn", "nb"),
   norm_method = c("log", "binary", "size_only", "none"),
-  selected_genes = NULL,
+  selected_features = NULL,
   train_frac = 0.8,
   tf_idf = FALSE,
   scale = FALSE,
-  hidden_layers = c(500, 100),
+  hidden_layers = c(as.integer(500), as.integer(100)),
   learning_rate = 0.001,
-  max_epochs = 10,
+  max_epochs = 5,
   LSImethod = 1,
   verbose = TRUE,
-  backend = c("wgpu", "nd", "candle"),
+  backend = c("auto", "wgpu", "nd", "candle"),
   threshold = NULL,
   keras_model = NULL,
-  dir = "/tmp/sc_local",
+  model_dir = "/tmp/sc_local",
   return_probs = FALSE,
   return_type = c("object", "list"),
   debug = FALSE,
@@ -48,7 +48,7 @@ reference-only mode) where predicted labels should be stored. If \code{NULL}, de
 \item{norm_method}{Character string indicating the normalization method. One of \code{"log"}, \code{"binary"},
 \code{"size_only"}, or \code{"none"}.}
 
-\item{selected_genes}{A character vector specifying genes to subset. If \code{NULL}, uses the set of common features
+\item{selected_features}{A character vector specifying genes to subset. If \code{NULL}, uses the set of common features
 (if query is provided) or selected genes directly (if reference-only).}
 
 \item{train_frac}{A numeric value between 0 and 1 specifying the fraction of reference cells to use for training.
@@ -74,7 +74,7 @@ The remainder are used for testing.}
 
 \item{keras_model}{Currently unused. Can be \code{NULL}.}
 
-\item{dir}{A character string specifying the directory to store model artifacts.}
+\item{model_dir}{A character string specifying the directory to store model artifacts.}
 
 \item{return_probs}{Logical, whether to return predicted probabilities in the object's metadata.}
 

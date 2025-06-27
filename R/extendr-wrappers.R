@@ -21,35 +21,15 @@ readR <- function(obj) invisible(.Call(wrap__readR, obj))
 #' @keywords internal
 computeSparseRowVariances <- function(j, val, rm, n) .Call(wrap__computeSparseRowVariances, j, val, rm, n)
 
-#' Process Robj learning objects for ANN
-#' @export
-#' @keywords internal
-process_learning_obj_ann <- function(train, test, query, labels, hidden_size, learning_rate, num_epochs, directory, verbose, backend) .Call(wrap__process_learning_obj_ann, train, test, query, labels, hidden_size, learning_rate, num_epochs, directory, verbose, backend)
-
-#' Process Robj learning objects for MLR
-#' @export
-#' @keywords internal
-process_learning_obj_mlr <- function(train, test, query, labels, learning_rate, num_epochs, directory, verbose, backend) .Call(wrap__process_learning_obj_mlr, train, test, query, labels, learning_rate, num_epochs, directory, verbose, backend)
-
-#' infer from saved model
-#' @export
-#' @keywords internal
-#' Infer from a saved model (MLR, 1-hidden ANN, or 2-hidden ANN)
-#'
-#' @param model_path  Character scalar – path to the `.mpk` checkpoint
-#' @param query       A data-frame or matrix you can pass to `extract_scitemraw()`
-#' @param num_classes Integer scalar – number of output classes
-#' @param num_features Integer scalar – number of input features
-#' @param model_type  Character scalar: `"mlr"`, `"ann1"`, or `"ann2"`
-#' @param hidden1     (optional) Integer – size of the first hidden layer
-#' @param hidden2     (optional) Integer – size of the second hidden layer (only for `"ann2"`)
-#' @param verbose     Logical scalar – print progress to stderr?
-#'
-#' @return A list with a single element `probs`, the flat numeric vector
-#'         of logits returned by the Rust model.
-#'
-#' @export
 infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size)
+
+#' A *single* entry-point that covers MLR and ANN/ANN-2L.
+#'
+#' * `model_type` – `"mlr"`, `"ann"`, or `"ann2"` (you can choose any tokens you like)
+#' * `hidden_size` – `NULL` for MLR; numeric (len 1 or 2) for ANN.
+#' @export
+#' @keywords internal
+process_learning_obj <- function(model_type, train, test, query, labels, feature_names, hidden_size, learning_rate, num_epochs, directory, verbose, backend) .Call(wrap__process_learning_obj, model_type, train, test, query, labels, feature_names, hidden_size, learning_rate, num_epochs, directory, verbose, backend)
 
 #' Process Robj learning objects for MLR
 #' @export

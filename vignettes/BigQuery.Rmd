@@ -47,18 +47,18 @@ library(ggplot2)
 seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
-vg <- get_selected_genes(seu)
+vg <- get_selected_features(seu)
 ```
 
 ## Build the model and infer for small dataset (not using chunks and parallelization)
 
 This is also covered elsewhere
 ```{r}
-results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 4, train_only = T, backend = "wgpu")
+results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 4, train_only = T)
 
 
 
-seu<-viewmastR_infer(seu, file.path(results$model_dir, "model.mpk"), vg, labels = levels(factor(seur$SFClassification)), batch_size = 250)
+seu<-viewmastR_infer(seu, results[["model_dir"]], vg, labels = levels(factor(seur$SFClassification)), batch_size = 250)
 DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
 ```
 
@@ -66,7 +66,8 @@ DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
 
 By using chunks and workers, you can infer from the model only chunks at a time using multiple workers in parallel.
 ```{r}
-seu<-viewmastR_infer(seu, file.path(results$model_dir, "model.mpk"), query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 4, workers = 4)
+options(future.globals.maxSize = 16 * 1024^3)
+seu<-viewmastR_infer(seu, results[["model_dir"]], query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 4, workers = 4)
 DimPlot(seu, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
 ```
 
@@ -79,7 +80,7 @@ confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmast
 ## Bigger dataset
 By optimising chunk size, workers and batch size, you can achieve faster results on big datasets. Here we are just inferring back on the larger reference set (because it is larger, but this is not advisable in normal practice)
 ```{r}
-seur<-viewmastR_infer(seur, file.path(results$model_dir, "model.mpk"), query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 20, workers = 16, batch_size = 3000)
+seur<-viewmastR_infer(seur, results[["model_dir"]], query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 20, workers = 16, batch_size = 3000)
 DimPlot(seur, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
 ```
 

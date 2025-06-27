@@ -235,17 +235,17 @@ seuF <- RunUMAP(seuF, dims = 1:20, n.components = 2, min.dist = 0.2)
 DimPlot(seuF, group.by = "label")
 
 seuF<-calculate_gene_dispersion(seuF)
-seuF<-select_genes(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgr<-get_selected_genes(seuF)
+seuF<-select_features(seuF, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgr<-get_selected_features(seuF)
 seu<-calculate_gene_dispersion(seu)
-seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-vgq<-get_selected_genes(seu)
+seu<-select_features(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+vgq<-get_selected_features(seu)
 vg<-intersect(vgq, vgr)
 
 
 
 
-seu<-viewmastRust::viewmastR(query_cds = seu, ref_cds = seuF, ref_celldata_col = "label", selected_genes = vg)
+seu<-viewmastRust::viewmastR(query_cds = seu, ref_cds = seuF, ref_celldata_col = "label", selected_features = vg)
 
 mcols<-names(table(label))[names(table(label)) %in% seuF2$final_group]
 hcols<-names(table(label))[!names(table(label)) %in% seuF2$final_group]
@@ -293,14 +293,14 @@ DimPlot_scCustom(seu, group.by = "celltype", colors_use = mcol)
 ```{r, dpi=300, fig.height=4, fig.width = 6}
 seu<-calculate_gene_dispersion(seu)
 plot_gene_dispersion(seu)
-seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+seu<-select_features(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
 plot_gene_dispersion(seu)
-vgq<-get_selected_genes(seu)
+vgq<-get_selected_features(seu)
 seur<-calculate_gene_dispersion(seur)
 plot_gene_dispersion(seur)
-seur<-select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+seur<-select_features(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
 plot_gene_dispersion(seur)
-vgr<-get_selected_genes(seur)
+vgr<-get_selected_features(seur)
 vg<-intersect(vgq, vgr)
 ```
 
@@ -313,7 +313,7 @@ DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 
 Note that this is the same invocation used as prior versions of viewmastR but more output can be obtained (read further down)
 ```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/Users/sfurlan/develop/viewmastR/model")
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, dir = "/Users/sfurlan/develop/viewmastR/model")
 ```
 
 ## A look at the predictions
@@ -346,7 +346,7 @@ confusion_matrix(pred = factor(seu$viewmastR_smr), gt = factor(seu$ground_truth)
 ViewmastR records key learning data generated during training.  This can optionally be returned by setting the 'return_type' parameter to "list".  Using this setting, the function will return a named list containing the following items (1 named 'object') - the query object with the celltype prediction added to the metadata (as above) and (2 named "training output") a set of results obtained during training.  Here's an example of how this may be used.  First we run viewmastR again changing the return type...
 
 ```{r, dpi=300, fig.height=4, fig.width=6, warning=F, message=F}
-output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list")
+output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, return_type= "list")
 ```
 
 Now we can plot learning data.  We can see that the training loss continues to decrease steadily beyond the 6th epoch, yet the validation loss does not.  This suggests that we are potentially overfitting after 6 epochs.
@@ -368,7 +368,7 @@ plt
 
 viewmastR writes a small file to the disk with the model weights using [Msgpack] (https://msgpack.org) encoding.  The model weights are saved to a location specified using the 'dir' argument.  We can use the viewmastR command get_model_weights to retrieve a matrix of the weights on the output from viewmastR with the return_type set to 'list' as shown below.
 ```{r}
-output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list", max_epochs = 3, dir = "/Users/sfurlan/develop/viewmastR/model")
+output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, return_type= "list", max_epochs = 3, dir = "/Users/sfurlan/develop/viewmastR/model")
 install.packages("RcppMsgPack")
 library(RcppMsgPack)
 d<-RcppMsgPack::msgpackRead("/Users/sfurlan/develop/viewmastR/model/model.mpk", simplify = T)

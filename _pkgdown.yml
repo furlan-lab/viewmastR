@@ -62,7 +62,7 @@ reference:
   desc: Helper functions to add or modify elements
   contents:
   - calculate_gene_dispersion
-  - select_genes
+  - select_features
   - common_features
   - common_variant_genes
   - sparseRowVariances
@@ -81,3 +81,4 @@ articles:
   - Augment
   - SavedModel
   - Extras
+  - BigQuery

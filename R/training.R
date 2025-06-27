@@ -25,6 +25,15 @@ dimension_check <- function (obj){
   }
 }
 
+#' @keywords internal
+optimize_backend <- function(){
+  if(Sys.info()["machine"]=="arm64"){
+    return("nd")
+  } else {
+    return("wgpu")
+  }
+}
+
 #' Integrate and Train Models on Reference Dataset and (Optionally) Infer on Query Datasets
 #'
 #' The \code{viewmastR} function preprocesses one or two single-cell datasets (a reference and an optional query), 
@@ -41,7 +50,7 @@ dimension_check <- function (obj){
 #' @param FUNC A character string specifying the modeling function to apply. One of \code{"mlr"}, \code{"nn"}, or \code{"nb"}.
 #' @param norm_method Character string indicating the normalization method. One of \code{"log"}, \code{"binary"}, 
 #'   \code{"size_only"}, or \code{"none"}.
-#' @param selected_genes A character vector specifying genes to subset. If \code{NULL}, uses the set of common features 
+#' @param selected_features A character vector specifying genes to subset. If \code{NULL}, uses the set of common features 
 #'   (if query is provided) or selected genes directly (if reference-only).
 #' @param train_frac A numeric value between 0 and 1 specifying the fraction of reference cells to use for training. 
 #'   The remainder are used for testing.
@@ -55,7 +64,7 @@ dimension_check <- function (obj){
 #' @param backend A character string specifying the backend to use. One of \code{"wgpu"}, \code{"nd"}, \code{"candle"}.
 #' @param threshold Currently unused. Can be \code{NULL}.
 #' @param keras_model Currently unused. Can be \code{NULL}.
-#' @param dir A character string specifying the directory to store model artifacts.
+#' @param model_dir A character string specifying the directory to store model artifacts.
 #' @param return_probs Logical, whether to return predicted probabilities in the object's metadata.
 #' @param return_type A character string specifying the return type. One of \code{"object"} or \code{"list"}. 
 #'   If \code{"object"}, returns the updated \code{query_cds}. If \code{"list"}, returns a list containing 
@@ -117,40 +126,50 @@ dimension_check <- function (obj){
 #'
 #' @export
 
-
 viewmastR <- function(query_cds, 
                       ref_cds, 
                       ref_celldata_col, 
                       query_celldata_col = NULL, 
                       FUNC = c("mlr", "nn", "nb"),
                       norm_method = c("log", "binary", "size_only", "none"),
-                      selected_genes = NULL,
+                      selected_features = NULL,
                       train_frac = 0.8,
                       tf_idf = FALSE,
                       scale = FALSE,
-                      hidden_layers = c(500,100),
+                      hidden_layers = c(as.integer(500),as.integer(100)),
                       learning_rate = 1e-3,
-                      max_epochs = 10,
+                      max_epochs = 5,
                       LSImethod = 1,
                       verbose = TRUE,
-                      backend = c("wgpu", "nd", "candle"),
+                      backend = c("auto", "wgpu", "nd", "candle"),
                       threshold = NULL,
                       keras_model = NULL, 
-                      dir = "/tmp/sc_local",
+                      model_dir = "/tmp/sc_local",
                       return_probs = FALSE,
                       return_type = c("object", "list"), 
                       debug = FALSE,
                       train_only = FALSE,
                       addbias = FALSE,
                       ...) {
+  FUNC <- match.arg(FUNC)
   return_type <- match.arg(return_type)
   backend <- match.arg(backend)
-  FUNC <- match.arg(FUNC)
-  norm_method <- match.arg(norm_method)
-
-  if(!length(hidden_layers) %in% c(1,2)) {
-    stop("Only 1 or 2 hidden layers are allowed.")
+  if(backend=="auto"){
+    backend <- optimize_backend()
   }
+  if(FUNC=="nn"){
+    if(length(hidden_layers)==2){
+      model = "ann2"
+    } else if(length(hidden_layers)==1){
+      model = "ann"
+    } else {
+      stop("Number of hidden layers can only be 1 or 2")
+    }
+  }
+  if(FUNC=="mlr"){
+    model = "mlr"
+  }
+  norm_method <- match.arg(norm_method)
 
   ## TRAIN ONLY MODE
   if (train_only) {
@@ -164,7 +183,7 @@ viewmastR <- function(query_cds,
       ref_cds = ref_cds,
       ref_celldata_col = ref_celldata_col,
       norm_method = norm_method,
-      selected_genes = selected_genes,
+      selected_features = selected_features,
       train_frac = train_frac,
       tf_idf = tf_idf,
       scale = scale,
@@ -183,43 +202,29 @@ viewmastR <- function(query_cds,
       message(paste0("\t", dimension_check(training_list[["labels"]])))
     }
 
-    if(!file.exists(dir)) {
-      dir.create(dir)
+    if(!file.exists(model_dir)) {
+      dir.create(model_dir)
     }
 
     if(is.null(query_celldata_col)) {
       query_celldata_col <- "viewmastR_pred"
     }
-
-    # Process training output based on FUNC
-    if(FUNC == "mlr") {
-      export_list <- process_learning_obj_mlr(
-        train = training_list[["train"]],
-        test = training_list[["test"]],
-        query = training_list[["query"]],
-        labels = training_list[["labels"]],
-        learning_rate = learning_rate,
-        num_epochs = max_epochs,
-        directory = dir,
-        verbose = verbose,
-        backend = backend
-      )
-    } else if(FUNC == "nn") {
-      export_list <- process_learning_obj_ann(
-        train = training_list[["train"]],
-        test = training_list[["test"]],
-        query = training_list[["query"]],
-        labels = training_list[["labels"]],
-        hidden_size = hidden_layers,
-        learning_rate = learning_rate,
-        num_epochs = max_epochs,
-        directory = dir,
-        verbose = verbose,
-        backend = backend
-      )
-    }
     
-    return(list(object=NULL, training_output = export_list, model_dir = dir))
+    export_list <- process_learning_obj(
+          model,
+          train = training_list[["train"]],
+          test = training_list[["test"]],
+          query = training_list[["query"]],
+          labels = training_list[["labels"]],
+          feature_names = training_list[["features"]],
+          hidden_size = as.integer(hidden_layers),
+          learning_rate = learning_rate,
+          num_epochs = max_epochs,
+          directory = model_dir,
+          verbose = verbose,
+          backend = backend
+        )
+    return(list(object=NULL, training_output = list(history = export_list$history, duration = export_list$duration, params = export_list$params), model_dir = model_dir))
   } else {
     # When train_only = FALSE, we have query_cds provided
     training_list <- setup_training(
@@ -227,7 +232,7 @@ viewmastR <- function(query_cds,
       ref_cds = ref_cds,
       ref_celldata_col = ref_celldata_col,
       norm_method = norm_method,
-      selected_genes = selected_genes,
+      selected_features = selected_features,
       train_frac = train_frac,
       tf_idf = tf_idf,
       scale = scale,
@@ -247,45 +252,18 @@ viewmastR <- function(query_cds,
       message(paste0("\t", dimension_check(training_list[["labels"]])))
     }
 
-    if(!file.exists(dir)) {
-      dir.create(dir)
+    if(!file.exists(model_dir)) {
+      dir.create(model_dir)
     }
 
     if(is.null(query_celldata_col)) {
       query_celldata_col <- "viewmastR_pred"
     }
-
-    if(FUNC == "mlr") {
-      export_list <- process_learning_obj_mlr(
-        train = training_list[["train"]],
-        test = training_list[["test"]],
-        query = training_list[["query"]],
-        labels = training_list[["labels"]],
-        learning_rate = learning_rate,
-        num_epochs = max_epochs,
-        directory = dir,
-        verbose = verbose,
-        backend = backend
-      )
-    } else if(FUNC == "nn") {
-      export_list <- process_learning_obj_ann(
-        train = training_list[["train"]],
-        test = training_list[["test"]],
-        query = training_list[["query"]],
-        labels = training_list[["labels"]],
-        hidden_size = hidden_layers,
-        learning_rate = learning_rate,
-        num_epochs = max_epochs,
-        directory = dir,
-        verbose = verbose,
-        backend = backend
-      )
-    } else if(FUNC == "nb") {
+    if(FUNC == "nb") {
       export_list <- process_learning_obj_nb(
         train = training_list[["train"]],
         test = training_list[["test"]],
-        query = training_list[["query"]]
-      )
+        query = training_list[["query"]])
       if(return_type == "probs") {
         message("probabilities from multinomial naive bayes not implemented yet")
       }
@@ -293,10 +271,23 @@ viewmastR <- function(query_cds,
       if (return_type=="object") {
         return(query_cds)
       } else {
-        return(list(object=query_cds, training_output = export_list))
+        return(list(object=query_cds, training_output = list(probs = prob_mat, history = export_list$history, duration = export_list$duration, params = export_list$params)))
       }
-    }
-
+    } else {
+      export_list <- process_learning_obj(
+        model,
+        train = training_list[["train"]],
+        test = training_list[["test"]],
+        query = training_list[["query"]],
+        hidden_size = as.integer(hidden_layers),
+        labels = training_list[["labels"]],
+        feature_names = training_list[["features"]],
+        learning_rate = learning_rate,
+        num_epochs = max_epochs,
+        directory = model_dir,
+        verbose = verbose,
+        backend = backend
+      )
     log_odds <- unlist(export_list$probs[[1]])
     # Check if log_odds has the expected dimensions
     if(length(log_odds) == dim(query_cds)[2] * length(training_list[["labels"]])){
@@ -322,11 +313,11 @@ viewmastR <- function(query_cds,
     if (return_type=="object") {
       return(query_cds)
     } else {
-      return(list(object=query_cds, training_output = list(probs = prob_mat)))
+      return(list(object=query_cds, training_output = list(probs = prob_mat, history = export_list$history, duration = export_list$duration, params = export_list$params), model_dir = model_dir))
+    }
     }
   }
 }
-
 
 #' Set up training, testing, and optional query datasets for model training
 #'
@@ -342,7 +333,7 @@ viewmastR <- function(query_cds,
 #' @param ref_celldata_col A character string indicating the metadata column in \code{ref_cds} to use as labels.
 #' @param norm_method A character string specifying the normalization method to use. One of \code{"log"}, 
 #'   \code{"binary"}, \code{"size_only"}, or \code{"none"}.
-#' @param selected_genes A character vector of gene names to subset. If \code{NULL}, uses all common features 
+#' @param selected_features A character vector of gene names to subset. If \code{NULL}, uses all common features 
 #'   (if query is provided) or all selected features (if only reference is provided).
 #' @param train_frac A numeric value between 0 and 1 indicating the fraction of reference cells to use for training. 
 #'   The rest are used for testing.
@@ -409,7 +400,7 @@ setup_training <- function(query_cds = NULL,
                            ref_cds, 
                            ref_celldata_col, 
                            norm_method = c("log", "binary", "size_only", "none"),
-                           selected_genes = NULL,
+                           selected_features = NULL,
                            train_frac = 0.8,
                            tf_idf = FALSE,
                            scale = FALSE,
@@ -456,7 +447,7 @@ setup_training <- function(query_cds = NULL,
     names(common_list) <- c("ref", "query")
     
     # Select genes from common features
-    if (is.null(selected_genes)) {
+    if (is.null(selected_features)) {
       # All common features
       selected_common <- rownames(common_list[["query"]])
       selected_common <- selected_common[selected_common %in% rownames(common_list[["ref"]])]
@@ -464,7 +455,7 @@ setup_training <- function(query_cds = NULL,
       if (verbose) {
         message("Subsetting by pre-selected features")
       }
-      selected_common <- selected_genes
+      selected_common <- selected_features
       selected_common <- selected_common[selected_common %in% rownames(common_list[["query"]])]
       selected_common <- selected_common[selected_common %in% rownames(common_list[["ref"]])]
     }
@@ -575,14 +566,14 @@ setup_training <- function(query_cds = NULL,
     
   } else {
     # Behaves like setup_training_ref if query_cds is NULL
-    # Ensure selected_genes are present
+    # Ensure selected_features are present
     if (norm_method != "none") {
       if (verbose) {
         message("Calculating normalized counts")
       }
-      X <- get_norm_counts(ref_cds[selected_genes, ], norm_method = norm_method)
+      X <- get_norm_counts(ref_cds[selected_features, ], norm_method = norm_method)
     } else {
-      X <- get_norm_counts(ref_cds[selected_genes, ])
+      X <- get_norm_counts(ref_cds[selected_features, ])
     }
     
     gc()
@@ -875,13 +866,13 @@ common_variant_seurat <-function(cds1,
   if(is.null(cds1@misc$dispersion)){
     cds1<-calculate_gene_dispersion(cds1)
   }
-  cds1<-select_genes(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  cds1<-select_features(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
     if(verbose) {message("Plotting feature dispersion for first object")}
     p<-plot_gene_dispersion(cds1)
     print(p)
   }
-  qsel<-get_selected_genes(cds1)
+  qsel<-get_selected_features(cds1)
   if(is.null(cds2@misc$dispersion)){
     cds2<-calculate_gene_dispersion(cds2)
   }
@@ -890,13 +881,13 @@ common_variant_seurat <-function(cds1,
     p<-plot_gene_dispersion(cds2)
     print(p)
   }
-  cds2<-select_genes(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  cds2<-select_features(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
     if(verbose) {message("Plotting gene dispersion for second object")}
     p<-plot_gene_dispersion(cds2)
     print(p)
   }
-  rsel<-get_selected_genes(cds2)
+  rsel<-get_selected_features(cds2)
   selected_common<-intersect(qsel, rsel)
   selected_common
 }
@@ -913,27 +904,27 @@ common_variant_m3 <-function(cds1,
                              plot=F){
   if(verbose) {message("Calculating feature dispersion for monocle3 object")}
   cds1<-calculate_gene_dispersion(cds1)
-  cds1<-select_genes(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  cds1<-select_features(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
     if(verbose) {message("Plotting feature dispersion for first object")}
     p<-plot_gene_dispersion(cds1)
     print(p)
   }
-  qsel<-rowData(cds1)[[row_data_column]][rowData(cds1)[[unique_data_column]] %in% get_selected_genes(cds1)]
+  qsel<-rowData(cds1)[[row_data_column]][rowData(cds1)[[unique_data_column]] %in% get_selected_features(cds1)]
   cds2<-calculate_gene_dispersion(cds2)
   if(plot){
     if(verbose) {message("Plotting feature dispersion (unselected) for second object")}
     p<-plot_gene_dispersion(cds2)
     print(p)
   }
-  cds2<-select_genes(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
+  cds2<-select_features(cds2, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
     if(verbose) {message("Plotting gene dispersion for second object")}
     p<-plot_gene_dispersion(cds2)
     print(p)
   }
   if(verbose) {message("Returning shared features")}
-  rsel<-rowData(cds2)[[row_data_column]][rowData(cds2)[[unique_data_column]] %in% get_selected_genes(cds2)]
+  rsel<-rowData(cds2)[[row_data_column]][rowData(cds2)[[unique_data_column]] %in% get_selected_features(cds2)]
   selected_common<-intersect(qsel, rsel)
   selected_common
 }
