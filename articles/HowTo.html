@@ -5,82 +5,63 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="description" content="viewmastR">
 <title>How to use viewmastR • viewmastR</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/IBM_Plex_Sans-0.4.9/font.css" rel="stylesheet">
 <link href="../deps/Fira_Mono-0.4.9/font.css" rel="stylesheet">
 <link href="../deps/Alegreya_Sans_SC-0.4.9/font.css" rel="stylesheet">
-<!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
-<!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js" integrity="sha512-7O5pXpc0oCRrxk8RUfDYFgn0nO1t+jLuIOQdOMRp4APB7uZ4vSjspzp5y6YDtDs4VzUSTbWzBFZ/LKJhnyFOKw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
 <meta property="og:title" content="How to use viewmastR">
-<meta property="og:description" content="viewmastR">
-<!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
-<script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
-<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]-->
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
-    
 
-    <nav class="navbar fixed-top navbar-dark navbar-expand-lg bg-primary" data-bs-theme="dark"><div class="container">
-    
+
+    <nav class="navbar navbar-expand-lg fixed-top bg-primary" data-bs-theme="dark" aria-label="Site navigation"><div class="container">
+
     <a class="navbar-brand me-2" href="../index.html">viewmastR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
-    
+
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item">
-  <a class="nav-link" href="../reference/index.html">Reference</a>
+<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Get Started</h6></li>
+    <li><a class="dropdown-item" href="../articles/HowTo.html">How to use viewmastR</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
+    <li><a class="dropdown-item" href="../articles/InDepth.html">A deeper look at viewmastR</a></li>
+    <li><a class="dropdown-item" href="../articles/BulkReference.html">How to use a bulk dataset as a reference for viewmastR</a></li>
+    <li><a class="dropdown-item" href="../articles/Augment.html">How to augment data using viewmastR</a></li>
+    <li><a class="dropdown-item" href="../articles/SavedModel.html">How to use viewmastR with saved models</a></li>
+    <li><a class="dropdown-item" href="../articles/Extras.html">Extra functions</a></li>
+    <li><a class="dropdown-item" href="../articles/BigQuery.html">How to use viewmastR with large query objects</a></li>
+  </ul>
 </li>
-<li class="active nav-item dropdown">
-  <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
-  <div class="dropdown-menu" aria-labelledby="dropdown-articles">
-    <h6 class="dropdown-header" data-toc-skip>Get Started</h6>
-    <a class="dropdown-item" href="../articles/HowTo.html">How to use viewmastR</a>
-    <div class="dropdown-divider"></div>
-    <h6 class="dropdown-header" data-toc-skip>Advanced</h6>
-    <a class="dropdown-item" href="../articles/InDepth.html">A deeper look at viewmastR</a>
-    <a class="dropdown-item" href="../articles/BulkReference.html">How to use a bulk dataset as a reference for viewmastR</a>
-    <a class="dropdown-item" href="../articles/Augment.html">How to augment data using viewmastR</a>
-    <a class="dropdown-item" href="../articles/SavedModel.html">How to use viewmastR with saved models</a>
-    <a class="dropdown-item" href="../articles/Extras.html">Extra functions</a>
-  </div>
-</li>
-<li class="nav-item">
-  <a class="nav-link" href="../news/index.html">Changelog</a>
-</li>
+<li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
-<form class="form-inline my-2 my-lg-0" role="search">
-        <input type="search" class="form-control me-sm-2" aria-label="Toggle navigation" name="search-input" data-search-index="../search.json" id="search-input" placeholder="Search for" autocomplete="off">
-</form>
-
-      <ul class="navbar-nav">
-<li class="nav-item">
-  <a class="external-link nav-link" href="http://twitter.com/scottfurlan" aria-label="Twitter">
-    <span class="fa fa-twitter"></span>
-     
-  </a>
-</li>
-<li class="nav-item">
-  <a class="external-link nav-link" href="https://github.com/furlan-lab/viewmastR" aria-label="GitHub">
-    <span class="fa fa-github"></span>
-     
-  </a>
-</li>
+<ul class="navbar-nav">
+<li class="nav-item"><form class="form-inline" role="search">
+ <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
+</form></li>
+<li class="nav-item"><a class="external-link nav-link" href="http://twitter.com/scottfurlan" aria-label="Twitter"><span class="fa fa-twitter"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/furlan-lab/viewmastR" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
       </ul>
 </div>
 
-    
+
   </div>
 </nav><div class="container template-article">
 
@@ -91,11 +72,12 @@
 <script src="HowTo_files/crosstalk-1.2.1/js/crosstalk.min.js"></script><link href="HowTo_files/plotly-htmlwidgets-css-2.11.1/plotly-htmlwidgets.css" rel="stylesheet">
 <script src="HowTo_files/plotly-main-2.11.1/plotly-latest.min.js"></script><div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="" class="logo" alt=""><h1>How to use viewmastR</h1>
+
+      <h1>How to use viewmastR</h1>
             
             <h4 data-toc-skip class="date">2024-01-23</h4>
       
-      
+
       <div class="d-none name"><code>HowTo.Rmd</code></div>
     </div>
 
@@ -180,22 +162,22 @@ common genes to use for training the model.</p>
 <span><span class="fu">plot_gene_dispersion</span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span></code></pre></div>
 <p><img src="HowTo_files/figure-html/unnamed-chunk-5-1.png" width="100%"></p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/select_genes.html">select_genes</a></span><span class="op">(</span><span class="va">seu</span>, top_n <span class="op">=</span> <span class="fl">10000</span>, logmean_ul <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, logmean_ll <span class="op">=</span> <span class="op">-</span><span class="fl">8</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/select_features.html">select_features</a></span><span class="op">(</span><span class="va">seu</span>, top_n <span class="op">=</span> <span class="fl">10000</span>, logmean_ul <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, logmean_ll <span class="op">=</span> <span class="op">-</span><span class="fl">8</span><span class="op">)</span></span>
 <span><span class="fu">plot_gene_dispersion</span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span></code></pre></div>
 <p><img src="HowTo_files/figure-html/unnamed-chunk-5-2.png" width="100%"></p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">vgq</span> <span class="op">&lt;-</span> <span class="fu">get_selected_genes</span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">vgq</span> <span class="op">&lt;-</span> <span class="fu">get_selected_features</span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Repeat the process for the reference dataset</span></span>
 <span><span class="va">seur</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calculate_gene_dispersion.html">calculate_gene_dispersion</a></span><span class="op">(</span><span class="va">seur</span><span class="op">)</span></span>
 <span><span class="fu">plot_gene_dispersion</span><span class="op">(</span><span class="va">seur</span><span class="op">)</span></span></code></pre></div>
 <p><img src="HowTo_files/figure-html/unnamed-chunk-5-3.png" width="100%"></p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">seur</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/select_genes.html">select_genes</a></span><span class="op">(</span><span class="va">seur</span>, top_n <span class="op">=</span> <span class="fl">10000</span>, logmean_ul <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, logmean_ll <span class="op">=</span> <span class="op">-</span><span class="fl">8</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">seur</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/select_features.html">select_features</a></span><span class="op">(</span><span class="va">seur</span>, top_n <span class="op">=</span> <span class="fl">10000</span>, logmean_ul <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, logmean_ll <span class="op">=</span> <span class="op">-</span><span class="fl">8</span><span class="op">)</span></span>
 <span><span class="fu">plot_gene_dispersion</span><span class="op">(</span><span class="va">seur</span><span class="op">)</span></span></code></pre></div>
 <p><img src="HowTo_files/figure-html/unnamed-chunk-5-4.png" width="100%"></p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">vgr</span> <span class="op">&lt;-</span> <span class="fu">get_selected_genes</span><span class="op">(</span><span class="va">seur</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">vgr</span> <span class="op">&lt;-</span> <span class="fu">get_selected_features</span><span class="op">(</span><span class="va">seur</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Find common genes</span></span>
 <span><span class="va">vg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://generics.r-lib.org/reference/setops.html" class="external-link">intersect</a></span><span class="op">(</span><span class="va">vgq</span>, <span class="va">vgr</span><span class="op">)</span></span></code></pre></div>
@@ -218,7 +200,7 @@ classifications that viewmastR will use to train its model.</p>
 function will learn from the reference dataset’s cell type annotations
 and apply its knowledge to classify the query cells.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/viewmastR.html">viewmastR</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">seur</span>, ref_celldata_col <span class="op">=</span> <span class="st">"SFClassification"</span>, selected_genes <span class="op">=</span> <span class="va">vg</span>, max_epochs <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/viewmastR.html">viewmastR</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">seur</span>, ref_celldata_col <span class="op">=</span> <span class="st">"SFClassification"</span>, selected_features <span class="op">=</span> <span class="va">vg</span>, max_epochs <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="visualizing-predictions">
@@ -254,19 +236,19 @@ parameter to <code>"list"</code>. Here’s an example of how to retrieve
 and plot the training data:</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Run viewmastR with return_type = "list"</span></span>
-<span><span class="va">output_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/viewmastR.html">viewmastR</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">seur</span>, ref_celldata_col <span class="op">=</span> <span class="st">"SFClassification"</span>, selected_genes <span class="op">=</span> <span class="va">vg</span>, return_type <span class="op">=</span> <span class="st">"list"</span><span class="op">)</span></span>
+<span><span class="va">output_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/viewmastR.html">viewmastR</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">seur</span>, ref_celldata_col <span class="op">=</span> <span class="st">"SFClassification"</span>, selected_features <span class="op">=</span> <span class="va">vg</span>, return_type <span class="op">=</span> <span class="st">"list"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Plot training data</span></span>
 <span><span class="fu"><a href="../reference/plot_training_data.html">plot_training_data</a></span><span class="op">(</span><span class="va">output_list</span><span class="op">)</span></span></code></pre></div>
 <div class="plotly html-widget html-fill-item" id="htmlwidget-ac96cb3ee4656e2e9ec3" style="width:100%;height:403.2px;"></div>
-<script type="application/json" data-for="htmlwidget-ac96cb3ee4656e2e9ec3">{"x":{"data":[{"x":[1,2,3,4,5,6,7,8,9,10],"y":[85.938000000000002,95.311999999999998,98.438000000000002,100,100,100,100,100,100,100],"mode":"lines+markers","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)","width":3}},"type":"scatter","name":"train_accuracy","error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10],"y":[95.519000000000005,95.578000000000003,95.745999999999995,95.864000000000004,95.626999999999995,95.873999999999995,95.725999999999999,95.725999999999999,95.736000000000004,95.754999999999995],"mode":"lines+markers","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)","width":3}},"type":"scatter","name":"validation_accuracy","error_y":{"color":"rgba(255,127,14,1)"},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10],"y":[0.88619000000000003,0.52027000000000001,0.37451000000000001,0.29236000000000001,0.24540999999999999,0.20998,0.18318999999999999,0.16244,0.14499999999999999,0.13141],"mode":"lines+markers","marker":{"color":"rgba(44,160,44,1)","line":{"color":"rgba(44,160,44,1)","width":3}},"type":"scatter","name":"train_loss","error_y":{"color":"rgba(44,160,44,1)"},"error_x":{"color":"rgba(44,160,44,1)"},"line":{"color":"rgba(44,160,44,1)"},"xaxis":"x2","yaxis":"y2","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10],"y":[0.18451999999999999,0.16289999999999999,0.14956,0.1414,0.13622000000000001,0.13216,0.12952,0.12748999999999999,0.12598000000000001,0.12488],"mode":"lines+markers","marker":{"color":"rgba(214,39,40,1)","line":{"color":"rgba(214,39,40,1)","width":3}},"type":"scatter","name":"validation_loss","error_y":{"color":"rgba(214,39,40,1)"},"error_x":{"color":"rgba(214,39,40,1)"},"line":{"color":"rgba(214,39,40,1)"},"xaxis":"x2","yaxis":"y2","frame":null}],"layout":{"xaxis":{"domain":[0,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"y"},"xaxis2":{"domain":[0,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"y2"},"yaxis2":{"domain":[0,0.47999999999999998],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"x2"},"yaxis":{"domain":[0.52000000000000002,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"x"},"annotations":[],"shapes":[],"images":[],"margin":{"b":40,"l":60,"t":25,"r":10},"plot_bgcolor":"#e5ecf6","hovermode":"closest","showlegend":true},"attrs":{"9d9a4ce7817":{"x":[1,2,3,4,5,6,7,8,9,10,1,2,3,4,5,6,7,8,9,10],"y":[85.938000000000002,95.311999999999998,98.438000000000002,100,100,100,100,100,100,100,95.519000000000005,95.578000000000003,95.745999999999995,95.864000000000004,95.626999999999995,95.873999999999995,95.725999999999999,95.725999999999999,95.736000000000004,95.754999999999995],"mode":"lines+markers","marker":{"line":{"width":3}},"split":["train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy"],"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"9d9af2e3078":{"x":[1,2,3,4,5,6,7,8,9,10,1,2,3,4,5,6,7,8,9,10],"y":[0.88619000000000003,0.52027000000000001,0.37451000000000001,0.29236000000000001,0.24540999999999999,0.20998,0.18318999999999999,0.16244,0.14499999999999999,0.13141,0.18451999999999999,0.16289999999999999,0.14956,0.1414,0.13622000000000001,0.13216,0.12952,0.12748999999999999,0.12598000000000001,0.12488],"mode":"lines+markers","marker":{"line":{"width":3}},"split":["train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss"],"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"}},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"subplot":true,"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script><p>We can now visualize how the training and validation losses change
+<script type="application/json" data-for="htmlwidget-ac96cb3ee4656e2e9ec3">{"x":{"data":[{"x":[1,2,3,4,5],"y":[90.382999999999996,96.978999999999999,98.444000000000003,99.293000000000006,99.691999999999993],"mode":"lines+markers","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)","width":3}},"type":"scatter","name":"train_accuracy","error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1,2,3,4,5],"y":[95.272999999999996,95.754999999999995,95.725999999999999,95.951999999999998,96.010999999999996],"mode":"lines+markers","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)","width":3}},"type":"scatter","name":"validation_accuracy","error_y":{"color":"rgba(255,127,14,1)"},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1,2,3,4,5],"y":[0.47233000000000003,0.30137999999999998,0.22800999999999999,0.18465999999999999,0.15545],"mode":"lines+markers","marker":{"color":"rgba(44,160,44,1)","line":{"color":"rgba(44,160,44,1)","width":3}},"type":"scatter","name":"train_loss","error_y":{"color":"rgba(44,160,44,1)"},"error_x":{"color":"rgba(44,160,44,1)"},"line":{"color":"rgba(44,160,44,1)"},"xaxis":"x2","yaxis":"y2","frame":null},{"x":[1,2,3,4,5],"y":[0.18720000000000001,0.16364000000000001,0.15131,0.14283999999999999,0.13688],"mode":"lines+markers","marker":{"color":"rgba(214,39,40,1)","line":{"color":"rgba(214,39,40,1)","width":3}},"type":"scatter","name":"validation_loss","error_y":{"color":"rgba(214,39,40,1)"},"error_x":{"color":"rgba(214,39,40,1)"},"line":{"color":"rgba(214,39,40,1)"},"xaxis":"x2","yaxis":"y2","frame":null}],"layout":{"xaxis":{"domain":[0,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"y"},"xaxis2":{"domain":[0,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"y2"},"yaxis2":{"domain":[0,0.47999999999999998],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"x2"},"yaxis":{"domain":[0.52000000000000002,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"x"},"annotations":[],"shapes":[],"images":[],"margin":{"b":40,"l":60,"t":25,"r":10},"plot_bgcolor":"#e5ecf6","hovermode":"closest","showlegend":true},"attrs":{"15c05784ae60a":{"x":[1,2,3,4,5,1,2,3,4,5],"y":[90.382999999999996,96.978999999999999,98.444000000000003,99.293000000000006,99.691999999999993,95.272999999999996,95.754999999999995,95.725999999999999,95.951999999999998,96.010999999999996],"mode":"lines+markers","marker":{"line":{"width":3}},"split":["train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy"],"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"15c057d44d838":{"x":[1,2,3,4,5,1,2,3,4,5],"y":[0.47233000000000003,0.30137999999999998,0.22800999999999999,0.18465999999999999,0.15545,0.18720000000000001,0.16364000000000001,0.15131,0.14283999999999999,0.13688],"mode":"lines+markers","marker":{"line":{"width":3}},"split":["train_loss","train_loss","train_loss","train_loss","train_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss"],"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"}},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"subplot":true,"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script><p>We can now visualize how the training and validation losses change
 over the epochs. If the training loss keeps decreasing while the
 validation loss plateaus or increases, it may indicate overfitting.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">plt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/plot_training_data.html">plot_training_data</a></span><span class="op">(</span><span class="va">output_list</span><span class="op">)</span></span>
 <span><span class="va">plt</span></span></code></pre></div>
 <div class="plotly html-widget html-fill-item" id="htmlwidget-e5c8c404fe174e4c81bd" style="width:100%;height:403.2px;"></div>
-<script type="application/json" data-for="htmlwidget-e5c8c404fe174e4c81bd">{"x":{"data":[{"x":[1,2,3,4,5,6,7,8,9,10],"y":[85.938000000000002,95.311999999999998,98.438000000000002,100,100,100,100,100,100,100],"mode":"lines+markers","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)","width":3}},"type":"scatter","name":"train_accuracy","error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10],"y":[95.519000000000005,95.578000000000003,95.745999999999995,95.864000000000004,95.626999999999995,95.873999999999995,95.725999999999999,95.725999999999999,95.736000000000004,95.754999999999995],"mode":"lines+markers","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)","width":3}},"type":"scatter","name":"validation_accuracy","error_y":{"color":"rgba(255,127,14,1)"},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10],"y":[0.88619000000000003,0.52027000000000001,0.37451000000000001,0.29236000000000001,0.24540999999999999,0.20998,0.18318999999999999,0.16244,0.14499999999999999,0.13141],"mode":"lines+markers","marker":{"color":"rgba(44,160,44,1)","line":{"color":"rgba(44,160,44,1)","width":3}},"type":"scatter","name":"train_loss","error_y":{"color":"rgba(44,160,44,1)"},"error_x":{"color":"rgba(44,160,44,1)"},"line":{"color":"rgba(44,160,44,1)"},"xaxis":"x2","yaxis":"y2","frame":null},{"x":[1,2,3,4,5,6,7,8,9,10],"y":[0.18451999999999999,0.16289999999999999,0.14956,0.1414,0.13622000000000001,0.13216,0.12952,0.12748999999999999,0.12598000000000001,0.12488],"mode":"lines+markers","marker":{"color":"rgba(214,39,40,1)","line":{"color":"rgba(214,39,40,1)","width":3}},"type":"scatter","name":"validation_loss","error_y":{"color":"rgba(214,39,40,1)"},"error_x":{"color":"rgba(214,39,40,1)"},"line":{"color":"rgba(214,39,40,1)"},"xaxis":"x2","yaxis":"y2","frame":null}],"layout":{"xaxis":{"domain":[0,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"y"},"xaxis2":{"domain":[0,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"y2"},"yaxis2":{"domain":[0,0.47999999999999998],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"x2"},"yaxis":{"domain":[0.52000000000000002,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"x"},"annotations":[],"shapes":[],"images":[],"margin":{"b":40,"l":60,"t":25,"r":10},"plot_bgcolor":"#e5ecf6","hovermode":"closest","showlegend":true},"attrs":{"9d9a47c5ff3d":{"x":[1,2,3,4,5,6,7,8,9,10,1,2,3,4,5,6,7,8,9,10],"y":[85.938000000000002,95.311999999999998,98.438000000000002,100,100,100,100,100,100,100,95.519000000000005,95.578000000000003,95.745999999999995,95.864000000000004,95.626999999999995,95.873999999999995,95.725999999999999,95.725999999999999,95.736000000000004,95.754999999999995],"mode":"lines+markers","marker":{"line":{"width":3}},"split":["train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy"],"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"9d9a17f8229b":{"x":[1,2,3,4,5,6,7,8,9,10,1,2,3,4,5,6,7,8,9,10],"y":[0.88619000000000003,0.52027000000000001,0.37451000000000001,0.29236000000000001,0.24540999999999999,0.20998,0.18318999999999999,0.16244,0.14499999999999999,0.13141,0.18451999999999999,0.16289999999999999,0.14956,0.1414,0.13622000000000001,0.13216,0.12952,0.12748999999999999,0.12598000000000001,0.12488],"mode":"lines+markers","marker":{"line":{"width":3}},"split":["train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","train_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss"],"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"}},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"subplot":true,"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+<script type="application/json" data-for="htmlwidget-e5c8c404fe174e4c81bd">{"x":{"data":[{"x":[1,2,3,4,5],"y":[90.382999999999996,96.978999999999999,98.444000000000003,99.293000000000006,99.691999999999993],"mode":"lines+markers","marker":{"color":"rgba(31,119,180,1)","line":{"color":"rgba(31,119,180,1)","width":3}},"type":"scatter","name":"train_accuracy","error_y":{"color":"rgba(31,119,180,1)"},"error_x":{"color":"rgba(31,119,180,1)"},"line":{"color":"rgba(31,119,180,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1,2,3,4,5],"y":[95.272999999999996,95.754999999999995,95.725999999999999,95.951999999999998,96.010999999999996],"mode":"lines+markers","marker":{"color":"rgba(255,127,14,1)","line":{"color":"rgba(255,127,14,1)","width":3}},"type":"scatter","name":"validation_accuracy","error_y":{"color":"rgba(255,127,14,1)"},"error_x":{"color":"rgba(255,127,14,1)"},"line":{"color":"rgba(255,127,14,1)"},"xaxis":"x","yaxis":"y","frame":null},{"x":[1,2,3,4,5],"y":[0.47233000000000003,0.30137999999999998,0.22800999999999999,0.18465999999999999,0.15545],"mode":"lines+markers","marker":{"color":"rgba(44,160,44,1)","line":{"color":"rgba(44,160,44,1)","width":3}},"type":"scatter","name":"train_loss","error_y":{"color":"rgba(44,160,44,1)"},"error_x":{"color":"rgba(44,160,44,1)"},"line":{"color":"rgba(44,160,44,1)"},"xaxis":"x2","yaxis":"y2","frame":null},{"x":[1,2,3,4,5],"y":[0.18720000000000001,0.16364000000000001,0.15131,0.14283999999999999,0.13688],"mode":"lines+markers","marker":{"color":"rgba(214,39,40,1)","line":{"color":"rgba(214,39,40,1)","width":3}},"type":"scatter","name":"validation_loss","error_y":{"color":"rgba(214,39,40,1)"},"error_x":{"color":"rgba(214,39,40,1)"},"line":{"color":"rgba(214,39,40,1)"},"xaxis":"x2","yaxis":"y2","frame":null}],"layout":{"xaxis":{"domain":[0,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"y"},"xaxis2":{"domain":[0,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"y2"},"yaxis2":{"domain":[0,0.47999999999999998],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"x2"},"yaxis":{"domain":[0.52000000000000002,1],"automargin":true,"zerolinecolor":"#ffff","zerolinewidth":2,"gridcolor":"ffff","anchor":"x"},"annotations":[],"shapes":[],"images":[],"margin":{"b":40,"l":60,"t":25,"r":10},"plot_bgcolor":"#e5ecf6","hovermode":"closest","showlegend":true},"attrs":{"15c055f504b38":{"x":[1,2,3,4,5,1,2,3,4,5],"y":[90.382999999999996,96.978999999999999,98.444000000000003,99.293000000000006,99.691999999999993,95.272999999999996,95.754999999999995,95.725999999999999,95.951999999999998,96.010999999999996],"mode":"lines+markers","marker":{"line":{"width":3}},"split":["train_accuracy","train_accuracy","train_accuracy","train_accuracy","train_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy","validation_accuracy"],"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"},"15c05107a7a6b":{"x":[1,2,3,4,5,1,2,3,4,5],"y":[0.47233000000000003,0.30137999999999998,0.22800999999999999,0.18465999999999999,0.15545,0.18720000000000001,0.16364000000000001,0.15131,0.14283999999999999,0.13688],"mode":"lines+markers","marker":{"line":{"width":3}},"split":["train_loss","train_loss","train_loss","train_loss","train_loss","validation_loss","validation_loss","validation_loss","validation_loss","validation_loss"],"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter"}},"source":"A","config":{"modeBarButtonsToAdd":["hoverclosest","hovercompare"],"showSendToCloud":false},"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.20000000000000001,"selected":{"opacity":1},"debounce":0},"subplot":true,"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
 </div>
 <div class="section level2">
 <h2 id="probabilities">
@@ -278,7 +260,7 @@ prefixed with the string “probs_” for each class of prediction. The
 values are transformed log-odds from the model prediction transformed
 using the <code>plogis</code> function in R.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/viewmastR.html">viewmastR</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">seur</span>, ref_celldata_col <span class="op">=</span> <span class="st">"SFClassification"</span>, selected_genes <span class="op">=</span> <span class="va">vg</span>, backend <span class="op">=</span> <span class="st">"candle"</span>, max_epochs <span class="op">=</span> <span class="fl">4</span>, return_probs <span class="op">=</span> <span class="cn">T</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/viewmastR.html">viewmastR</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">seur</span>, ref_celldata_col <span class="op">=</span> <span class="st">"SFClassification"</span>, selected_features <span class="op">=</span> <span class="va">vg</span>, backend <span class="op">=</span> <span class="st">"candle"</span>, max_epochs <span class="op">=</span> <span class="fl">4</span>, return_probs <span class="op">=</span> <span class="cn">T</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/FeaturePlot_scCustom.html" class="external-link">FeaturePlot_scCustom</a></span><span class="op">(</span><span class="va">seu</span>, features <span class="op">=</span> <span class="st">"prob_14_B"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="HowTo_files/figure-html/unnamed-chunk-12-1.png" width="100%"></p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
@@ -291,13 +273,13 @@ using the <code>plogis</code> function in R.</p>
 </h2>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## R version 4.4.0 (2024-04-24)</span></span>
-<span><span class="co">## Platform: x86_64-apple-darwin20</span></span>
-<span><span class="co">## Running under: macOS Ventura 13.6.7</span></span>
+<pre><code><span><span class="co">## R version 4.4.3 (2025-02-28)</span></span>
+<span><span class="co">## Platform: aarch64-apple-darwin20</span></span>
+<span><span class="co">## Running under: macOS Sequoia 15.4.1</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Matrix products: default</span></span>
-<span><span class="co">## BLAS:   /Library/Frameworks/R.framework/Versions/4.4-x86_64/Resources/lib/libRblas.0.dylib </span></span>
-<span><span class="co">## LAPACK: /Library/Frameworks/R.framework/Versions/4.4-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0</span></span>
+<span><span class="co">## BLAS:   /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRblas.0.dylib </span></span>
+<span><span class="co">## LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## locale:</span></span>
 <span><span class="co">## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8</span></span>
@@ -309,115 +291,115 @@ using the <code>plogis</code> function in R.</p>
 <span><span class="co">## [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## other attached packages:</span></span>
-<span><span class="co">## [1] scCustomize_2.1.2  ggplot2_3.5.1      Seurat_5.1.0       SeuratObject_5.0.2</span></span>
-<span><span class="co">## [5] sp_2.1-4           viewmastR_0.2.3   </span></span>
+<span><span class="co">## [1] scCustomize_3.0.1  ggplot2_3.5.2      Seurat_5.2.1       SeuratObject_5.0.2</span></span>
+<span><span class="co">## [5] sp_2.2-0           viewmastR_0.3.0   </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## loaded via a namespace (and not attached):</span></span>
-<span><span class="co">##   [1] fs_1.6.4                    matrixStats_1.3.0          </span></span>
-<span><span class="co">##   [3] spatstat.sparse_3.0-3       RcppMsgPack_0.2.3          </span></span>
-<span><span class="co">##   [5] lubridate_1.9.3             httr_1.4.7                 </span></span>
+<span><span class="co">##   [1] fs_1.6.5                    matrixStats_1.5.0          </span></span>
+<span><span class="co">##   [3] spatstat.sparse_3.1-0       RcppMsgPack_0.2.4          </span></span>
+<span><span class="co">##   [5] lubridate_1.9.4             httr_1.4.7                 </span></span>
 <span><span class="co">##   [7] RColorBrewer_1.1-3          doParallel_1.0.17          </span></span>
-<span><span class="co">##   [9] tools_4.4.0                 sctransform_0.4.1          </span></span>
-<span><span class="co">##  [11] backports_1.5.0             utf8_1.2.4                 </span></span>
-<span><span class="co">##  [13] R6_2.5.1                    lazyeval_0.2.2             </span></span>
-<span><span class="co">##  [15] uwot_0.2.2                  GetoptLong_1.0.5           </span></span>
-<span><span class="co">##  [17] withr_3.0.0                 gridExtra_2.3              </span></span>
-<span><span class="co">##  [19] progressr_0.14.0            cli_3.6.2                  </span></span>
-<span><span class="co">##  [21] Biobase_2.64.0              textshaping_0.4.0          </span></span>
-<span><span class="co">##  [23] spatstat.explore_3.2-7      fastDummies_1.7.3          </span></span>
+<span><span class="co">##   [9] tools_4.4.3                 sctransform_0.4.1          </span></span>
+<span><span class="co">##  [11] backports_1.5.0             R6_2.6.1                   </span></span>
+<span><span class="co">##  [13] lazyeval_0.2.2              uwot_0.2.3                 </span></span>
+<span><span class="co">##  [15] GetoptLong_1.0.5            withr_3.0.2                </span></span>
+<span><span class="co">##  [17] gridExtra_2.3               progressr_0.15.1           </span></span>
+<span><span class="co">##  [19] cli_3.6.4                   Biobase_2.66.0             </span></span>
+<span><span class="co">##  [21] textshaping_1.0.0           Cairo_1.6-2                </span></span>
+<span><span class="co">##  [23] spatstat.explore_3.4-2      fastDummies_1.7.5          </span></span>
 <span><span class="co">##  [25] labeling_0.4.3              sass_0.4.9                 </span></span>
-<span><span class="co">##  [27] spatstat.data_3.0-4         proxy_0.4-27               </span></span>
+<span><span class="co">##  [27] spatstat.data_3.1-6         proxy_0.4-27               </span></span>
 <span><span class="co">##  [29] ggridges_0.5.6              pbapply_1.7-2              </span></span>
-<span><span class="co">##  [31] pkgdown_2.0.9               systemfonts_1.1.0          </span></span>
-<span><span class="co">##  [33] foreign_0.8-86              R.utils_2.12.3             </span></span>
-<span><span class="co">##  [35] parallelly_1.37.1           rstudioapi_0.16.0          </span></span>
+<span><span class="co">##  [31] pkgdown_2.1.1               systemfonts_1.2.2          </span></span>
+<span><span class="co">##  [33] foreign_0.8-90              R.utils_2.13.0             </span></span>
+<span><span class="co">##  [35] parallelly_1.43.0           rstudioapi_0.17.1          </span></span>
 <span><span class="co">##  [37] generics_0.1.3              shape_1.4.6.1              </span></span>
 <span><span class="co">##  [39] crosstalk_1.2.1             ica_1.0-3                  </span></span>
-<span><span class="co">##  [41] spatstat.random_3.2-3       dplyr_1.1.4                </span></span>
-<span><span class="co">##  [43] Matrix_1.7-0                ggbeeswarm_0.7.2           </span></span>
-<span><span class="co">##  [45] fansi_1.0.6                 S4Vectors_0.42.0           </span></span>
-<span><span class="co">##  [47] abind_1.4-5                 R.methodsS3_1.8.2          </span></span>
-<span><span class="co">##  [49] lifecycle_1.0.4             yaml_2.3.8                 </span></span>
-<span><span class="co">##  [51] snakecase_0.11.1            SummarizedExperiment_1.34.0</span></span>
-<span><span class="co">##  [53] recipes_1.1.0               SparseArray_1.4.8          </span></span>
-<span><span class="co">##  [55] Rtsne_0.17                  paletteer_1.6.0            </span></span>
-<span><span class="co">##  [57] grid_4.4.0                  promises_1.3.0             </span></span>
-<span><span class="co">##  [59] crayon_1.5.2                miniUI_0.1.1.1             </span></span>
-<span><span class="co">##  [61] lattice_0.22-6              cowplot_1.1.3              </span></span>
-<span><span class="co">##  [63] pillar_1.9.0                knitr_1.46                 </span></span>
-<span><span class="co">##  [65] ComplexHeatmap_2.20.0       GenomicRanges_1.56.0       </span></span>
-<span><span class="co">##  [67] rjson_0.2.21                boot_1.3-30                </span></span>
-<span><span class="co">##  [69] future.apply_1.11.2         codetools_0.2-20           </span></span>
-<span><span class="co">##  [71] leiden_0.4.3.1              glue_1.7.0                 </span></span>
-<span><span class="co">##  [73] data.table_1.15.4           vctrs_0.6.5                </span></span>
-<span><span class="co">##  [75] png_0.1-8                   spam_2.10-0                </span></span>
-<span><span class="co">##  [77] gtable_0.3.5                rematch2_2.1.2             </span></span>
+<span><span class="co">##  [41] spatstat.random_3.3-3       dplyr_1.1.4                </span></span>
+<span><span class="co">##  [43] Matrix_1.7-3                ggbeeswarm_0.7.2           </span></span>
+<span><span class="co">##  [45] S4Vectors_0.44.0            abind_1.4-8                </span></span>
+<span><span class="co">##  [47] R.methodsS3_1.8.2           lifecycle_1.0.4            </span></span>
+<span><span class="co">##  [49] yaml_2.3.10                 snakecase_0.11.1           </span></span>
+<span><span class="co">##  [51] SummarizedExperiment_1.36.0 recipes_1.2.1              </span></span>
+<span><span class="co">##  [53] SparseArray_1.6.2           Rtsne_0.17                 </span></span>
+<span><span class="co">##  [55] paletteer_1.6.0             grid_4.4.3                 </span></span>
+<span><span class="co">##  [57] promises_1.3.2              crayon_1.5.3               </span></span>
+<span><span class="co">##  [59] miniUI_0.1.1.1              lattice_0.22-7             </span></span>
+<span><span class="co">##  [61] cowplot_1.1.3               pillar_1.10.2              </span></span>
+<span><span class="co">##  [63] knitr_1.50                  ComplexHeatmap_2.22.0      </span></span>
+<span><span class="co">##  [65] GenomicRanges_1.58.0        rjson_0.2.23               </span></span>
+<span><span class="co">##  [67] boot_1.3-31                 future.apply_1.11.3        </span></span>
+<span><span class="co">##  [69] codetools_0.2-20            glue_1.8.0                 </span></span>
+<span><span class="co">##  [71] spatstat.univar_3.1-2       data.table_1.17.0          </span></span>
+<span><span class="co">##  [73] vctrs_0.6.5                 png_0.1-8                  </span></span>
+<span><span class="co">##  [75] spam_2.11-1                 Rdpack_2.6.4               </span></span>
+<span><span class="co">##  [77] gtable_0.3.6                rematch2_2.1.2             </span></span>
 <span><span class="co">##  [79] assertthat_0.2.1            cachem_1.1.0               </span></span>
-<span><span class="co">##  [81] gower_1.0.1                 xfun_0.44                  </span></span>
-<span><span class="co">##  [83] S4Arrays_1.4.1              mime_0.12                  </span></span>
-<span><span class="co">##  [85] prodlim_2024.06.25          survival_3.6-4             </span></span>
-<span><span class="co">##  [87] timeDate_4041.110           SingleCellExperiment_1.26.0</span></span>
-<span><span class="co">##  [89] iterators_1.0.14            pbmcapply_1.5.1            </span></span>
-<span><span class="co">##  [91] hardhat_1.4.0               lava_1.8.0                 </span></span>
-<span><span class="co">##  [93] fitdistrplus_1.1-11         ROCR_1.0-11                </span></span>
-<span><span class="co">##  [95] ipred_0.9-15                nlme_3.1-164               </span></span>
-<span><span class="co">##  [97] RcppAnnoy_0.0.22            GenomeInfoDb_1.40.1        </span></span>
-<span><span class="co">##  [99] bslib_0.7.0                 irlba_2.3.5.1              </span></span>
-<span><span class="co">## [101] vipor_0.4.7                 KernSmooth_2.23-24         </span></span>
-<span><span class="co">## [103] rpart_4.1.23                colorspace_2.1-0           </span></span>
-<span><span class="co">## [105] BiocGenerics_0.50.0         Hmisc_5.1-2                </span></span>
-<span><span class="co">## [107] nnet_7.3-19                 ggrastr_1.0.2              </span></span>
-<span><span class="co">## [109] tidyselect_1.2.1            compiler_4.4.0             </span></span>
-<span><span class="co">## [111] htmlTable_2.4.2             desc_1.4.3                 </span></span>
-<span><span class="co">## [113] DelayedArray_0.30.1         plotly_4.10.4              </span></span>
-<span><span class="co">## [115] checkmate_2.3.1             scales_1.3.0               </span></span>
-<span><span class="co">## [117] lmtest_0.9-40               stringr_1.5.1              </span></span>
-<span><span class="co">## [119] digest_0.6.35               goftest_1.2-3              </span></span>
-<span><span class="co">## [121] spatstat.utils_3.1-0        minqa_1.2.7                </span></span>
-<span><span class="co">## [123] rmarkdown_2.27              XVector_0.44.0             </span></span>
-<span><span class="co">## [125] htmltools_0.5.8.1           pkgconfig_2.0.3            </span></span>
-<span><span class="co">## [127] base64enc_0.1-3             lme4_1.1-35.3              </span></span>
-<span><span class="co">## [129] sparseMatrixStats_1.16.0    MatrixGenerics_1.16.0      </span></span>
-<span><span class="co">## [131] highr_0.10                  fastmap_1.2.0              </span></span>
-<span><span class="co">## [133] rlang_1.1.4                 GlobalOptions_0.1.2        </span></span>
-<span><span class="co">## [135] htmlwidgets_1.6.4           UCSC.utils_1.0.0           </span></span>
-<span><span class="co">## [137] shiny_1.8.1.1               DelayedMatrixStats_1.26.0  </span></span>
-<span><span class="co">## [139] farver_2.1.2                jquerylib_0.1.4            </span></span>
-<span><span class="co">## [141] zoo_1.8-12                  jsonlite_1.8.8             </span></span>
-<span><span class="co">## [143] ModelMetrics_1.2.2.2        R.oo_1.26.0                </span></span>
-<span><span class="co">## [145] magrittr_2.0.3              Formula_1.2-5              </span></span>
-<span><span class="co">## [147] GenomeInfoDbData_1.2.12     dotCall64_1.1-1            </span></span>
-<span><span class="co">## [149] patchwork_1.2.0             munsell_0.5.1              </span></span>
-<span><span class="co">## [151] Rcpp_1.0.12                 reticulate_1.37.0          </span></span>
-<span><span class="co">## [153] stringi_1.8.4               pROC_1.18.5                </span></span>
-<span><span class="co">## [155] zlibbioc_1.50.0             MASS_7.3-60.2              </span></span>
-<span><span class="co">## [157] plyr_1.8.9                  parallel_4.4.0             </span></span>
-<span><span class="co">## [159] listenv_0.9.1               ggrepel_0.9.5              </span></span>
-<span><span class="co">## [161] forcats_1.0.0               deldir_2.0-4               </span></span>
-<span><span class="co">## [163] splines_4.4.0               tensor_1.5                 </span></span>
-<span><span class="co">## [165] circlize_0.4.16             igraph_2.0.3               </span></span>
-<span><span class="co">## [167] spatstat.geom_3.2-9         RcppHNSW_0.6.0             </span></span>
-<span><span class="co">## [169] reshape2_1.4.4              stats4_4.4.0               </span></span>
-<span><span class="co">## [171] evaluate_0.23               ggprism_1.0.5              </span></span>
-<span><span class="co">## [173] nloptr_2.0.3                foreach_1.5.2              </span></span>
-<span><span class="co">## [175] httpuv_1.6.15               RANN_2.6.1                 </span></span>
-<span><span class="co">## [177] tidyr_1.3.1                 purrr_1.0.2                </span></span>
-<span><span class="co">## [179] polyclip_1.10-6             future_1.33.2              </span></span>
-<span><span class="co">## [181] clue_0.3-65                 scattermore_1.2            </span></span>
-<span><span class="co">## [183] janitor_2.2.0               xtable_1.8-4               </span></span>
-<span><span class="co">## [185] monocle3_1.3.7              e1071_1.7-16               </span></span>
-<span><span class="co">## [187] RSpectra_0.16-1             later_1.3.2                </span></span>
-<span><span class="co">## [189] viridisLite_0.4.2           class_7.3-22               </span></span>
-<span><span class="co">## [191] ragg_1.3.2                  tibble_3.2.1               </span></span>
-<span><span class="co">## [193] memoise_2.0.1               beeswarm_0.4.0             </span></span>
-<span><span class="co">## [195] IRanges_2.38.0              cluster_2.1.6              </span></span>
+<span><span class="co">##  [81] gower_1.0.2                 xfun_0.52                  </span></span>
+<span><span class="co">##  [83] rbibutils_2.3               S4Arrays_1.6.0             </span></span>
+<span><span class="co">##  [85] mime_0.13                   prodlim_2025.04.28         </span></span>
+<span><span class="co">##  [87] reformulas_0.4.0            survival_3.8-3             </span></span>
+<span><span class="co">##  [89] timeDate_4041.110           SingleCellExperiment_1.28.1</span></span>
+<span><span class="co">##  [91] iterators_1.0.14            pbmcapply_1.5.1            </span></span>
+<span><span class="co">##  [93] hardhat_1.4.1               lava_1.8.1                 </span></span>
+<span><span class="co">##  [95] fitdistrplus_1.2-2          ROCR_1.0-11                </span></span>
+<span><span class="co">##  [97] ipred_0.9-15                nlme_3.1-168               </span></span>
+<span><span class="co">##  [99] RcppAnnoy_0.0.22            GenomeInfoDb_1.42.3        </span></span>
+<span><span class="co">## [101] bslib_0.9.0                 irlba_2.3.5.1              </span></span>
+<span><span class="co">## [103] vipor_0.4.7                 KernSmooth_2.23-26         </span></span>
+<span><span class="co">## [105] rpart_4.1.24                colorspace_2.1-1           </span></span>
+<span><span class="co">## [107] BiocGenerics_0.52.0         Hmisc_5.2-3                </span></span>
+<span><span class="co">## [109] nnet_7.3-20                 ggrastr_1.0.2              </span></span>
+<span><span class="co">## [111] tidyselect_1.2.1            compiler_4.4.3             </span></span>
+<span><span class="co">## [113] htmlTable_2.4.3             desc_1.4.3                 </span></span>
+<span><span class="co">## [115] DelayedArray_0.32.0         plotly_4.10.4              </span></span>
+<span><span class="co">## [117] checkmate_2.3.2             scales_1.3.0               </span></span>
+<span><span class="co">## [119] lmtest_0.9-40               stringr_1.5.1              </span></span>
+<span><span class="co">## [121] digest_0.6.37               goftest_1.2-3              </span></span>
+<span><span class="co">## [123] spatstat.utils_3.1-3        minqa_1.2.8                </span></span>
+<span><span class="co">## [125] rmarkdown_2.29              XVector_0.46.0             </span></span>
+<span><span class="co">## [127] htmltools_0.5.8.1           pkgconfig_2.0.3            </span></span>
+<span><span class="co">## [129] base64enc_0.1-3             lme4_1.1-37                </span></span>
+<span><span class="co">## [131] sparseMatrixStats_1.18.0    MatrixGenerics_1.18.1      </span></span>
+<span><span class="co">## [133] fastmap_1.2.0               rlang_1.1.6                </span></span>
+<span><span class="co">## [135] GlobalOptions_0.1.2         htmlwidgets_1.6.4          </span></span>
+<span><span class="co">## [137] UCSC.utils_1.2.0            shiny_1.10.0               </span></span>
+<span><span class="co">## [139] DelayedMatrixStats_1.28.1   farver_2.1.2               </span></span>
+<span><span class="co">## [141] jquerylib_0.1.4             zoo_1.8-14                 </span></span>
+<span><span class="co">## [143] jsonlite_2.0.0              ModelMetrics_1.2.2.2       </span></span>
+<span><span class="co">## [145] R.oo_1.27.0                 magrittr_2.0.3             </span></span>
+<span><span class="co">## [147] Formula_1.2-5               GenomeInfoDbData_1.2.13    </span></span>
+<span><span class="co">## [149] dotCall64_1.2               patchwork_1.3.0            </span></span>
+<span><span class="co">## [151] munsell_0.5.1               Rcpp_1.0.14                </span></span>
+<span><span class="co">## [153] reticulate_1.42.0           stringi_1.8.7              </span></span>
+<span><span class="co">## [155] pROC_1.18.5                 zlibbioc_1.52.0            </span></span>
+<span><span class="co">## [157] MASS_7.3-65                 plyr_1.8.9                 </span></span>
+<span><span class="co">## [159] parallel_4.4.3              listenv_0.9.1              </span></span>
+<span><span class="co">## [161] ggrepel_0.9.6               forcats_1.0.0              </span></span>
+<span><span class="co">## [163] deldir_2.0-4                splines_4.4.3              </span></span>
+<span><span class="co">## [165] tensor_1.5                  circlize_0.4.16            </span></span>
+<span><span class="co">## [167] igraph_2.1.4                spatstat.geom_3.3-6        </span></span>
+<span><span class="co">## [169] RcppHNSW_0.6.0              reshape2_1.4.4             </span></span>
+<span><span class="co">## [171] stats4_4.4.3                evaluate_1.0.3             </span></span>
+<span><span class="co">## [173] ggprism_1.0.5               nloptr_2.2.1               </span></span>
+<span><span class="co">## [175] foreach_1.5.2               httpuv_1.6.15              </span></span>
+<span><span class="co">## [177] RANN_2.6.2                  tidyr_1.3.1                </span></span>
+<span><span class="co">## [179] purrr_1.0.4                 polyclip_1.10-7            </span></span>
+<span><span class="co">## [181] future_1.40.0               clue_0.3-66                </span></span>
+<span><span class="co">## [183] scattermore_1.2             janitor_2.2.1              </span></span>
+<span><span class="co">## [185] xtable_1.8-4                monocle3_1.3.7             </span></span>
+<span><span class="co">## [187] e1071_1.7-16                RSpectra_0.16-2            </span></span>
+<span><span class="co">## [189] later_1.4.2                 viridisLite_0.4.2          </span></span>
+<span><span class="co">## [191] class_7.3-23                ragg_1.4.0                 </span></span>
+<span><span class="co">## [193] tibble_3.2.1                beeswarm_0.4.0             </span></span>
+<span><span class="co">## [195] IRanges_2.40.1              cluster_2.1.8.1            </span></span>
 <span><span class="co">## [197] timechange_0.3.0            globals_0.16.3             </span></span>
-<span><span class="co">## [199] caret_6.0-94</span></span></code></pre>
+<span><span class="co">## [199] caret_7.0-1</span></span></code></pre>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] "/Users/sfurla/develop/viewmastR/vignettes"</span></span></code></pre>
+<pre><code><span><span class="co">## [1] "/Users/sfurlan/develop/viewmastR/vignettes"</span></span></code></pre>
 </div>
-  </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
 </div>
 
@@ -428,15 +410,15 @@ using the <code>plogis</code> function in R.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
     </footer>
 </div>
 
-  
 
-  
+
+
 
   </body>
 </html>
