@@ -47,14 +47,14 @@ library(ggplot2)
 seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
-vg <- get_selected_genes(seu)
+vg <- get_selected_features(seu)
 ```
 
 ## Now you run viewmastR
 
 The model path is specified using the 'dir' argument
 ```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/tmp/sc_local", max_epochs = 3)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, dir = "/tmp/sc_local", max_epochs = 3)
 ```
 
 ## A look at the predictions
@@ -67,7 +67,7 @@ DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
 We can use the function viewmastR_infer to run inference a saved model.  We will need to pass the same vector of variable features we used to initially create the model. We can use query_celldata_col to specify the name of the metadata column in the returned object.  An optional vector of labels can be provided.  Additionally, instead of returning the input object with predictions added, you may instead return the probabilities using the return_probs argument.
 ```{r}
 
-seu<-viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
+seu<-viewmastR_infer(seu, model_dir = "/tmp/sc_local", vg, labels = levels(factor(seur$SFClassification)))
 DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
 
 ```

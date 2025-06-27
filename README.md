@@ -1,6 +1,6 @@
 # viewmastR
 
-version 0.2.4
+version 0.3.0
 
 <p align="center"><img src="man/figures/viewmaster.png" alt="" width="500"></a></p>
 <hr>

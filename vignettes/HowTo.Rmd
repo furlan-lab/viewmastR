@@ -75,16 +75,16 @@ The performance of viewmastR is enhanced when the features (genes) are consisten
 # Calculate and plot gene dispersion in query dataset
 seu <- calculate_gene_dispersion(seu)
 plot_gene_dispersion(seu)
-seu <- select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+seu <- select_features(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
 plot_gene_dispersion(seu)
-vgq <- get_selected_genes(seu)
+vgq <- get_selected_features(seu)
 
 # Repeat the process for the reference dataset
 seur <- calculate_gene_dispersion(seur)
 plot_gene_dispersion(seur)
-seur <- select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
+seur <- select_features(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
 plot_gene_dispersion(seur)
-vgr <- get_selected_genes(seur)
+vgr <- get_selected_features(seur)
 
 # Find common genes
 vg <- intersect(vgq, vgr)
@@ -103,7 +103,7 @@ DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 Now we run viewmastR to predict cell types in the query dataset. This function will learn from the reference dataset's cell type annotations and apply its knowledge to classify the query cells.
 
 ```{r}
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 4)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 4)
 ```
 
 ## **Visualizing Predictions**
@@ -130,7 +130,7 @@ To access these metrics, you need to set the `return_type` parameter to `"list"`
 
 ```{r}
 # Run viewmastR with return_type = "list"
-output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list")
+output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, return_type = "list")
 
 # Plot training data
 plot_training_data(output_list)
@@ -148,7 +148,7 @@ plt
 Finally, we can also look at prediction probabilities using the return_probs argument.  Doing so will add meta-data columns to the object prefixed with the string "probs_" for each class of prediction.  The values are transformed log-odds from the model prediction transformed using the `plogis` function in R.
 
 ```{r}
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4, return_probs = T)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4, return_probs = T)
 FeaturePlot_scCustom(seu, features = "prob_14_B")
 FeaturePlot_scCustom(seu, features = "prob_16_CD8.N")
 ```

@@ -4,13 +4,16 @@ use extendr_api::{r, NULL};
 
 use burn::{
     data::{dataloader::{ Dataset, batcher::Batcher}, dataset::transform::Mapper},
-    tensor::{backend::Backend, Data, ElementConversion, Int, Tensor},
+    tensor::{backend::Backend, ElementConversion, Int, Tensor},
 };
 
 
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use extendr_api::Robj;
 use extendr_api::Conversions;
+use std::fs::File;
+use rmp_serde::{encode::{write_named}, decode::from_read};   // MessagePack writer
+
 
 pub fn mean(numbers: &Vec<f64>) -> f64 {
     numbers.iter().sum::<f64>() as f64 / numbers.len() as f64
@@ -29,6 +32,7 @@ pub struct SCItemRaw {
     pub data: Vec<f64>, 
     pub target: i32,
 }
+
 
 
 #[derive(Debug)]
@@ -178,24 +182,35 @@ pub struct SCBatch<B: Backend> {
     pub targets: Tensor<B, 1, Int>,
 }
 
-impl<B: Backend> Batcher<SCItem, SCBatch<B>> for SCBatcher<B>  {
+impl<B: Backend> Batcher<B, SCItem, SCBatch<B>> for SCBatcher<B>  {
 
-    fn batch(&self, items: Vec<SCItem>) -> SCBatch<B> {
+    fn batch(&self, items: Vec<SCItem>, device: &B::Device) -> SCBatch<B> {
         let n: usize = items.first().unwrap().counts.len();
-        let counts = items
-            .iter()
-            .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
-            .map(|data| Tensor::<B, 1>::from_data(data.convert()).reshape([1, n]))
-            .collect();
+        // let counts = items
+        //     .iter()
+        //     .map(|item| Data::<f64, 1>::from(&item.counts[0..n]))
+        //     .map(|data| Tensor::<B, 1>::from_data(data.convert()).reshape([1, n]), device)
+        //     .collect();
         
-
-        let targets = items
+        let row_tensors: Vec<Tensor<B, 2>> = items
             .iter()
-            .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()])))
+            .map(|item| {
+                // convert Vec<f64> -> Vec<B::FloatElem> in a backend-agnostic way
+                let row: Vec<_> = item.counts.iter().map(|&x| x.elem::<B::FloatElem>()).collect();
+                Tensor::<B, 1>::from_floats(row.as_slice(), device).reshape([1, n])
+            })
             .collect();
 
-        let counts = Tensor::cat(counts, 0).to_device(&self.device);
-        let targets = Tensor::cat(targets, 0).to_device(&self.device);
+        let counts = Tensor::cat(row_tensors, 0).to_device(&self.device);
+
+        // let targets = items
+        //     .iter()
+        //     .map(|item| Tensor::<B, 1, Int>::from_data(Data::from([(item.label as i32).elem()]), &self.device))
+        //     .collect();
+        let labels: Vec<i32> = items.iter().map(|item| item.label).collect();
+        let targets = Tensor::<B, 1, Int>::from_ints(labels.as_slice(), device).to_device(&self.device);
+        // let counts = Tensor::cat(counts, 0).to_device(&self.device);
+        // let targets = Tensor::cat(targets, 0).to_device(&self.device);
 
         SCBatch { counts, targets }
     }
@@ -253,4 +268,30 @@ impl Mapper<(usize, SCItemRaw), SCItem> for LocalCountstoMatrixWithIndex {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+    pub struct ModelMeta {
+        pub feature_names: Vec<String>,
+        pub class_labels:  Vec<String>,   // or Vec<i32> if you prefer
+    }
 
+pub fn save_artifacts(
+    artifact_dir: &str,
+    feature_names: Vec<String>,
+    class_labels:  Vec<String>,
+) -> std::io::Result<()> {
+    // ---- 1. weights (exactly what you already do) -------------------------
+    // model.save_file(format!("{}/model", artifact_dir), &recorder)?;
+
+    // ---- 2. side-car metadata --------------------------------------------
+    let meta = ModelMeta { feature_names, class_labels };
+    eprintln!("Feature names and labels saved to {}/meta.mpk", artifact_dir);
+    let mut file = File::create(format!("{}/meta.mpk", artifact_dir))?;
+    write_named(&mut file, &meta).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;   // compact MessagePack
+    Ok(())
+}
+
+fn load_meta(artifact_dir: &str) -> anyhow::Result<ModelMeta> {
+    let file = File::open(format!("{}/meta.mpk", artifact_dir))?;
+    let meta: ModelMeta = from_read(file)?;
+    Ok(meta)
+}

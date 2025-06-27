@@ -1,3 +1,9 @@
+# viewmastR v0.3.0
+
+* bug - fixed a bug that failed to correctly perform ReLu on all NN
+* enhancement - upgrade to burn 0.17.1 and rust 2024 version
+* enhancement - store feature names alongside model.mpk in file meta.mpk
+
 # viewmastR v0.2.4
 
 * bug - incorrectly printed training accuracy in specific situations

@@ -54,11 +54,11 @@ suppressPackageStartupMessages({
 
 # Load query and reference datasets
 seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
-vg <- get_selected_genes(seu)
+vg <- get_selected_features(seu)
 seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 
 # View training history
-output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list")
+output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, return_type = "list")
 ```
 
 ### Visualizing Training Data
@@ -80,12 +80,12 @@ plt
 
 ## **4. Tuning for Speed**
 
-`viewmastR` runs with 3 available backends (see [Burn](https://burn.dev/burn-book/basic-workflow/backend.html) for more details). The `candle` backend tends to run faster on Apple M1/M2 processors. Here’s how you can compare the performance of different backends on your system:
+`viewmastR` runs with 3 available backends (see [Burn](https://burn.dev/burn-book/basic-workflow/backend.html) for more details). In our hands the `nd` backend tends to run faster on Apple M1/M2 processors. Note that using "auto" for the backend parameter (which is the default) will detect architecture and provide our best guess which backend will be the fastest for you.  But if you want to test yourself, here’s how you can compare the performance of different backends on your system:
 
 ```{r}
-run1 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "candle", return_type = "list")
-run2 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "wgpu", return_type = "list")
-run3 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = "nd", return_type = "list")
+run1 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 3, backend = "candle", return_type = "list")
+run2 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 3, backend = "wgpu", return_type = "list")
+run3 <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 3, backend = "nd", return_type = "list")
 
 # Compare training times
 gp<-ggplot(data.frame(training_times = c(run1$training_output$duration$training_duration,
@@ -100,12 +100,6 @@ gp<-ggplot(data.frame(training_times = c(run1$training_output$duration$training_
   
 ggplotly(gp)
 
-# To automatically set backend 
-if (as.character(Sys.info()["machine"])=="x86_64"){
-  backend <- "wgpu"
-} else {
-  backend <- "candle"
-}
 ```
 
 ## **5. Saving Training Subsets**
@@ -113,7 +107,7 @@ if (as.character(Sys.info()["machine"])=="x86_64"){
 To inspect the training and test data used by `viewmastR` we provide the setup_training function if you so desire to evaluate these using other learning frameworks.
 
 ```{r, eval=F}
-ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix", backend = backend)
+ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, return_type = "matrix", backend = backend)
 
 # Convert labels to max class and save them
 train_label <- apply(ti$Ytrain_label, 1, which.max)
@@ -132,11 +126,10 @@ data.table::fwrite(data.frame(test = test_label), "/path/to/test_labels.tsv.gz",
 Run inference and obtain prediction probabilities:
 
 ```{r}
-ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "matrix")
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 3, backend = backend)
+training_output <- viewmastR(ref_cds = seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 3, train_only = T)
 
 # Obtain prediction probabilities
-seu <- viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)), return_probs = TRUE)
+seu <- viewmastR_infer(seu, model_dir = training_output[["model_dir"]], selected_features = vg, labels = levels(factor(seur$SFClassification)), return_probs = TRUE)
 scCustomize::FeaturePlot_scCustom(seu, features = "prob_19_CD8.EM")
 ```
 
@@ -145,12 +138,8 @@ scCustomize::FeaturePlot_scCustom(seu, features = "prob_19_CD8.EM")
 To inspect model weights (note this only works for mlr - see below):
 
 ```{r}
-mod <- RcppMsgPack::msgpack_read("/tmp/sc_local/model.mpk", simplify = TRUE)
-weights <- mod$item$linear1$weight$param$value
-shape <- mod$item$linear1$weight$param$shape
-wmat <- data.frame(t(matrix(weights, nrow = shape[2])))
-rownames(wmat) <- ti$features
-colnames(wmat) <- ti$label_text
+dir <- "/tmp/sc_local"
+wmat <- get_weights(dir)
 top_NK_genes <- rownames(wmat)[sort(wmat$'21_NK', index.return=T, decreasing=T)$ix[1:20]]
 seu <-AddModuleScore(seu, features = list(top_nk_genes=top_NK_genes))
 FeaturePlot_scCustom(seu, features = "Cluster1")
@@ -158,28 +147,32 @@ FeaturePlot_scCustom(seu, features = "Cluster1")
 
 ## **8. Comparing Different Algorithms**
 
-`viewmastR` supports various algorithms, such as **a pseudo multinomial logistic regression (mlr)**, **multinomial naive bayes (nb)**, and a **multi-layer perceptron (nn)**. Note that our mlr function is a neural network with no hidden layers using ReLu activation.  You can read more about the similarity between this simple neural network and logistic regression here (https://medium.com/@axegggl/neural-networks-decoded-how-logistic-regression-is-the-hidden-first-step-495f4a0b5fd#:~:text=When%20you%20think%20about%20a,like%20a%20logistic%20regression%20model.)
+`viewmastR` supports various algorithms, such as **a pseudo multinomial logistic regression (mlr)**, **multinomial naive bayes (nb)**, and a **multi-layer perceptron (nn)**. You can read more about the similarity between this simple neural network and logistic regression here (https://medium.com/@axegggl/neural-networks-decoded-how-logistic-regression-is-the-hidden-first-step-495f4a0b5fd#:~:text=When%20you%20think%20about%20a,like%20a%20logistic%20regression%20model.)
 
 The code below shows how you can run and compare these methods:
 
 ```{r}
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_genes = vg, backend = backend)
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", query_celldata_col = "nb_pred", selected_genes = vg, backend = backend)
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn_pred", selected_genes = vg, hidden_layers = c(200), backend = backend)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_features = vg, max_epochs = 3)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", query_celldata_col = "nb_pred", selected_features = vg)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn_pred", selected_genes = vg, hidden_layers = c(200), max_epochs = 3)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn2_pred", selected_genes = vg, hidden_layers = c(1000, 150), max_epochs = 3)
+
 
 # Visualize predictions
 DimPlot(seu, group.by = "mlr_pred")
 DimPlot(seu, group.by = "nb_pred")
 DimPlot(seu, group.by = "nn_pred")
+DimPlot(seu, group.by = "nn2_pred")
 
 # Evaluate accuracy
 accuracy_mlr <- length(which(seu$mlr_pred == seu$ground_truth)) / dim(seu)[2]
 accuracy_nb <- length(which(seu$nb_pred == seu$ground_truth)) / dim(seu)[2]
 accuracy_nn <- length(which(seu$nn_pred == seu$ground_truth)) / dim(seu)[2]
+accuracy_nn2 <- length(which(seu$nn2_pred == seu$ground_truth)) / dim(seu)[2]
 
 # Compare accuracies
-gp<-ggplot(data.frame(accuracy = c(accuracy_mlr, accuracy_nb, accuracy_nn)*100, 
-                  algorithm = c("mlr", "nb", "nn")),
+gp<-ggplot(data.frame(accuracy = c(accuracy_mlr, accuracy_nb, accuracy_nn, accuracy_nn2)*100, 
+                  algorithm = c("mlr", "nb", "nn","nn2")),
        aes(x = algorithm, y = accuracy, fill = algorithm)) + 
   geom_col() + 
   theme_bw() + 
@@ -188,11 +181,3 @@ gp<-ggplot(data.frame(accuracy = c(accuracy_mlr, accuracy_nb, accuracy_nn)*100,
 ggplotly(gp)
 ```
 
-## **Appendix: Session Information**
-
-To ensure reproducibility, here’s how you can capture session information:
-
-```{r}
-sessionInfo()
-getwd()
-```

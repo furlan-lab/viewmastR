@@ -75,7 +75,7 @@ seuQ <- CreateSeuratObject(cnts)
 
 ```{r}
 undebug(viewmastR)
-LL <- viewmastR(seuQ, seu, ref_celldata_col = "category1", selected_genes = VariableFeatures(seu), max_epochs = 30, return_probs = T, return_type = "list", FUNC = "nn", hidden_layers = c(200))
+LL <- viewmastR(seuQ, seu, ref_celldata_col = "category1", selected_features = VariableFeatures(seu), max_epochs = 30, return_probs = T, return_type = "list", FUNC = "nn", hidden_layers = c(200))
 
 melted <- reshape::melt(LL$training_output$probs)
 colnames(melted) <- c("sample", "class", "prob")
@@ -280,8 +280,8 @@ plotly::ggplotly(g)
 
 ```{r}
 
-LL <- viewmastR(seuQ, seuA, ref_celldata_col = "category1", selected_genes = VariableFeatures(seuA), max_epochs = 10, return_probs = T, return_type = "list", FUNC = "nn", hidden_layers = c(1000, 200), dir = )
-#LL <- viewmastR(seuQ, seuA, ref_celldata_col = "category1", selected_genes = VariableFeatures(seuA), max_epochs = 50, return_probs = T, return_type = "list", FUNC = "mlr")
+LL <- viewmastR(seuQ, seuA, ref_celldata_col = "category1", selected_features = VariableFeatures(seuA), max_epochs = 10, return_probs = T, return_type = "list", FUNC = "nn", hidden_layers = c(1000, 200), dir = )
+#LL <- viewmastR(seuQ, seuA, ref_celldata_col = "category1", selected_features = VariableFeatures(seuA), max_epochs = 50, return_probs = T, return_type = "list", FUNC = "mlr")
 
 melted <- reshape::melt(LL$training_output$probs)
 colnames(melted) <- c("sample", "class", "prob")
