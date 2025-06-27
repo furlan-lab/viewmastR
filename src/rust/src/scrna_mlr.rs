@@ -37,13 +37,6 @@ pub struct ModelConfig {
 }
 
 impl ModelConfig {
-    // pub fn init_with<B: Backend>(&self, no_features: usize, record: ModelRecord<B>) -> Model<B> {
-    //     Model {
-    //         linear1: LinearConfig::new(no_features, self.num_classes).init_with(record.linear1),
-    //         activation: ReLU::new(),
-    //     }
-    // }
-
     pub fn init<B: Backend>(&self, no_features: usize) -> Model<B> {
         Model {
             activation: ReLU::new(),
@@ -119,10 +112,6 @@ where
 {
     let _debug = true;
     let no_features = train.first().expect("Features not found").data.len();
-    // let train_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-    //     MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
-    // let test_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-    //     MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let train_dataset = MapperDataset::new(InMemDataset::new(train), LocalCountstoMatrix);
     let test_dataset = MapperDataset::new(InMemDataset::new(test), LocalCountstoMatrix);
     let num_batches_train = train_dataset.len();
@@ -232,25 +221,7 @@ where
     }
 
     let tduration = start.elapsed();
-    // let query_len = query.len();
-    // let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-    //     MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    // // Create the batchers.
-    // let batcher_query = SCBatcher::<B>::new(device.clone());
-
-    // // Create the dataloaders.
-    // let dataloader_query = DataLoaderBuilder::new(batcher_query)
-    //     .batch_size(config.batch_size)
-    //     .build(query_dataset);
-    
-    // let model_valid = model.valid();
     let mut probs = Vec::new();
-
-    // // Assuming dataloader_query is built
-    // for (_count, batch) in dataloader_query.iter().enumerate() {
-    //     let output = model_valid.forward(batch.counts);
-    //     output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
-    // }
 
      if let Some(query_items) = query {
         let query_dataset = MapperDataset::new(InMemDataset::new(query_items), LocalCountstoMatrix);

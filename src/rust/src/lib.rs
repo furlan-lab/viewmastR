@@ -5,7 +5,6 @@
 
 
 use extendr_api::prelude::*;
-// use num_traits::cast;
 mod scrna_ann;
 mod scrna_ann2l;
 mod scrna_mlr;
@@ -15,15 +14,12 @@ mod pb;
 mod common;
 mod inference;
 mod nb;
-// mod train;
 
 use std::path::Path;
 use std::time::Instant;
 use crate::common::*;
-use crate::inference::{infer_helper_mlr, infer_helper_ann, infer_helper_ann2l};
+use crate::inference::*;
 
-// use std::convert::TryFrom;
-// use std::convert::TryInto;
 /// Process Robj learning objects for MLR
 /// @export
 /// @keywords internal
@@ -46,8 +42,6 @@ fn process_learning_obj_nb(train: Robj, test: Robj, query: Robj) -> List {
   let duration = start.elapsed();
   let duration_r: List = list!(total_duration = duration.as_secs_f64());
   let history: List = list!(train_acc = "ND", test_acc = "ND");
-  // let my_model = MyMultinomialNb(model);
-  // let model_export: Vec<f64> = my_model.try_into().unwrap();
   let model = list!();
   return list!(model = model, predictions = list!(query_pred), history = history, duration = duration_r)
 }
@@ -112,7 +106,6 @@ fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, 
   }
 
   let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
-  // let predictions = list!(model_export.predictions);
   let probs = list!(model_export.probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>());
   let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
   let duration = start.elapsed();
@@ -189,31 +182,6 @@ fn process_learning_obj_ann(train: Robj, test: Robj, query: Robj, labels: Robj, 
   return list!(params = params, probs = probs, history = history, duration = duration)
 }
 
-
-/// infer from saved model
-/// @export
-/// @keywords internal
-// #[extendr]
-// fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, verbose: Robj) -> List{
-//   let verbose =  verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
-//   if verbose {eprintln!("Loading model")};
-//   let model_path_tested = match model_path.as_str_vector() {
-//     Some(string_vec) => string_vec.first().unwrap().to_string(),
-//     _ => panic!("Cound not parse folder: '{:?}'", model_path)
-//   };
-//   if !Path::new(&model_path_tested).exists(){
-//     panic!("Could not find folder: '{:?}'", model_path)
-//   }
-//   if verbose {eprintln!("Loading data")};
-//   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
-//   let num_classes = *num_classes.as_integer_vector().unwrap().first().unwrap() as usize;
-//   let num_features = *num_features.as_integer_vector().unwrap().first().unwrap() as usize;
-//   if verbose {eprintln!("Running inference")};
-//   let probs = infer_helper(model_path_tested, num_classes, num_features, query_raw);
-//   if verbose {eprintln!("Returning results")};
-//   return list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
-// }
-
 /// Infer from a saved model (MLR, 1-hidden ANN, or 2-hidden ANN)
 ///
 /// @param model_path  Character scalar – path to the `.mpk` checkpoint
@@ -239,17 +207,24 @@ fn infer_from_model(
     hidden1     : Nullable<Robj>,
     hidden2     : Nullable<Robj>,
     verbose     : Robj,
-    batch_size: Robj
+    batch_size  : Robj,
+    backend: Robj
 ) -> List {
-    // ── verbosity -----------------------------------------------------------
+    // ── verbosity ---------------------------------------------------------
     let verbose = verbose
         .as_logical_vector()
         .unwrap()
         .first()
         .unwrap()
         .to_bool();
-
-    // ── scalars -------------------------------------------------------------
+    let backend = match backend.as_str_vector(){
+      Some(string_vec) => string_vec.first().unwrap().to_string(),
+      _ => panic!("Cound not find backend: '{:?}'", backend)
+    };
+    if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
+      panic!("Cound not find backend: '{:?}'", backend)
+    }
+    // ── scalars -----------------------------------------------------------
     let model_path = model_path
         .as_str_vector()
         .and_then(|v| v.first().cloned())
@@ -258,7 +233,7 @@ fn infer_from_model(
         panic!("Checkpoint not found: {model_path}");
     }
 
-    let model_kind = model_type
+    let model_kind_str = model_type
         .as_str_vector()
         .and_then(|v| v.first().cloned())
         .unwrap_or_else(|| "mlr")
@@ -274,76 +249,72 @@ fn infer_from_model(
         .and_then(|v| v.first().copied())
         .expect("`num_features` must be an integer") as usize;
 
-    // ── optional hidden sizes ----------------------------------------------
+    // ── optional hidden sizes --------------------------------------------
     let h1 = usize_from_nullable(hidden1);
     let h2 = usize_from_nullable(hidden2);
-
-    // if verbose {
-    //     eprintln!("h1 = {:?}, h2 = {:?}", h1, h2);
-    // }
 
     let batch_size = batch_size
         .as_real()
         .map(|x| x as usize)
         .or_else(|| batch_size.as_integer().map(|x| x as usize))
-        .unwrap_or_else(|| {
-            panic!("Batch size must be a real number or integer");
-        });
+        .unwrap_or_else(|| panic!("`batch_size` must be numeric"));
 
-    // ── query to Vec<SCItemRaw> --------------------------------------------
-    if verbose {
-        eprintln!("Preparing query data");
-    }
+    // ── query to Vec<SCItemRaw> ------------------------------------------
+    if verbose { eprintln!("Preparing query data"); }
     let query_raw = extract_scitemraw(&query, Some(0));
 
-    // ── dispatch ------------------------------------------------------------
-    if verbose {
-        eprintln!("Running inference with model type \"{}\"", model_kind);
-    }
-    let probs: Vec<f32> = match model_kind.as_str() {
-        "mlr" => infer_helper_mlr(
-            model_path.to_string(),
-            num_classes,
-            num_features,
-            query_raw,
-            Some(batch_size)
-        ),
+    // ── decide which NetKind to run --------------------------------------
+    let net = match model_kind_str.as_str() {
+        "mlr" => NetKind::Mlr,
 
         "ann1" | "ann" => {
             let size1 = h1.expect("`hidden1` must be supplied for ANN1 models");
-            infer_helper_ann(
-                model_path.to_string(),
-                num_classes,
-                num_features,
-                query_raw,
-                size1,
-                Some(batch_size)
-            )
+            NetKind::Ann { hidden: size1 }
         }
 
         "ann2" => {
             let size1 = h1.expect("`hidden1` must be supplied for ANN2 models");
             let size2 = h2.expect("`hidden2` must be supplied for ANN2 models");
-            infer_helper_ann2l(
-                model_path.to_string(),
-                num_classes,
-                num_features,
-                query_raw,
-                size1,
-                size2,
-                Some(batch_size)
-            )
+            NetKind::Ann2 { hidden1: size1, hidden2: size2 }
         }
 
         other => panic!("Unknown `model_type`: {other}  (use \"mlr\", \"ann1\", or \"ann2\")"),
     };
 
-    // ── return to R ---------------------------------------------------------
-    if verbose {
-        eprintln!("Returning results");
-    }
+    // ── run the generic inference ----------------------------------------
+    if verbose { eprintln!("Running inference as {:?}", net); }
+    
+    // Use the appropriate backend based on the `backend` parameter
+    let probs = match backend.as_str() {
+        "wgpu" => infer_wgpu(
+            &model_path,
+            net,
+            num_classes,
+            num_features,
+            query_raw,
+            Some(batch_size)),
+        "candle" => infer_candle(
+            &model_path,
+            net,
+            num_classes,
+            num_features,
+            query_raw,
+            Some(batch_size)),
+        "nd" => infer_nd(
+            &model_path,
+            net,
+            num_classes,
+            num_features,
+            query_raw,
+            Some(batch_size)),
+        _ => panic!("Unknown backend: {}", backend),
+    };
+
+    // ── return to R -------------------------------------------------------
+    if verbose { eprintln!("Returning results"); }
     list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
 }
+
 
 // ---------- util -------------------------------------------------------------
 fn usize_from_nullable(n: Nullable<Robj>) -> Option<usize> {
@@ -373,7 +344,5 @@ extendr_module! {
   fn process_learning_obj_ann;
   fn process_learning_obj_mlr;
   fn infer_from_model;
-  // fn process_learning_obj;
-  // fn run_nb_test;
   fn process_learning_obj_nb;
 }
