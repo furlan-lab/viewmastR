@@ -372,45 +372,6 @@ fn process_learning_obj(
     list!(params = params, probs = probs, history = history, duration = duration)
 }
 
-/// infer from saved model
-/// @export
-/// @keywords internal
-// #[extendr]
-// fn infer_from_model(model_path: Robj, query: Robj, num_classes: Robj, num_features: Robj, verbose: Robj) -> List{
-//   let verbose =  verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
-//   if verbose {eprintln!("Loading model")};
-//   let model_path_tested = match model_path.as_str_vector() {
-//     Some(string_vec) => string_vec.first().unwrap().to_string(),
-//     _ => panic!("Cound not parse folder: '{:?}'", model_path)
-//   };
-//   if !Path::new(&model_path_tested).exists(){
-//     panic!("Could not find folder: '{:?}'", model_path)
-//   }
-//   if verbose {eprintln!("Loading data")};
-//   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
-//   let num_classes = *num_classes.as_integer_vector().unwrap().first().unwrap() as usize;
-//   let num_features = *num_features.as_integer_vector().unwrap().first().unwrap() as usize;
-//   if verbose {eprintln!("Running inference")};
-//   let probs = infer_helper(model_path_tested, num_classes, num_features, query_raw);
-//   if verbose {eprintln!("Returning results")};
-//   return list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
-// }
-
-/// Infer from a saved model (MLR, 1-hidden ANN, or 2-hidden ANN)
-///
-/// @param model_path  Character scalar – path to the `.mpk` checkpoint
-/// @param query       A data-frame or matrix you can pass to `extract_scitemraw()`
-/// @param num_classes Integer scalar – number of output classes
-/// @param num_features Integer scalar – number of input features
-/// @param model_type  Character scalar: `"mlr"`, `"ann1"`, or `"ann2"`
-/// @param hidden1     (optional) Integer – size of the first hidden layer
-/// @param hidden2     (optional) Integer – size of the second hidden layer (only for `"ann2"`)
-/// @param verbose     Logical scalar – print progress to stderr?
-///
-/// @return A list with a single element `probs`, the flat numeric vector
-///         of logits returned by the Rust model.
-///
-/// @export
 #[extendr]          // @export
 fn infer_from_model(
     model_path  : Robj,

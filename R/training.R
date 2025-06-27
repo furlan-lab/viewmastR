@@ -224,7 +224,7 @@ viewmastR <- function(query_cds,
           verbose = verbose,
           backend = backend
         )
-    return(list(object=NULL, training_output = export_list, model_dir = model_dir))
+    return(list(object=NULL, training_output = list(history = export_list$history, duration = export_list$duration, params = export_list$params), model_dir = model_dir))
   } else {
     # When train_only = FALSE, we have query_cds provided
     training_list <- setup_training(
@@ -271,7 +271,7 @@ viewmastR <- function(query_cds,
       if (return_type=="object") {
         return(query_cds)
       } else {
-        return(list(object=query_cds, training_output = export_list))
+        return(list(object=query_cds, training_output = list(probs = prob_mat, history = export_list$history, duration = export_list$duration, params = export_list$params)))
       }
     } else {
       export_list <- process_learning_obj(
@@ -313,7 +313,7 @@ viewmastR <- function(query_cds,
     if (return_type=="object") {
       return(query_cds)
     } else {
-      return(list(object=query_cds, training_output = list(probs = prob_mat), model_dir = model_dir))
+      return(list(object=query_cds, training_output = list(probs = prob_mat, history = export_list$history, duration = export_list$duration, params = export_list$params), model_dir = model_dir))
     }
     }
   }

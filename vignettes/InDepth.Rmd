@@ -58,7 +58,7 @@ vg <- get_selected_features(seu)
 seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 
 # View training history
-output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, return_type = "list", backend = "nd")
+output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, return_type = "list")
 ```
 
 ### Visualizing Training Data
@@ -154,8 +154,8 @@ The code below shows how you can run and compare these methods:
 ```{r}
 seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "mlr", query_celldata_col = "mlr_pred", selected_features = vg, max_epochs = 3)
 seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nb", query_celldata_col = "nb_pred", selected_features = vg)
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn_pred", selected_features = vg, hidden_layers = c(200), max_epochs = 3)
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn2_pred", selected_features = vg, hidden_layers = c(1000, 150), max_epochs = 3)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn_pred", selected_genes = vg, hidden_layers = c(200), max_epochs = 3)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", query_celldata_col = "nn2_pred", selected_genes = vg, hidden_layers = c(1000, 150), max_epochs = 3)
 
 
 # Visualize predictions
