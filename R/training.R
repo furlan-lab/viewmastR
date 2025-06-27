@@ -27,9 +27,13 @@ dimension_check <- function (obj){
 
 #' @keywords internal
 optimize_backend <- function(){
-  if(Sys.info()["machine"]=="arm64"){
+  if(Sys.info()["machine"]=="arm64" & Sys.info()['sysname'] == "Darwin"){
     return("nd")
-  } else {
+  }
+  if(Sys.info()["machine"]=="x86_64" & Sys.info()['sysname'] == "Linux"){
+    return("candle")
+  }
+  else {
     return("wgpu")
   }
 }
