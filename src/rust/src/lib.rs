@@ -219,6 +219,7 @@ fn parse_directory(directory: &Robj) -> String {
 /// * `model_type` – `"mlr"`, `"ann"`, or `"ann2"` (you can choose any tokens you like)
 /// * `hidden_size` – `NULL` for MLR; numeric (len 1 or 2) for ANN.
 /// @export
+/// @keywords internal
 #[extendr]
 fn process_learning_obj(
     model_type: Robj,
