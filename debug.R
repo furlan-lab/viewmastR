@@ -39,16 +39,16 @@ if (grepl("^gizmo", Sys.info()["nodename"])) {
 
 # Load query and reference datasets
 seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
-vg <- get_selected_genes(seu)
+vg <- get_selected_features(seu)
 seur <- readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 
 
-output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type = "list", backend = "candle", max_epochs = 4)
+output_list <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, return_type = "list", backend = "candle", max_epochs = 4)
 DimPlot(output_list$object, group.by = "viewmastR_pred", cols = seur@misc$colors)
 table(output_list$object$viewmastR_pred)
 
 
-ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
+ti <- setup_training(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg)
 export_list<-process_learning_obj_mlr(train = ti[["train"]], 
                                       test = ti[["test"]], 
                                       query = ti[["query"]], 
@@ -56,10 +56,10 @@ export_list<-process_learning_obj_mlr(train = ti[["train"]],
                                       learning_rate = 1e-3, num_epochs = 4, 
                                       directory = "/tmp/sc_local", verbose = TRUE, backend = "candle")
 
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4)
 DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
 
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4, return_probs = T)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4, return_probs = T)
 FeaturePlot_scCustom(seu, features = "prob_14_B")
 
 seu<-viewmastR_infer(seu, "/tmp/sc_local/model.mpk", vg, labels = levels(factor(seur$SFClassification)))
@@ -73,48 +73,48 @@ confusion_matrix(seu$viewmastR_inferred, seu$viewmastR_pred)
 
 ## (ALL TIMES elapsed)
 ## on M1 
-baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4))
 #28.870
 ## on M2 
-baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4))
 #25.041
-edits1 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+edits1 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4))
 #24.901 #fixed Recreating Loss Function in Each Iteration
-edits2 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+edits2 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4))
 #25.160 #fixed  Inefficient Computation of num_predictions
-edits3 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+edits3 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4))
 #24.493 #fixed query prediction
-edits5 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+edits5 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4))
 #38.857 model save - removed clone (battery low)
-final_version <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+final_version <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4))
 #23.590 final after rust optims
 
 
 ## on intel
-baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4))
 #41.322
-baseline_wgpu <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+baseline_wgpu <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "wgpu", max_epochs = 4))
 #38.792
-edits6 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+edits6 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "wgpu", max_epochs = 4))
 #36.400 #minor changes
-edits7 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+edits7 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "wgpu", max_epochs = 4))
 #38.857 #minor changes
-edits8 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+edits8 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "wgpu", max_epochs = 4))
 #34.034 #minor changes (update number of cores)
-edits9 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+edits9 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "wgpu", max_epochs = 4))
 #32.875 #refactored code to run using step functions...
-edits9cl <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "candle", max_epochs = 4))
+edits9cl <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4))
 #38.548
-edits10 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+edits10 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "wgpu", max_epochs = 4))
 #32.371 moved batch reporting to the last batch
-edits11 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, backend = "wgpu", max_epochs = 4))
+edits11 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "wgpu", max_epochs = 4))
 #32.609 removed cloning of batch.targets
 
 #####NN######
 ## on intel
-baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", hidden_layers = c(1000), selected_genes = vg, backend = "wgpu", max_epochs = 4))
+baseline <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", hidden_layers = c(1000), selected_features = vg, backend = "wgpu", max_epochs = 4))
 #41.322
-edits11 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", hidden_layers = c(1000), selected_genes = vg, backend = "wgpu", max_epochs = 4))
+edits11 <- system.time(seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", FUNC = "nn", hidden_layers = c(1000), selected_features = vg, backend = "wgpu", max_epochs = 4))
 #41.322
 
 

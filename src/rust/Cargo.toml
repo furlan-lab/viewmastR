@@ -1,8 +1,8 @@
 [package]
 name = 'viewmastR'
 publish = false
-version = '0.2.4'
-edition = '2021'
+version = '0.3.0'
+edition = '2024'
 
 [lib]
 crate-type = [ 'staticlib' ]
@@ -23,6 +23,8 @@ flate2 = "1.0.28"
 ndarray = "0.15"
 linfa-bayes = "0.7.0"
 linfa = "0.7.0"
+rmp-serde = "1.0.3"
+anyhow = "1.0.80"
 
 # Serialization
 serde = "1"

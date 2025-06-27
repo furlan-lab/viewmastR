@@ -336,7 +336,7 @@ where
             &NamedMpkFileRecorder::<FullPrecisionSettings>::new(),
         )
         .expect("Failed to save trained model");
-
+    eprintln!("Model saved to {}/model.mpk", artifact_dir);
     // Collect and return the predictions
     RExport {
         lr: config.lr,

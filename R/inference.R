@@ -14,8 +14,8 @@ infer_prep<-function(object, variable_features, software){
 #' This function infers cell labels using a trained model and updates the input dataset with the inferred labels.
 #' 
 #' @param query_cds Seurat or cell_data_set object - The dataset for which cell labels are to be inferred.
-#' @param model_path character path to the trained model file.
-#' @param vg character vector - Features used for inference (must be the same used during model creation).
+#' @param model_dir character path to the trained model file.
+#' @param selected_features character vector - Features used for inference (must be the same used during model creation).
 #' @param query_celldata_col character vector - names of the column to store inferred cell labels in the query dataset. Default is "viewmastR_inferred".
 #' @param labels character vector - optional labels corresponding to the class indices. Default is NULL.
 #' @param verbose bool - show messaging
@@ -33,7 +33,7 @@ infer_prep<-function(object, variable_features, software){
 #'   data and number of chunks.
 #' @param show_progress A logical indicating whether to show a progress bar with total 
 #'   elapsed time. Default is \code{TRUE}.
-#' @details The function first checks that all variable features specified in \code{vg} 
+#' @details The function first checks that all variable features specified in \code{selected_features} 
 #' are present in \code{query_cds}, extracts normalized counts, and determines whether 
 #' to run sequentially or in parallel. When parallelization is enabled (\code{workers > 1}), 
 #' the dataset is split into chunks, and each chunk is processed and run through the 
@@ -56,15 +56,6 @@ infer_prep<-function(object, variable_features, software){
 #'
 #' @seealso \code{\link[Seurat]{Seurat}}, \code{\link[monocle3]{cell_data_set}}
 #'
-#' @examples
-#' \dontrun{
-#' # Assuming `seu` is a Seurat object and `model_path` is a path to a trained model
-#' result <- viewmastR_infer(
-#'   query_cds = seu,
-#'   model_path = "path/to/model.msgpack",
-#'   vg = VariableFeatures(seu)
-#' )
-#' }
 #'
 #' @importFrom pbmcapply pbmclapply
 #' @importFrom future plan multisession multicore
@@ -73,8 +64,8 @@ infer_prep<-function(object, variable_features, software){
 #' @importFrom Matrix t
 #' @export
 viewmastR_infer <- function(query_cds,
-                            model_path,
-                            vg,
+                            model_dir,
+                            selected_features,
                             query_celldata_col = "viewmastR_inferred",
                             labels = NULL,
                             verbose = TRUE,
@@ -94,14 +85,15 @@ viewmastR_infer <- function(query_cds,
     stop("Only seurat and monocle3 objects supported")
   }
 
-  # Check that all variable_features are present
-  checked_genes <- check_genes_in_object(query_cds, vg)
+  # Check that all variable_features are present in query
+  checked_genes <- check_genes_in_object(query_cds, selected_features, model_dir)
+  
   if (length(checked_genes$genes_missing) > 0) {
     stop("At least one feature in variable_features is not found in the object.")
   }
 
   # Extract normalized counts
-  norm_counts <- get_norm_counts(query_cds)[vg, ]
+  norm_counts <- get_norm_counts(query_cds)[selected_features, ]
 
 
   # If workers <= 1, run sequentially
@@ -115,7 +107,7 @@ viewmastR_infer <- function(query_cds,
     }
 
     # Load model
-    model_shapes <- extract_mpk_shapes(model_path)
+    model_shapes <- extract_mpk_shapes(file.path(model_dir, "model.mpk"))
 
     # Set batch size if null
     if (is.null(batch_size)) {
@@ -125,10 +117,10 @@ viewmastR_infer <- function(query_cds,
 
     # Run inference once
     export_list <- infer_from_model(
-      model_path = model_path,
+      model_path = file.path(model_dir, "model.mpk"),
       query = query_list,
       num_classes = as.integer(model_shapes$num_classes),
-      num_features = as.integer(length(vg)),
+      num_features = as.integer(length(selected_features)),
       model_type = model_shapes$model_type,
       hidden1 = as.integer(model_shapes$hidden_layer1),
       hidden2 = as.integer(model_shapes$hidden_layer2),
@@ -154,7 +146,7 @@ viewmastR_infer <- function(query_cds,
     cell_chunks <- split(seq_len(n_cells), ceiling(seq_len(n_cells) / chunk_size))
 
     # Load model
-    model_shapes <- extract_mpk_shapes(model_path)
+    model_shapes <- extract_mpk_shapes(file.path(model_dir, "model.mpk"))
 
     # Set batch size if null
     if (is.null(batch_size)) {
@@ -193,10 +185,10 @@ if (show_progress) {
 
         # Run inference on this chunk
         res <- infer_from_model(
-          model_path = model_path,
+          model_path = model_dir,
           query = chunk_query,
           num_classes = as.integer(model_shapes$num_classes),
-          num_features = as.integer(length(vg)),
+          num_features = as.integer(length(selected_features)),
           model_type = model_shapes$model_type,
           hidden1 = as.integer(model_shapes$hidden_layer1),
           hidden2 = as.integer(model_shapes$hidden_layer2),
@@ -316,8 +308,9 @@ extract_mpk_shapes <- function(file) {
   return(list(df = df, num_classes = num_classes, model_type = model_type, hidden_layer1 = hidden_layer1, hidden_layer2 = hidden_layer2))
 }
 
+#' @importFrom RcppMsgPack msgpack_read
 #' @export
-check_genes_in_object <- function(object, genes, assay = "RNA", verbose = TRUE, print = FALSE) {
+check_genes_in_object <- function(object, genes, model_dir, assay = "RNA", verbose = TRUE, print = FALSE) {
   # Check if the input is a Seurat object
   if (!inherits(object, "Seurat")) {
     stop("Input must be a Seurat object.")
@@ -345,9 +338,14 @@ check_genes_in_object <- function(object, genes, assay = "RNA", verbose = TRUE, 
   available_genes <- rownames(counts)
   object_type <- "Seurat"
 
+  # Check whether all genes are present in the model
+  meta <- msgpack_read(file.path(model_dir, "meta.mpk"), simplify = TRUE)
+  if(!all(genes %in% meta$feature_names)) {stop(paste0("Not all genes supplied are found in saved meta data file: ", file.path(model_dir, "meta.mpk")))}
+  
   # Check which genes are present in the object
   genes_present <- genes[genes %in% available_genes]
   genes_missing <- genes[!(genes %in% available_genes)]
+
 
   # Print a summary
   if (verbose) {

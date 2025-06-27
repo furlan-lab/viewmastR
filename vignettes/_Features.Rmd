@@ -76,7 +76,7 @@ seu<-calculate_gene_dispersion(seu)
 plot_gene_dispersion(seu)
 seu<-select_genes(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
 plot_gene_dispersion(seu)
-vgq1<-get_selected_genes(seu)
+vgq1<-get_selected_features(seu)
 
 cts<-Matrix::t(GetAssayData(seu, layer = "counts"))
 total_counts = Matrix::rowSums(cts)
@@ -151,7 +151,7 @@ seur<-calculate_gene_dispersion(seur)
 plot_gene_dispersion(seur)
 seur<-select_genes(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
 plot_gene_dispersion(seur)
-vgr1<-get_selected_genes(seur)
+vgr1<-get_selected_features(seur)
 
 cts<-Matrix::t(GetAssayData(seur, layer = "counts"))
 total_counts = Matrix::rowSums(cts)
@@ -172,8 +172,8 @@ vg1<-intersect(vgq1, vgr1)
 vg2<-intersect(vgq2, vgr2)
 
 
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", query_celldata_col = "vmR_pred1", selected_genes = vg1)
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", query_celldata_col = "vmR_pred2", selected_genes = vg2)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", query_celldata_col = "vmR_pred1", selected_features = vg1)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", query_celldata_col = "vmR_pred2", selected_features = vg2)
 
 seu[['orig.ident']][,1]
 seu$orig.ident
@@ -188,7 +188,7 @@ DimPlot(seur, group.by = "SFClassification", cols = seur@misc$colors)
 
 Note that this is the same invocation used as prior versions of viewmastR but more output can be obtained (read further down)
 ```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg)
 ```
 
 ## A look at the predictions
@@ -206,7 +206,7 @@ confusion_matrix(pred = factor(seu$viewmastR_pred), gt = factor(seu$ground_truth
 ViewmastR records key learning data generated during training.  This can optionally be returned by setting the 'return_type' parameter to "list".  Using this setting, the function will return a named list containing the following items (1 named 'object') - the query object with the celltype prediction added to the metadata (as above) and (2 named "training output") a set of results obtained during training.  Here's an example of how this may be used.  First we run viewmastR again changing the return type...
 
 ```{r, dpi=300, fig.height=4, fig.width=6, warning=F, message=F}
-output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, return_type= "list")
+output_list<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, return_type= "list")
 ```
 
 Now we can plot learning data.  We can see that the training loss continues to decrease steadily beyond the 6th epoch, yet the validation loss does not.  This suggests that we are potentially overfitting after 6 epochs.

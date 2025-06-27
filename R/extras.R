@@ -352,4 +352,149 @@ make3file <- function(seu, assay = "RNA", dir, get_reductions = TRUE) {
 }
 
 
+#' @keywords internal
+decode_param <- function(param) {
+  bytes  <- param$bytes
+  dtype  <- param$dtype
+  shape  <- param$shape
+  con    <- rawConnection(bytes, "rb")
+  on.exit(close(con), add = TRUE)
+  
+  vals <- switch(dtype,
+                 "F32" = readBin(con, "numeric", n = prod(shape), size = 4, endian = "little"),
+                 "F64" = readBin(con, "numeric", n = prod(shape), size = 8, endian = "little"),
+                 "I32" = readBin(con, "integer", n = prod(shape), size = 4, endian = "little"),
+                 "I64" = readBin(con, "integer", n = prod(shape), size = 8, endian = "little"),
+                 "F16" = read_f16(bytes),   # see note below
+                 "BF16"= read_bf16(bytes),  # idem
+                 stop("Unsupported dtype: ", dtype)
+  )
+  array(vals, dim = shape)
+}
+
+
+
+
+# --- helper: convert 16-bit bfloat16 to double -------------------------
+#' @keywords internal
+# ---------- IEEE-754 half-precision (float16) --------------------------
+read_f16 <- function(raw_vec, endian = "little") {
+  stopifnot(length(raw_vec) %% 2 == 0)
+  
+  ints <- readBin(raw_vec, "integer",
+                  n      = length(raw_vec) / 2,
+                  size   = 2,
+                  endian = endian,
+                  signed = FALSE)
+  
+  sign <- ifelse(bitwAnd(ints, 0x8000L) != 0L, -1, 1)
+  exp  <- bitwShiftR(bitwAnd(ints, 0x7C00L), 10)          # <<— fixed
+  frac <- bitwAnd(ints, 0x03FFL)
+  
+  val <- ifelse(
+    exp == 0L,
+    sign * 2^(-14) * (frac / 1024),
+    ifelse(
+      exp == 0x1FL,
+      NaN,
+      sign * 2^(exp - 15) * (1 + frac / 1024)
+    )
+  )
+  as.numeric(val)
+}
+
+# ---------- bfloat16 ---------------------------------------------------
+#' @keywords internal
+read_bf16 <- function(raw_vec, endian = "little") {
+  stopifnot(length(raw_vec) %% 2 == 0)
+  
+  ints <- readBin(raw_vec, "integer",
+                  n      = length(raw_vec) / 2,
+                  size   = 2,
+                  endian = endian,
+                  signed = FALSE)
+  
+  sign <- ifelse(bitwAnd(ints, 0x8000L) != 0L, -1, 1)
+  exp  <- bitwShiftR(bitwAnd(ints, 0x7F80L), 7)           # <<— fixed
+  mant <- bitwAnd(ints, 0x007FL)
+  
+  val <- ifelse(
+    exp == 0L,
+    sign * 2^(-126) * (mant / 128),
+    ifelse(
+      exp == 0xFFL,
+      NaN,
+      sign * 2^(exp - 127) * (1 + mant / 128)
+    )
+  )
+  as.numeric(val)
+}
+
+#' Extract linear-layer weights and map them to feature / class names
+#'
+#' Reads a model exported by the Rust Burn pipeline together with its
+#' companion metadata file and returns a tidy **weight matrix** whose rows
+#' correspond to the original feature names and whose columns correspond to
+#' the class labels.
+#'
+#' @param dir `character(1)`  Path to the artefact directory that contains
+#'   *both* files produced by `run_custom()`:
+#'
+#'   * `model.mpk`  – tensor weights saved via
+#'     `NamedMpkFileRecorder::<FullPrecisionSettings>`
+#'   * `meta.mpk`   – MessagePack blob created by \code{save_artifacts()}
+#'     holding `feature_names` and `class_labels`.
+#'
+#' @return A base-`data.frame` with dimension
+#'   \eqn{(\#\;features) \times (\#\;classes)}, where
+#'   `rownames(wmat)` are the feature names and
+#'   `colnames(wmat)` are the class labels.  Cell *(i,j)* is the weight
+#'   connecting feature *i* to logit *j*.
+#'
+#' @details
+#' Internally the function:
+#'
+#' 1. deserialises the two MessagePack files with **msgpackR**;
+#' 2. raw‐decodes the tensor bytes through \code{decode_param()};
+#' 3. reshapes the flat vector into a column-major matrix using the stored
+#'    shape (`[out_dim, in_dim]`);
+#' 4. transposes it so that rows align with features;
+#' 5. re-labels rows and columns from the metadata lists.
+#'
+#' The resulting object is ready for
+#' `pheatmap()`, `corrplot()`, or `as.matrix()` for further analysis.
+#'
+#' @seealso
+#' * `msgpack_read()` from **msgpackR** – generic MessagePack reader
+#' * `decode_param()` – helper that converts Burn tensor blobs into R vectors
+#'
+#' @examples
+#' \dontrun{
+#' w <- get_weights("artifacts/run-42")
+#' head(w[, 1:5])         # first 5 classes
+#'
+#' # visualise top positive / negative features for class 3
+#' cls <- 3
+#' w_sorted <- w[order(w[, cls]), cls]
+#' barplot(tail(w_sorted, 10), horiz = TRUE, las = 1)
+#' barplot(head(w_sorted, 10), horiz = TRUE, las = 1)
+#' }
+#'
+#' @export
+#' @importFrom RcppMsgPack msgpack_read
+#' @keywords internal
+#' 
+get_weights <- function(dir){
+  mod <- msgpack_read(file.path(dir, "model.mpk"), simplify = TRUE)
+  meta <- msgpack_read(file.path(dir, "meta.mpk"), simplify = TRUE)
+  weights <- decode_param(mod$item$linear1$weight$param)
+  shape <- mod$item$linear1$weight$param$shape
+  wmat <- data.frame(t(matrix(weights, nrow = shape[2])))
+  rownames(wmat) <- meta$feature_names
+  colnames(wmat) <- meta$class_labels
+  wmat
+}
+
+
+
 

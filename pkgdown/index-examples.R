@@ -61,7 +61,7 @@ p<-DimPlot(seuRef, group.by = "CellType", cols=colors)+
 P<-plotly::ggplotly(p)
 
 
-seuQuery<-viewmastR(query_cds = seuQuery, ref_cds = seuRef, ref_celldata_col = "CellType", selected_genes = VariableFeatures(seu), max_epochs = 20)
+seuQuery<-viewmastR(query_cds = seuQuery, ref_cds = seuRef, ref_celldata_col = "CellType", selected_features = VariableFeatures(seu), max_epochs = 20)
 
 seuQuery$CellType<-as.character(seuQuery$CellType)
 p2<-DimPlot(seuQuery, group.by = "viewmastRust_smr", cols = colors)+ 

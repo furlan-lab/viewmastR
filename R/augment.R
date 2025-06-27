@@ -152,5 +152,5 @@ augment_data<-function(obj, column, norm_number=2000, assay="RNA", prune = F){
 # DimPlot(seuF, group.by = "category1")+NoLegend()
 # DimPlot(seuF, group.by = "category2")
 # 
-# sc<-viewmastR2::viewmastR(sc, seuF, ref_celldata_col = "celltype", query_celldata_col = "learned_label", selected_genes = cvg, verbose = T, FUNC = "softmax_regression", sparse=T) 
+# sc<-viewmastR2::viewmastR(sc, seuF, ref_celldata_col = "celltype", query_celldata_col = "learned_label", selected_features = cvg, verbose = T, FUNC = "softmax_regression", sparse=T) 
 

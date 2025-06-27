@@ -47,14 +47,14 @@ library(ggplot2)
 seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
-vg <- get_selected_genes(seu)
+vg <- get_selected_features(seu)
 ```
 
 ## Build the model and infer for small dataset (not using chunks and parallelization)
 
 This is also covered elsewhere
 ```{r}
-results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, max_epochs = 4, train_only = T, backend = "wgpu")
+results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 4, train_only = T, backend = "wgpu")
 
 
 

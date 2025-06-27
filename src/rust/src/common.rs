@@ -8,9 +8,12 @@ use burn::{
 };
 
 
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use extendr_api::Robj;
 use extendr_api::Conversions;
+use std::fs::File;
+use rmp_serde::{encode::{write_named}, decode::from_read};   // MessagePack writer
+
 
 pub fn mean(numbers: &Vec<f64>) -> f64 {
     numbers.iter().sum::<f64>() as f64 / numbers.len() as f64
@@ -275,4 +278,30 @@ impl Mapper<(usize, SCItemRaw), SCItem> for LocalCountstoMatrixWithIndex {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+    pub struct ModelMeta {
+        pub feature_names: Vec<String>,
+        pub class_labels:  Vec<String>,   // or Vec<i32> if you prefer
+    }
 
+pub fn save_artifacts(
+    artifact_dir: &str,
+    feature_names: Vec<String>,
+    class_labels:  Vec<String>,
+) -> std::io::Result<()> {
+    // ---- 1. weights (exactly what you already do) -------------------------
+    // model.save_file(format!("{}/model", artifact_dir), &recorder)?;
+
+    // ---- 2. side-car metadata --------------------------------------------
+    let meta = ModelMeta { feature_names, class_labels };
+    eprintln!("Feature names and labels saved to {}/meta.mpk", artifact_dir);
+    let mut file = File::create(format!("{}/meta.mpk", artifact_dir))?;
+    write_named(&mut file, &meta).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;   // compact MessagePack
+    Ok(())
+}
+
+fn load_meta(artifact_dir: &str) -> anyhow::Result<ModelMeta> {
+    let file = File::open(format!("{}/meta.mpk", artifact_dir))?;
+    let meta: ModelMeta = from_read(file)?;
+    Ok(meta)
+}

@@ -47,14 +47,14 @@ library(ggplot2)
 seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
-vg <- get_selected_genes(seu)
+vg <- get_selected_features(seu)
 ```
 
 ## Now you run viewmastR
 
 The model path is specified using the 'dir' argument
 ```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_genes = vg, dir = "/tmp/sc_local", max_epochs = 3)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, dir = "/tmp/sc_local", max_epochs = 3)
 ```
 
 ## A look at the predictions

@@ -5,10 +5,10 @@ plot_gene_dispersion<-function(cds, size=1, alpha=0.4){
   if(class(cds)=="cell_data_set"){
     if(is.null(cds@int_metadata$dispersion$disp_func)){
       prd<-cds@int_metadata$dispersion
-      prd$selected_genes<-prd$use_for_ordering
+      prd$selected_features<-prd$use_for_ordering
       g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
       if("use_for_ordering" %in% colnames(cds@int_metadata$dispersion)){
-        g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_genes), alpha=alpha, size=size)+
+        g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_features), alpha=alpha, size=size)+
           scale_color_manual(values=c("lightgray", "firebrick1"))
       }else{
         g <- g + ggplot2::geom_point(data=prd, ggplot2::aes( x=log_mean, y=log_dispersion), color="grey", alpha=alpha, size=size)
@@ -26,8 +26,8 @@ plot_gene_dispersion<-function(cds, size=1, alpha=0.4){
       colnames(prd)<-c("log_mean", "log_dispersion", "gene_id", "fit")
       g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
       if("use_for_ordering" %in% names(cds@int_metadata$dispersion)){
-        prd$selected_genes = cds@int_metadata$dispersion$use_for_ordering
-        g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_genes, alpha=alpha), size=size)
+        prd$selected_features = cds@int_metadata$dispersion$use_for_ordering
+        g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_features, alpha=alpha), size=size)
       }else{
         g <- g + ggplot2::geom_point(data=prd, ggplot2::aes( x=log_mean, y=log_dispersion, color="grey", alpha=alpha), size=size)
       }
@@ -41,10 +41,10 @@ plot_gene_dispersion<-function(cds, size=1, alpha=0.4){
   }
   if(class(cds)=="Seurat"){
     prd<-cds@misc$dispersion
-    prd$selected_genes<-prd$use_for_ordering
+    prd$selected_features<-prd$use_for_ordering
     g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
     if("use_for_ordering" %in% colnames(cds@misc$dispersion)){
-      g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_genes), alpha=alpha, size=size)+
+      g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_features), alpha=alpha, size=size)+
         scale_color_manual(values=c("lightgray", "firebrick1"))
     }else{
       g <- g + ggplot2::geom_point(data=prd, ggplot2::aes( x=log_mean, y=log_dispersion), color="grey", alpha=alpha, size=size)
@@ -133,7 +133,7 @@ select_genes<-function(cds, fit_min=1, fit_max=Inf, logmean_ul=Inf, logmean_ll=-
 
 
 #' @export
-get_selected_genes<-function(cds, gene_column="id"){
+get_selected_features<-function(cds, gene_column="id"){
   if(class(cds)=="cell_data_set"){
     if(is.null(cds@int_metadata$dispersion$disp_func)){
       return(as.character(cds@int_metadata$dispersion[[gene_column]][cds@int_metadata$dispersion$use_for_ordering]))
@@ -147,7 +147,7 @@ get_selected_genes<-function(cds, gene_column="id"){
 }
 
 #' @export
-set_selected_genes<-function(cds, genes, gene_column="id", unique_column="id"){
+set_selected_features<-function(cds, genes, gene_column="id", unique_column="id"){
   if(class(cds)=="cell_data_set"){
     if(is.null(cds@int_metadata$dispersion$disp_func)){
       if(is.null(cds@int_metadata$dispersion)){

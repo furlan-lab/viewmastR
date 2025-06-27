@@ -4771,8 +4771,9 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "viewmastR"
-version = "0.2.4"
+version = "0.3.0"
 dependencies = [
+ "anyhow",
  "burn",
  "byteorder",
  "extendr-api",
@@ -4784,6 +4785,7 @@ dependencies = [
  "ndarray 0.15.6",
  "num-traits",
  "rand 0.8.5",
+ "rmp-serde",
  "serde",
  "serde_json",
  "time",

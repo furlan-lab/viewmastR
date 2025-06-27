@@ -6,8 +6,8 @@
 \usage{
 viewmastR_infer(
   query_cds,
-  model_path,
-  vg,
+  model_dir,
+  selected_features,
   query_celldata_col = "viewmastR_inferred",
   labels = NULL,
   verbose = TRUE,
@@ -22,9 +22,9 @@ viewmastR_infer(
 \arguments{
 \item{query_cds}{Seurat or cell_data_set object - The dataset for which cell labels are to be inferred.}
 
-\item{model_path}{character path to the trained model file.}
+\item{model_dir}{character path to the trained model file.}
 
-\item{vg}{character vector - Features used for inference (must be the same used during model creation).}
+\item{selected_features}{character vector - Features used for inference (must be the same used during model creation).}
 
 \item{query_celldata_col}{character vector - names of the column to store inferred cell labels in the query dataset. Default is "viewmastR_inferred".}
 
@@ -66,7 +66,7 @@ in \code{query_celldata_col} and optionally probabilities in the metadata.
 This function infers cell labels using a trained model and updates the input dataset with the inferred labels.
 }
 \details{
-The function first checks that all variable features specified in \code{vg}
+The function first checks that all variable features specified in \code{selected_features}
 are present in \code{query_cds}, extracts normalized counts, and determines whether
 to run sequentially or in parallel. When parallelization is enabled (\code{workers > 1}),
 the dataset is split into chunks, and each chunk is processed and run through the
@@ -77,17 +77,6 @@ The underlying model is loaded from the specified \code{model_path}, and class
 probabilities (log-odds) are computed for each cell. The function then assigns the
 most likely label to each cell. Optionally, the probabilities are added to the
 object's metadata.
-}
-\examples{
-\dontrun{
-# Assuming `seu` is a Seurat object and `model_path` is a path to a trained model
-result <- viewmastR_infer(
-  query_cds = seu,
-  model_path = "path/to/model.msgpack",
-  vg = VariableFeatures(seu)
-)
-}
-
 }
 \seealso{
 \code{\link[Seurat]{Seurat}}, \code{\link[monocle3]{cell_data_set}}

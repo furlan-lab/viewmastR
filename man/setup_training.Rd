@@ -9,7 +9,7 @@ setup_training(
   ref_cds,
   ref_celldata_col,
   norm_method = c("log", "binary", "size_only", "none"),
-  selected_genes = NULL,
+  selected_features = NULL,
   train_frac = 0.8,
   tf_idf = FALSE,
   scale = FALSE,
@@ -32,7 +32,7 @@ If \code{NULL}, no query data is processed.}
 \item{norm_method}{A character string specifying the normalization method to use. One of \code{"log"},
 \code{"binary"}, \code{"size_only"}, or \code{"none"}.}
 
-\item{selected_genes}{A character vector of gene names to subset. If \code{NULL}, uses all common features
+\item{selected_features}{A character vector of features to subset. If \code{NULL}, uses all common features
 (if query is provided) or all selected features (if only reference is provided).}
 
 \item{train_frac}{A numeric value between 0 and 1 indicating the fraction of reference cells to use for training.
