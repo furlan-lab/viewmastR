@@ -81,3 +81,5 @@ articles:
   - Augment
   - SavedModel
   - Extras
+  - BigQuery
+  - ClassifyingBulk

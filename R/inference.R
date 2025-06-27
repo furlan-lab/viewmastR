@@ -185,7 +185,7 @@ if (show_progress) {
 
         # Run inference on this chunk
         res <- infer_from_model(
-          model_path = model_dir,
+          model_path = file.path(model_dir, "model.mpk"),
           query = chunk_query,
           num_classes = as.integer(model_shapes$num_classes),
           num_features = as.integer(length(selected_features)),

@@ -25,3 +25,4 @@ process_learning_obj(
 \item \code{hidden_size} – \code{NULL} for MLR; numeric (len 1 or 2) for ANN.
 }
 }
+\keyword{internal}
