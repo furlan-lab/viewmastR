@@ -1,7 +1,7 @@
 library(tidyverse)
 library(htmltools)
 library(viridisLite)
-library(viewmastRust)
+library(viewmastR)
 library(Seurat)
 library(ggplot2)
 
@@ -16,7 +16,7 @@ if(grepl("^gizmo", Sys.info()["nodename"])){
 #query dataset
 seu<-readRDS(file.path(ROOT_DIR1, "220302_final_object.RDS"))
 
-seu$seurat_clusters
+#seu$seurat_clusters
 DimPlot(seu, group.by = "seurat_clusters", cols = as.character(pals::alphabet2()))
 DimPlot(seu, group.by = "celltype")
 seu$CellType<-factor(seu$seurat_clusters)
@@ -44,10 +44,10 @@ levels(seu$CellType)<-c(labels[4], #0
 ### example 1 learning
 indices<-1:dim(seu)[2] %in% sample(1:dim(seu)[2], 8000)
 
-seuRef<-CreateSeuratObject(counts = viewmastRust:::get_counts_seurat(seu)[,indices], meta.data = seu@meta.data[indices,])
+seuRef<-CreateSeuratObject(counts = viewmastR:::get_counts_seurat(seu)[,indices], meta.data = seu@meta.data[indices,])
 seuRef@reductions$umap = CreateDimReducObject(embeddings = seu@reductions$umap@cell.embeddings[indices,], assay = "RNA")
 
-seuQuery<-CreateSeuratObject(counts = viewmastRust:::get_counts_seurat(seu)[,!indices], meta.data = seu@meta.data[!indices,])
+seuQuery<-CreateSeuratObject(counts = viewmastR:::get_counts_seurat(seu)[,!indices], meta.data = seu@meta.data[!indices,])
 seuQuery@reductions$umap = CreateDimReducObject(embeddings = seu@reductions$umap@cell.embeddings[!indices,], assay = "RNA")
 
 seuRef$CellType<-as.character(seuRef$CellType)
@@ -60,11 +60,10 @@ p<-DimPlot(seuRef, group.by = "CellType", cols=colors)+
         axis.ticks.y=element_blank())+xlab("UMAP 1")+ylab("UMAP 2")+ggtitle("Ground Truth Celltype on Training Set")
 P<-plotly::ggplotly(p)
 
-
 seuQuery<-viewmastR(query_cds = seuQuery, ref_cds = seuRef, ref_celldata_col = "CellType", selected_features = VariableFeatures(seu), max_epochs = 20)
 
 seuQuery$CellType<-as.character(seuQuery$CellType)
-p2<-DimPlot(seuQuery, group.by = "viewmastRust_smr", cols = colors)+ 
+p2<-DimPlot(seuQuery, group.by = "viewmastR_pred", cols = colors)+ 
   theme(axis.text.x=element_blank(), 
         axis.ticks.x=element_blank(), 
         axis.text.y=element_blank(), 
@@ -72,9 +71,9 @@ p2<-DimPlot(seuQuery, group.by = "viewmastRust_smr", cols = colors)+
 P2<-plotly::ggplotly(p2)
 
 
-confusion_matrix(pred = factor(seuQuery$viewmastRust_smr), gt = factor(seuQuery$CellType), cols = colors)
+confusion_matrix(pred = factor(seuQuery$viewmastR_pred), gt = factor(seuQuery$CellType), cols = colors)
 
-pred<-factor(seuQuery$viewmastRust_smr)
+pred<-factor(seuQuery$viewmastR_pred)
 gt<-factor(seuQuery$CellType)
 mat<-table(pred, gt)
 labels = union(colnames(mat), rownames(mat))
