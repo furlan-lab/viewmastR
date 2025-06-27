@@ -153,7 +153,7 @@ viewmastR <- function(query_cds,
                       return_type = c("object", "list"), 
                       debug = FALSE,
                       train_only = FALSE,
-                      addbias = FALSE,
+                      addbias = FALSE, #not implemented yet
                       ...) {
   FUNC <- match.arg(FUNC)
   return_type <- match.arg(return_type)
