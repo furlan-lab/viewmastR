@@ -5,6 +5,7 @@
 
 
 use extendr_api::prelude::*;
+// use serde_json::de;
 mod scrna_ann;
 mod scrna_ann2l;
 mod scrna_mlr;
@@ -14,11 +15,21 @@ mod pb;
 mod common;
 mod inference;
 mod nb;
+mod signal;
 
 use std::path::Path;
 use std::time::Instant;
 use crate::common::*;
 use crate::inference::*;
+use burn::prelude::Backend;
+use burn::tensor::Tensor;
+use burn::backend::{ndarray::{NdArray}, Autodiff};
+use crate::utils::{rmat_to_tensor, lgamma_plus_one};
+use crate::signal::{Consts, Params, train};
+
+/// Global backend you’ll use everywhere
+pub type B = Autodiff<NdArray<f32>>;
+pub type Device = <B as Backend>::Device;
 
 /// Process Robj learning objects for MLR
 /// @export
@@ -436,6 +447,102 @@ fn usize_from_nullable(n: Nullable<Robj>) -> Option<usize> {
     }
 }
 
+
+/// @export
+/// @keywords internal
+#[extendr]
+fn fit_deconv(
+    sigs     : Robj,
+    bulk     : Robj,
+    mol2read : Robj,
+    w_vec    : Robj,
+    init_log_exp: Robj,
+    lr          : Robj,
+    l1_lambda   : Robj,
+    l2_lambda   : Robj,
+    epochs      : Robj,
+) -> List {
+    // ── convert inputs ─────────────────────────────────────────────────
+    let device = Device::default();
+    
+    let s  = rmat_to_tensor(sigs, &device).expect("bad `sigs` matrix");
+    let k  = rmat_to_tensor(bulk, &device).expect("bad `bulk` matrix");
+    let c  = rmat_to_tensor(mol2read, &device).expect("bad `mol2read` matrix");
+    let init_log_exp = init_log_exp
+        .as_real_vector()
+        .and_then(|v| v.first().copied())
+        .unwrap_or(-10.0);
+    let lr = lr
+        .as_real_vector()
+        .and_then(|v| v.first().copied())
+        .unwrap_or(0.001);
+    let l1_lambda = l1_lambda
+        .as_real_vector()
+        .and_then(|v| v.first().copied())
+        .unwrap_or(0.01);
+    let l2_lambda = l2_lambda
+        .as_real_vector()
+        .and_then(|v| v.first().copied())
+        .unwrap_or(0.01);
+    let epochs = epochs
+        .as_real_vector()
+        .and_then(|v| v.first().copied())
+        .unwrap_or(500.0) as usize;
+    assert!(epochs>0,"epochs must be ≥1");
+    let w: Vec<f32> = w_vec
+        .as_real_vector()
+        .expect("`w_vec` must be numeric")
+        .iter()
+        .map(|x| *x as f32)
+        .collect();
+    if w.len() != s.dims()[0] {
+        panic!("length(w_vec) must equal nrow(sigs)");
+    }
+    let w_t = Tensor::<B, 1>::from_floats(w.as_slice(), &device);
+    // lgamma(k+1) once up-front
+    let lg = lgamma_plus_one(&k, &device);
+
+    // ── constants & params ─────────────────────────────────────────────
+    let consts = Consts::<B> {
+        sp       : Tensor::<B, 2>::cat(vec![s.clone(),
+                    Tensor::<B,2>::ones([s.dims()[0], 1], &device) / (s.dims()[0] as f32)], 1),
+        c        : c,
+        k        : k,
+        w        : w_t,
+        lg_kp1   : lg,
+    };
+    let params = Params {
+        // n_genes      : consts.sp.dims()[0],
+        n_types      : consts.sp.dims()[1] - 1,
+        n_samps      : consts.k.dims()[1],
+        init_log_exp : init_log_exp as f32,
+        lr           : lr as f64,
+        epochs       : epochs as usize,
+        l1           : l1_lambda as f32,
+        l2           : l2_lambda as f32,
+    };
+    // ── train ──────────────────────────────────────────────────────────
+    let (mdl, loss) = train::<B>(consts, params);
+
+    // exposures matrix back to R  (cell_types+Intercept) × samples
+    let exp: Vec<f32> = mdl.exposures()
+                       .to_data()
+                       .convert::<f32>()
+                       .to_vec()
+                       .expect("failed to convert exposures tensor to f32 vector");
+    let dims = mdl.exposures().dims();
+    // 1. wrap the data in an R numeric vector
+    let robj_exp = Robj::from(exp);
+
+    // 2. build the integer dim attribute and attach it
+    let dim_attr = Robj::from(vec![dims[0] as i32, dims[1] as i32]);
+    let _ = robj_exp.set_attrib("dim", dim_attr);    
+
+    list!(exposures = robj_exp,
+          loss      = loss.into_iter().map(|x| x as f64).collect::<Vec<f64>>())
+}
+
+
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
@@ -445,6 +552,7 @@ extendr_module! {
   fn computeSparseRowVariances;
   // fn process_learning_obj_ann;
   // fn process_learning_obj_mlr;
+  fn fit_deconv;
   fn infer_from_model;
   fn process_learning_obj;
   // fn run_nb_test;

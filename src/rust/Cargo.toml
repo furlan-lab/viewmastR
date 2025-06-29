@@ -25,6 +25,8 @@ linfa-bayes = "0.7.0"
 linfa = "0.7.0"
 rmp-serde = "1.0.3"
 anyhow = "1.0.80"
+statrs = "0.18.0"
+burn-derive =  "0.17.0"
 
 # Serialization
 serde = "1"

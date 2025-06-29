@@ -1,5 +1,14 @@
 
 use std::ops::Div;
+use extendr_api::*;
+use burn::tensor::Tensor;
+use burn::backend::ndarray::{NdArray, NdArrayDevice};
+use burn::backend::Autodiff;
+// use serde::de;
+use statrs::function::gamma::ln_gamma;
+use extendr_api::prelude::Scalar as RobjScalar;
+
+pub type B = Autodiff<NdArray<f32>>;
 
 struct Scalar { value: f64 }
 
@@ -12,6 +21,50 @@ impl Div<Scalar> for Vector {
     fn div(self, rhs: Scalar) -> Vector {
         Vector { value: self.value.iter().map(|v| v / rhs.value).collect() }
     }
+}
+
+
+pub fn rmat_to_tensor(mat: Robj, device: &NdArrayDevice) -> Result<Tensor<B, 2>> {
+    let dims = mat.dim().ok_or("dim attribute missing")?;
+    if dims.len() != 2 { return Err("object must be 2-D".into()); }
+
+    let r = dims[0].inner() as usize;  // Rint → &i32 → usize
+    let c = dims[1].inner() as usize;
+
+    let col_major: Vec<f32> = mat
+        .as_real_vector()
+        .ok_or("matrix must be numeric")?
+        .iter()
+        .map(|x| *x as f32)
+        .collect();
+
+    let mut row_major = vec![0f32; r * c];
+    for i in 0..r {
+        for j in 0..c {
+            row_major[i * c + j] = col_major[j * r + i];
+        }
+    }
+
+    Ok(Tensor::<B, 2>::from_floats(row_major.as_slice(), device))
+}
+
+pub fn lgamma_plus_one(
+    k: &Tensor<B, 2>,
+    device: &NdArrayDevice,
+) -> Tensor<B, 2> {
+    // ── 1. pull raw values ------------------------------------------------
+    let vals: Vec<f32> = k.to_data().convert::<f32>().to_vec().expect("failed to convert tensor data");
+
+    // ── 2. lgamma(k + 1)
+    let out: Vec<f32> = vals
+        .iter()
+        .map(|&x| ln_gamma(x as f64 + 1.0) as f32)
+        .collect();
+
+    // ── 3. wrap back into a tensor ---------------------------------------
+    let shape = k.dims();                                // [rows, cols]
+    Tensor::<B, 2>::from_floats(out.as_slice(), device)
+        .reshape(shape)
 }
 
 // deprecated v. 0.2.1
