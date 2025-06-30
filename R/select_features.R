@@ -73,7 +73,7 @@ plot_gene_dispersion<-function(cds, size=1, alpha=0.4){
 #' \code{reduce_dimensions} (UMAP and tSNE). The function
 #' \code{select_features} is an optional step in the trajectory building
 #' process before \code{preprocess_cds}.  After calculating dispersion for
-#' a cell_data_set using the \code{calculate_gene_dispersion} function, the 
+#' a cell_data_set using the \code{calculate_feature_dispersion} function, the 
 #' \code{select_features} function allows the user to identify a set of genes
 #' that will be used in downstream dimensionality reduction methods.
 #'
@@ -197,7 +197,7 @@ set_selected_features<-function(cds, genes, gene_column="id", unique_column="id"
 #' \code{reduce_dimensions} (UMAP and tSNE). The function
 #' \code{calculate_dispersion} is an optional step in the trajectory building
 #' process before \code{preprocess_cds}.  After calculating dispersion for
-#' a cell_data_set using the \code{calculate_gene_dispersion} function, the 
+#' a cell_data_set using the \code{calculate_feature_dispersion} function, the 
 #' \code{select_features} function allows the user to identify a set of genes
 #' that will be used in downstream dimensionality reduction methods.  These
 #' genes and their disperion and mean expression can be plotted using the 
@@ -213,7 +213,7 @@ set_selected_features<-function(cds, genes, gene_column="id", unique_column="id"
 #' @return an updated cell_data_set object with dispersion and mean expression saved
 #' @export
 
-calculate_gene_dispersion<-function(cds, q=3, id_tag="id", symbol_tag="gene_short_name", method="m3addon", removeOutliers=T){
+calculate_feature_dispersion<-function(cds, q=3, id_tag="id", symbol_tag="gene_short_name", method="m3addon", removeOutliers=T){
   software<-NULL
   if(class(cds)=="Seurat"){
     software<-"seurat"

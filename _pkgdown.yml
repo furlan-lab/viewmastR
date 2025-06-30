@@ -61,7 +61,7 @@ reference:
 - title: Additional functions
   desc: Helper functions to add or modify elements
   contents:
-  - calculate_gene_dispersion
+  - calculate_feature_dispersion
   - select_features
   - common_features
   - common_variant_genes

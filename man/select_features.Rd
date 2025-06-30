@@ -44,7 +44,7 @@ provides two different algorithms for dimensionality reduction via
 \code{reduce_dimensions} (UMAP and tSNE). The function
 \code{select_features} is an optional step in the trajectory building
 process before \code{preprocess_cds}.  After calculating dispersion for
-a cell_data_set using the \code{calculate_gene_dispersion} function, the
+a cell_data_set using the \code{calculate_feature_dispersion} function, the
 \code{select_features} function allows the user to identify a set of genes
 that will be used in downstream dimensionality reduction methods.
 }
