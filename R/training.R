@@ -868,7 +868,7 @@ common_variant_seurat <-function(cds1,
                                  verbose = T,
                                  plot=F){
   if(is.null(cds1@misc$dispersion)){
-    cds1<-calculate_gene_dispersion(cds1)
+    cds1<-calculate_feature_dispersion(cds1)
   }
   cds1<-select_features(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
@@ -878,7 +878,7 @@ common_variant_seurat <-function(cds1,
   }
   qsel<-get_selected_features(cds1)
   if(is.null(cds2@misc$dispersion)){
-    cds2<-calculate_gene_dispersion(cds2)
+    cds2<-calculate_feature_dispersion(cds2)
   }
   if(plot){
     if(verbose) {message("Plotting feature dispersion (unselected) for second object")}
@@ -907,7 +907,7 @@ common_variant_m3 <-function(cds1,
                              verbose = T,
                              plot=F){
   if(verbose) {message("Calculating feature dispersion for monocle3 object")}
-  cds1<-calculate_gene_dispersion(cds1)
+  cds1<-calculate_feature_dispersion(cds1)
   cds1<-select_features(cds1, top_n = top_n, logmean_ul = logmean_ul, logmean_ll = logmean_ll)
   if(plot){
     if(verbose) {message("Plotting feature dispersion for first object")}
@@ -915,7 +915,7 @@ common_variant_m3 <-function(cds1,
     print(p)
   }
   qsel<-rowData(cds1)[[row_data_column]][rowData(cds1)[[unique_data_column]] %in% get_selected_features(cds1)]
-  cds2<-calculate_gene_dispersion(cds2)
+  cds2<-calculate_feature_dispersion(cds2)
   if(plot){
     if(verbose) {message("Plotting feature dispersion (unselected) for second object")}
     p<-plot_gene_dispersion(cds2)
@@ -949,7 +949,7 @@ common_variant_m3 <-function(cds1,
 #' 
 #' @export
 
-calculate_gene_dispersion<-function(cds, q=3, id_tag="id", symbol_tag="gene_short_name", method="m3addon", removeOutliers=T){
+calculate_feature_dispersion<-function(cds, q=3, id_tag="id", symbol_tag="gene_short_name", method="m3addon", removeOutliers=T){
   software<-NULL
   if(class(cds)=="Seurat"){
     software<-"seurat"

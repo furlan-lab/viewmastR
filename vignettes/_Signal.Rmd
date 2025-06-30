@@ -1,0 +1,107 @@
+---
+title: "How to use viewmastR to deconvolute"
+output: html_document
+date: "2024-12-10"
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+rm(list=ls())
+
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data"
+  ROOT_DIR3 <- "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/AML/1031/coembed/data"
+  ROOT_DIR4 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+
+seuHR <- readRDS(file.path(ROOT_DIR4, "230329_rnaAugmented_seurat.RDS"))
+seuHR <- calculate_feature_dispersion(seuHR)
+
+colnames(seuHR@assays$RNA@data)
+
+n_top <- c(3000,2500,2500) #number of features
+seuHR <- flscuts::iterative_LSI(seuHR, num_dim = 25, num_features = n_top, resolution = c(2e-4, 9e-4, 1e-3), verbose = T, do_tf_idf = F)
+
+
+undebug(flscuts::iterative_LSI)
+
+single_cell_ref = file.path(ROOT_DIR2, "fetal_bm_seurat.rds")
+single_cell_ref_column = "cell.labels"
+bulk_count_data = file.path(ROOT_DIR3, "aml_all_bulk_counts.csv")
+# bulk_meta_data = "~/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/datasets/AML/1031/coembed/data/bulk_meta.csv" #don't really need this
+gene_weights = file.path(ROOT_DIR2, "geneWeights.tsv")
+
+
+seuHR <- file.path()
+```
+
+```{r}
+library(Seurat)
+seu <- readRDS(single_cell_ref)
+plotly::ggplotly(DimPlot(seu, group.by = "cell.labels", raster = F, cols = as.character(c(pals::alphabet(), pals::polychrome(), pals::glasbey()))))
+
+```
+
+
+
+## Running viewmastR
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+suppressPackageStartupMessages({
+library(viewmastR)
+library(Seurat)
+library(ggplot2)
+})
+
+#query dataset
+seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
+#reference dataset
+seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
+vg <- get_selected_features(seu)
+```
+
+## Build the model and infer for small dataset (not using chunks and parallelization)
+
+This is also covered elsewhere
+```{r}
+results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 4, train_only = T)
+
+
+
+seu<-viewmastR_infer(seu, results[["model_dir"]], vg, labels = levels(factor(seur$SFClassification)), batch_size = 250)
+DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+```
+
+## Build the model and infer for large dataset (dividing the query into chunks and using parallelization)
+
+By using chunks and workers, you can infer from the model only chunks at a time using multiple workers in parallel.
+```{r}
+options(future.globals.maxSize = 16 * 1024^3)
+seu<-viewmastR_infer(seu, results[["model_dir"]], query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 4, workers = 4)
+DimPlot(seu, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
+```
+
+We see no difference if parallelization is used
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_inferred_parallel), cols = seur@misc$colors)
+```
+
+
+## Bigger dataset
+By optimising chunk size, workers and batch size, you can achieve faster results on big datasets. Here we are just inferring back on the larger reference set (because it is larger, but this is not advisable in normal practice)
+```{r}
+seur<-viewmastR_infer(seur, results[["model_dir"]], query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 20, workers = 16, batch_size = 3000)
+DimPlot(seur, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
+```
+
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seur$SFClassification), gt = factor(seur$viewmastR_inferred_parallel), cols = seur@misc$colors)
+```
+
