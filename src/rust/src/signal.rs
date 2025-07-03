@@ -1,7 +1,8 @@
 // use std::os::unix::raw::dev_t;
 
 use burn::{
-    backend::ndarray::{NdArrayDevice},
+    // prelude::Device,
+    // backend::ndarray::{NdArrayDevice},
     module::Param,
     optim::{AdamConfig, Optimizer, GradientsParams},      // <- import the trait and Optimizer
     tensor::{
@@ -32,7 +33,7 @@ pub struct Consts<B: Backend> {
     pub sp: Tensor<B, 2>,
     pub c: Tensor<B, 2>,
     pub k: Tensor<B, 2>,
-    pub w: Tensor<B, 1>,
+    pub w: Tensor<B, 2>,
     pub lg_kp1: Tensor<B, 2>,
 }
 
@@ -47,7 +48,7 @@ pub struct Deconv<B: Backend> {
     log_e: Param<Tensor<B, 2>>,
 }
 
-impl<B: Backend<Device = NdArrayDevice>> Deconv<B> {
+impl<B: Backend> Deconv<B> {
     pub fn new(p: &Params, device: &B::Device) -> Self {
         let mut init = Tensor::<B,2>::zeros( [p.n_types + 1, p.n_samps], device);
         // let mut init = Tensor::<B,2>::zeros(device, [p.n_types + 1, p.n_samps]);
@@ -74,7 +75,8 @@ impl<B: Backend<Device = NdArrayDevice>> Deconv<B> {
         let y  = self.predict(c);
         let k  = c.k.clone();
         let ll = k.clone() * y.clone().log() - y;
-        let term = (c.lg_kp1.clone() - ll) * c.w.clone().unsqueeze::<2>();
+        // let term = (c.lg_kp1.clone() - ll) * c.w.clone().unsqueeze::<2>();
+        let term = (c.lg_kp1.clone() - ll) * c.w.clone();
         let nll  = term.sum();
 
         /* Elastic-net penalties -------------------------------------- */
@@ -92,16 +94,18 @@ impl<B: Backend<Device = NdArrayDevice>> Deconv<B> {
 /*  Training loop                                                     */
 /* ------------------------------------------------------------------ */
 
-pub fn train<B>(
-    consts: Consts<B>,
+pub fn train<BB>(
+    consts: Consts<BB>,
     params: Params,
-) -> (Deconv<B>, Vec<f32>)
+) -> (Deconv<BB>, Vec<f32>)
 where
-    B: AutodiffBackend + Backend<Device = NdArrayDevice>,
-    B::FloatElem: Into<f32>,
+    BB: AutodiffBackend + Backend,       // you get autodiff + tensor ops
+    BB::Device: Default,                 // so you can do `BB::Device::default()`
+    BB::FloatElem: Into<f32>,
+
 {
-    let device = NdArrayDevice::default();
-    let model = Deconv::<B>::new(&params, &device);
+    let device = <BB as Backend>::Device::default();
+    let model = Deconv::<BB>::new(&params, &device);
 
     // --- Adam optimiser --------------------------------------------------
     //     Generic params <B, M> are inferred from the variable's type.

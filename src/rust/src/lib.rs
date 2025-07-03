@@ -464,10 +464,37 @@ fn fit_deconv(
 ) -> List {
     // ── convert inputs ─────────────────────────────────────────────────
     let device = Device::default();
+
+    
     
     let s  = rmat_to_tensor(sigs, &device).expect("bad `sigs` matrix");
     let k  = rmat_to_tensor(bulk, &device).expect("bad `bulk` matrix");
     let c  = rmat_to_tensor(mol2read, &device).expect("bad `mol2read` matrix");
+
+    // Debug: print their dims
+    let sd = s.dims();
+    let kd = k.dims();
+    let cd = c.dims();
+    eprintln!("DEBUG: sigs dims = {:?}", sd);
+    eprintln!("DEBUG: bulk dims = {:?}", kd);
+    eprintln!("DEBUG: mol2read dims = {:?}", cd);
+
+    // ── 2) Early shape‐mismatch assertions ────────────────────────────────
+    assert!(
+        sd.len() == 2 && kd.len() == 2 && cd.len() == 2,
+        "All inputs must be rank-2 matrices"
+    );
+    assert!(
+        sd[0] == kd[0] && sd[0] == cd[0],
+        "Gene‐row mismatch: sigs has {}, bulk has {}, mol2read has {} rows",
+        sd[0], kd[0], cd[0]
+    );
+    assert!(
+        kd[1] == cd[1],
+        "Sample‐column mismatch: bulk has {} cols, mol2read has {} cols",
+        kd[1], cd[1]
+    );
+
     let init_log_exp = init_log_exp
         .as_real_vector()
         .and_then(|v| v.first().copied())
@@ -498,7 +525,10 @@ fn fit_deconv(
     if w.len() != s.dims()[0] {
         panic!("length(w_vec) must equal nrow(sigs)");
     }
-    let w_t = Tensor::<B, 1>::from_floats(w.as_slice(), &device);
+    let w_t = Tensor::<B, 1>::from_floats(w.as_slice(), &device)
+                        .unsqueeze::<2>() // bump to rank-2: [n_genes] -> [n_genes, 1]
+                        .reshape([s.dims()[0], 1]); // reshape to [n_genes, 1]
+    eprintln!("DEBUG: w_vec dims = {:?}", w_t.dims());
     // lgamma(k+1) once up-front
     let lg = lgamma_plus_one(&k, &device);
 
@@ -522,7 +552,7 @@ fn fit_deconv(
         l2           : l2_lambda as f32,
     };
     // ── train ──────────────────────────────────────────────────────────
-    let (mdl, loss) = train::<B>(consts, params);
+    let (mdl, loss) = train(consts, params);
 
     // exposures matrix back to R  (cell_types+Intercept) × samples
     let exp: Vec<f32> = mdl.exposures()

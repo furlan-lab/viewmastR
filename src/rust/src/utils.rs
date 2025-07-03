@@ -1,8 +1,9 @@
 
 use std::ops::Div;
 use extendr_api::*;
+use burn::prelude::Device;
 use burn::tensor::Tensor;
-use burn::backend::ndarray::{NdArray, NdArrayDevice};
+use burn::backend::ndarray::NdArray;
 use burn::backend::Autodiff;
 // use serde::de;
 use statrs::function::gamma::ln_gamma;
@@ -24,20 +25,26 @@ impl Div<Scalar> for Vector {
 }
 
 
-pub fn rmat_to_tensor(mat: Robj, device: &NdArrayDevice) -> Result<Tensor<B, 2>> {
+pub fn rmat_to_tensor(mat: Robj, device: &Device<B>) -> Result<Tensor<B, 2>> {
+    // 1) get dims
     let dims = mat.dim().ok_or("dim attribute missing")?;
-    if dims.len() != 2 { return Err("object must be 2-D".into()); }
+    if dims.len() != 2 {
+        return Err("matrix must be 2-D".into());
+    }
+    let (r, c) = (dims[0].inner() as usize, dims[1].inner() as usize);
+    // eprintln!("▶ rmat_to_tensor: target shape = [{}, {}]", r, c);
 
-    let r = dims[0].inner() as usize;  // Rint → &i32 → usize
-    let c = dims[1].inner() as usize;
+    // 2) pull data
+    let col_major: Vec<f32> = if let Some(rv) = mat.as_real_vector() {
+        rv.iter().map(|&x| x as f32).collect()
+    } else if let Some(iv) = mat.as_integer_vector() {
+        iv.iter().map(|&x| x as f32).collect()
+    } else {
+        return Err("matrix must be numeric or integer".into());
+    };
+    // eprintln!("▶ rmat_to_tensor: col_major.len() = {}", col_major.len());
 
-    let col_major: Vec<f32> = mat
-        .as_real_vector()
-        .ok_or("matrix must be numeric")?
-        .iter()
-        .map(|x| *x as f32)
-        .collect();
-
+    // 3) build row_major
     let mut row_major = vec![0f32; r * c];
     for i in 0..r {
         for j in 0..c {
@@ -45,12 +52,25 @@ pub fn rmat_to_tensor(mat: Robj, device: &NdArrayDevice) -> Result<Tensor<B, 2>>
         }
     }
 
-    Ok(Tensor::<B, 2>::from_floats(row_major.as_slice(), device))
+    // 4) from_floats → rank-1
+    let t1 = Tensor::<B, 1>::from_floats(row_major.as_slice(), device);
+    // eprintln!("▶ after from_floats: t1.dims() = {:?}", t1.dims());
+
+    // 5) bump to rank-2 via unsqueeze
+    let t2 = t1.unsqueeze::<2>();
+    // eprintln!("▶ after unsqueeze: t2.dims() = {:?}", t2.dims());
+
+    // 6) reshape into [r, c]
+    let t3 = t2.reshape([r, c]);
+    // eprintln!("▶ after reshape: t3.dims() = {:?}", t3.dims());
+
+    Ok(t3)
 }
+
 
 pub fn lgamma_plus_one(
     k: &Tensor<B, 2>,
-    device: &NdArrayDevice,
+    device: &Device<B>,
 ) -> Tensor<B, 2> {
     // ── 1. pull raw values ------------------------------------------------
     let vals: Vec<f32> = k.to_data().convert::<f32>().to_vec().expect("failed to convert tensor data");
@@ -62,9 +82,12 @@ pub fn lgamma_plus_one(
         .collect();
 
     // ── 3. wrap back into a tensor ---------------------------------------
-    let shape = k.dims();                                // [rows, cols]
-    Tensor::<B, 2>::from_floats(out.as_slice(), device)
-        .reshape(shape)
+    // 3a) build a 1D tensor of length r*c
+    let t1 = Tensor::<B, 1>::from_floats(out.as_slice(), device);
+    // 3b) bump it to rank=2: [r*c] -> [1, r*c]
+    let t2 = t1.unsqueeze::<2>();
+    // 3c) reshape into [r, c]
+    t2.reshape(k.dims())
 }
 
 // deprecated v. 0.2.1
