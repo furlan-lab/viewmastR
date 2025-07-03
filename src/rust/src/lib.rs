@@ -469,8 +469,17 @@ fn fit_deconv(
     
     let s  = rmat_to_tensor(sigs, &device).expect("bad `sigs` matrix");
     let k  = rmat_to_tensor(bulk, &device).expect("bad `bulk` matrix");
-    let c  = rmat_to_tensor(mol2read, &device).expect("bad `mol2read` matrix");
-
+    // let c  = rmat_to_tensor(mol2read, &device).expect("bad `mol2read` matrix");
+    let c_vec: Vec<f32> = mol2read                         // <-- now expect a vector
+        .as_integer_vector()
+        .expect("`mol2read` must be numeric")
+        .iter()
+        .map(|x| *x as f32)
+        .collect();
+    assert_eq!(c_vec.len(), s.dims()[0], "`mol2read` must have length = nrow(sigs)");
+    let c = Tensor::<B, 1>::from_floats(c_vec.as_slice(), &device)
+            .unsqueeze::<1>()           // axis = 1 (rank 1 → rank 2)
+            .reshape([s.dims()[0], 1]);   // G × 1
     // Debug: print their dims
     let sd = s.dims();
     let kd = k.dims();
@@ -480,20 +489,11 @@ fn fit_deconv(
     eprintln!("DEBUG: mol2read dims = {:?}", cd);
 
     // ── 2) Early shape‐mismatch assertions ────────────────────────────────
-    assert!(
-        sd.len() == 2 && kd.len() == 2 && cd.len() == 2,
-        "All inputs must be rank-2 matrices"
-    );
-    assert!(
-        sd[0] == kd[0] && sd[0] == cd[0],
-        "Gene‐row mismatch: sigs has {}, bulk has {}, mol2read has {} rows",
-        sd[0], kd[0], cd[0]
-    );
-    assert!(
-        kd[1] == cd[1],
-        "Sample‐column mismatch: bulk has {} cols, mol2read has {} cols",
-        kd[1], cd[1]
-    );
+    assert!(sd.len() == 2 && kd.len() == 2 && cd.len() == 2,
+            "All inputs must be rank-2 matrices");
+    assert!(sd[0] == kd[0] && sd[0] == cd[0],
+            "Gene rows differ: sigs={}, bulk={}, mol2read={}", sd[0], kd[0], cd[0]);
+    assert!(cd[1] == 1, "`mol2read` must have one column (G×1 vector)");
 
     let init_log_exp = init_log_exp
         .as_real_vector()

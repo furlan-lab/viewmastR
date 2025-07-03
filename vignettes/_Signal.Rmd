@@ -85,7 +85,7 @@ flscuts::export_seurat_to_10x(seuHR, dir = "~/Desktop/seuHR")
 
 library(viewmastR)
 
-bulk_count_data = "~/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/AML/1031/coembed/data/aml_all_bulk_counts.csv"
+bulk_count_data = "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/AML/1031/coembed/data/aml_all_bulk_counts.csv"
 gene_weights = "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights.tsv"
 
 bulk_count_data <- read.csv(bulk_count_data)
@@ -174,21 +174,21 @@ deconvolute <- function(
       epochs      = epochs)
 }
 
-C_mat <- matrix(
-  as.numeric(C_mat),
-  nrow = length(C_mat),
-  ncol = ncol(bulk_mat_t),
-  byrow = FALSE
-)
+# C_mat <- matrix(
+#   as.numeric(C_mat),
+#   nrow = length(C_mat),
+#   ncol = ncol(bulk_mat_t),
+#   byrow = FALSE
+# )
 
 dim(ref_mat)
-dim(C_mat)
+length(C_mat)
 dim(bulk_mat_t)
 length(w_vec)
 
-res <- deconvolute(ref_mat, bulk_mat_t, length_vec = C_mat, weight_vec = w_vec)
-
-
+res <- deconvolute(ref_mat, bulk_mat_t, length_vec = C_mat, weight_vec = w_vec, lr = 0.5, epochs = 2000)
+res$exposures
+res$exposures[27,]
 ```
 
 ```{r}

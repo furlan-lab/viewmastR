@@ -81,13 +81,19 @@ impl<B: Backend> Deconv<B> {
 
         /* Elastic-net penalties -------------------------------------- */
         let e   = self.exposures();
-        let l1  = e.clone().abs().sum() * p.l1; // clone → avoid move
-        let n_samples = e.dims()[1];
-        let l2 = e.slice([0..p.n_types, 0..n_samples])
-                .powf_scalar(2.0)
+        let l1 = e.clone().abs().sum_dim(0).sum() * p.l1;  // sum over all dims in one go
+        // let l1  = e.clone().abs().sum() * p.l1; // clone → avoid move
+        // let n_samples = e.dims()[1];
+        // let l2 = e.slice([0..p.n_types, 0..n_samples])
+        //         .powf_scalar(2.0)
+        //         .sum() * p.l2;
+        let l2 = e.clone().slice([0..p.n_types, 0..e.dims()[1]])
+                .powf_scalar(2.)
                 .sum() * p.l2;
-        nll + l1 + l2
+                nll + l1 + l2
     }
+
+
 }
 
 /* ------------------------------------------------------------------ */
@@ -112,7 +118,7 @@ where
     let mut opt = AdamConfig::new().init();
 
     let mut hist = Vec::with_capacity(params.epochs);
-    for _ in 0..params.epochs {
+    for epoch in 0..params.epochs {
         // forward + loss
         let loss  = model.loss(&consts, &params);
 
@@ -121,11 +127,16 @@ where
 
         // 2. wrap so Adam can match them to ParamIds
         let grads = GradientsParams::from_grads(raw_grads, &model);
-
+        // if let Some(grad) = raw_grads.get(&model.log_e) {
+        //     eprintln!("mean |∇log_e| = {}", grad.abs().mean().into_scalar());
+        // }
         // 3. update weights in-place
         model = opt.step(params.lr as f64, model, grads);
 
-        hist.push(loss.into_scalar().into());
+        hist.push(loss.clone().into_scalar().into());
+        if epoch % 50 == 0 {
+            eprintln!("epoch {epoch:4}  loss = {}", loss.into_scalar());
+        }
     }
     (model, hist)
 }
