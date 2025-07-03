@@ -105,7 +105,7 @@ where
 
 {
     let device = <BB as Backend>::Device::default();
-    let model = Deconv::<BB>::new(&params, &device);
+    let mut model = Deconv::<BB>::new(&params, &device);
 
     // --- Adam optimiser --------------------------------------------------
     //     Generic params <B, M> are inferred from the variable's type.
@@ -123,7 +123,7 @@ where
         let grads = GradientsParams::from_grads(raw_grads, &model);
 
         // 3. update weights in-place
-        opt.step(params.lr as f64, model.clone(), grads); // #FIXME
+        model = opt.step(params.lr as f64, model, grads);
 
         hist.push(loss.into_scalar().into());
     }
