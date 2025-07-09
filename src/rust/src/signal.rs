@@ -1,5 +1,7 @@
 // use std::os::unix::raw::dev_t;
-
+use chrono::Utc;
+use burn::tensor::activation::sigmoid; 
+// use burn::tensor::TensorOps; 
 use burn::{
     // prelude::Device,
     // backend::ndarray::{NdArrayDevice},
@@ -105,7 +107,7 @@ pub fn train<BB>(
     params: Params,
 ) -> (Deconv<BB>, Vec<f32>)
 where
-    BB: AutodiffBackend + Backend,       // you get autodiff + tensor ops
+    BB: AutodiffBackend + Backend<FloatElem = f32>,       // you get autodiff + tensor ops
     BB::Device: Default,                 // so you can do `BB::Device::default()`
     BB::FloatElem: Into<f32>,
 
@@ -118,9 +120,88 @@ where
     let mut opt = AdamConfig::new().init();
 
     let mut hist = Vec::with_capacity(params.epochs);
+
+
+    // use burn::module::ParamId;   // for ParamId
+
+
+    // /* null-model phase – optimise ONLY intercept row ------------------- */
+    // let r0          = params.n_types;    // last row index
+    // let null_epochs = 800;
+    // let mut opt_null = AdamConfig::new().init();
+    // eprintln!(
+    //     "Null model phase: {} epochs, lr = {:.3e}",
+    //     null_epochs, params.lr
+    // );
+    // let pid_intercept: ParamId = model.log_e.id;      // ParamId once
+    // eprintln!(
+    //     "Null model phase: intercept param id = {}",
+    //     pid_intercept
+    // );
+    // for _ in 0..null_epochs {
+    //     // ── inside the for _ in 0..null_epochs loop ────────────────
+    //     let loss    = model.loss(&consts, &params);
+    //     let mut raw = loss.backward();
+
+    //     /* 1️⃣ extract only the intercept gradient ------------------- */
+    //     let mut gs_one =
+    //         GradientsParams::from_params(&mut raw, &model, &[pid_intercept]);
+
+    //     /* 2️⃣ take ownership, zero non-intercept rows --------------- */
+    //     let mut grad = gs_one
+    //         .remove::<BB, 2>(pid_intercept)
+    //         .expect("intercept gradient missing");
+
+    //     let zeros =
+    //         Tensor::<BB, 2>::zeros([r0, params.n_samps], &grad.device());
+    //     grad = grad.slice_assign([0..r0, 0..params.n_samps], zeros);
+
+    //     /* 3️⃣ build a FRESH container with the single tensor -------- */
+    //     let mut gs_clean = GradientsParams::new();
+    //     gs_clean.register::<BB, 2>(pid_intercept, grad);
+
+    //     /* 4️⃣ optimiser step ---------------------------------------- */
+    //     model = opt_null.step(params.lr, model, gs_clean);
+
+    // }
+
+
+    /* --------------------------------------------------------------- */
+    /*  Closed-form fit of the intercept row (= “null model”)          */
+    /* --------------------------------------------------------------- */
+    {
+        let r0 = params.n_types;                       // last row index
+
+        /* 1.  per-sample observed totals  k_tot_j -------------------- */
+        let obs_tot = consts.k.clone().sum_dim(0);             // shape (n_samps,)
+
+        /* 2.  per-sample baseline totals  Σ_i s0_i * c_ij ------------ */
+        // intercept signature column  s0_i   (n_genes × 1)
+        let s0 = consts.sp
+            .clone()
+            .slice([0..consts.sp.dims()[0], r0..r0 + 1]);   // (genes,1)
+
+        let base = (s0 * consts.c.clone()).sum_dim(0);      // (n_samps,)
+
+        /* 3.  MLE  e0_j = k_tot_j / base_j  -------------------------- */
+        let e0_log = (obs_tot / base).log();                // (n_samps,)
+
+        // 2. start from a detached clone of the original param
+        let log_e_init = model.log_e.val().clone().detach();
+
+        // 3. write the intercept row, THEN detach the result
+        let log_e = log_e_init
+            .slice_assign([r0..r0 + 1, 0..params.n_samps], e0_log.unsqueeze())
+            .detach();                           //  ← add this
+
+        // 4. wrap as a new Param (now a true leaf)
+        model.log_e = Param::from_tensor(log_e);
+    }
+
     for epoch in 0..params.epochs {
         // forward + loss
         let loss  = model.loss(&consts, &params);
+        let o_val: f64 = loss.clone().into_scalar().into();
 
         // 1. backward pass – returns a plain Gradients map
         let raw_grads = loss.backward();
@@ -134,9 +215,48 @@ where
         model = opt.step(params.lr as f64, model, grads);
 
         hist.push(loss.clone().into_scalar().into());
-        if epoch % 50 == 0 {
-            eprintln!("epoch {epoch:4}  loss = {}", loss.into_scalar());
-        }
+        if epoch % 100 == 0 {
+                /* -------- diagnostics -------- */
+            // 1. active-coefficient count   (exclude the intercept row)
+            let log_e  = model.log_e.val().clone();                // shape (sigs+1, n)
+            let cnt_t = sigmoid(
+                log_e.slice([0..params.n_types, 0..params.n_samps])
+            ).sum();                                            // scalar tensor
+            let cnt     = cnt_t.into_scalar() as f32;
+            let prev_o   = o_val;
+            let prev_cnt = cnt;
+            // 2. average NLL per cell
+            let y_hat   = model.predict(&consts);
+            let k       = consts.k.clone();
+            let ll_cell = k.clone() * y_hat.clone().log() - y_hat.clone();
+            let nll_tot = (consts.lg_kp1.clone() - ll_cell) * consts.w.clone();
+            let cells = (k.dims()[0] * k.dims()[1]) as f32;  
+            let avg_nll = nll_tot.sum().into_scalar() / cells;   
+
+            // 3. average coverage ratio
+            let pred_tot = y_hat.sum_dim(0);   // sum over genes → (n,)
+            let obs_tot  = k.sum_dim(0);
+            let avg_cov  = (pred_tot / obs_tot).mean().into_scalar();
+
+            // 4. deltas
+            let d_o   = if prev_o.is_nan() { 0.0 } else { o_val - prev_o };
+            let d_cnt = if prev_cnt.is_nan() { 0.0 } else { cnt   - prev_cnt };
+            // eprintln!("epoch {epoch:4}  loss = {}", loss.into_scalar());
+            eprintln!(
+                "[{}] epoch {:5}, Obj = {:.5e}, ActiveCoeff ={:.2}, delta Obj={:+.3}, \
+                delta ActiveCoeff={:+.3}, nSigsAvg={:.4}/{}, avgNLL={:.2}, avgCov={:.6}",
+                Utc::now().format("%Y-%m-%d %H:%M:%S%.6f"),
+                epoch,
+                o_val,
+                cnt,
+                d_o,
+                d_cnt,
+                cnt / params.n_samps as f32,
+                params.n_types + 1,
+                avg_nll,
+                avg_cov
+            );
+            }
     }
     (model, hist)
 }

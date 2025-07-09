@@ -23,6 +23,7 @@ use crate::common::*;
 use crate::inference::*;
 use burn::prelude::Backend;
 use burn::tensor::Tensor;
+// use burn::backend::{ndarray::{NdArray}, candle::Candle, Autodiff};
 use burn::backend::{ndarray::{NdArray}, Autodiff};
 use crate::utils::{rmat_to_tensor, lgamma_plus_one};
 use crate::signal::{Consts, Params, train};
@@ -30,6 +31,9 @@ use crate::signal::{Consts, Params, train};
 /// Global backend you’ll use everywhere
 pub type B = Autodiff<NdArray<f32>>;
 pub type Device = <B as Backend>::Device;
+
+// pub type B = Autodiff<Candle<f32>>;
+// pub type Device = <B as Backend>::Device;
 
 /// Process Robj learning objects for MLR
 /// @export

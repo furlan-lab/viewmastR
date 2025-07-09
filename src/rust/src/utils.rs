@@ -3,13 +3,16 @@ use std::ops::Div;
 use extendr_api::*;
 use burn::prelude::Device;
 use burn::tensor::Tensor;
+// use burn::backend::{ndarray::NdArray, candle::Candle};
 use burn::backend::ndarray::NdArray;
+
 use burn::backend::Autodiff;
 // use serde::de;
 use statrs::function::gamma::ln_gamma;
 use extendr_api::prelude::Scalar as RobjScalar;
 
 pub type B = Autodiff<NdArray<f32>>;
+// pub type B = Autodiff<Candle<f32>>;
 
 struct Scalar { value: f64 }
 

@@ -162,7 +162,7 @@ deconvolute <- function(
     l2_lambda    = 0.01,
     epochs       = 300)
 {
-    fit_deconv(
+    fit <- fit_deconv(
       sigs = ref_mat,
       bulk = bulk_mat,
       mol2read = length_vec,
@@ -172,6 +172,32 @@ deconvolute <- function(
       l1_lambda   = l1_lambda,
       l2_lambda   = l2_lambda,
       epochs      = epochs)
+  
+        ## -- 1. sort the sample columns the way pandas .sort_index(axis=1) does ----
+      loss <- fit$loss
+      fit <- fit$exposures[ , order(colnames(bulk_mat))]
+      # 
+      # 
+      # ## -- 2. split out “goodness-of-fit” rows -----------------------------------
+      # gof_noms <- c("pR2", "fitCount", "obsCount")
+      # gof <- fit[gof_noms, , drop = FALSE]
+      # 
+      # ## add log2(countRatio) = log2(fitCount / obsCount) per sample
+      # gof["log2(countRatio)", ] <- log2(gof["fitCount", ] / gof["obsCount", ])
+      # 
+      # ## -- 3. raw exposures (everything that is *not* a GOF row) -----------------
+      # expos_idx <- !rownames(fit) %in% gof_noms
+      # raw <- fit[expos_idx, , drop = FALSE]
+    
+      ## -- 4. column-wise normalisation so each sample sums to 1 -----------------
+      exposures <- sweep(fit, 2, colSums(fit), FUN = "/")
+    
+      ## -- 5. return a list mimicking the Python dict ----------------------------
+      list(
+        exposures = exposures
+        # gof       = gof,
+        # raw       = raw          # raw (unnormalised) exposure matrix
+      )
 }
 
 # C_mat <- matrix(
@@ -186,9 +212,11 @@ length(C_mat)
 dim(bulk_mat_t)
 length(w_vec)
 
-res <- deconvolute(ref_mat, bulk_mat_t, length_vec = C_mat, weight_vec = w_vec, lr = 0.5, epochs = 2000)
-res$exposures
-res$exposures[27,]
+undebug(deconvolute)
+res <- deconvolute(ref_mat, bulk_mat_t, length_vec = C_mat, weight_vec = w_vec, lr = 0.01, epochs = 3000)
+
+
+ComplexHeatmap::Heatmap(res$exposures, cluster_rows = F, cluster_columns = F,col = viridis_light_high)
 ```
 
 ```{r}
