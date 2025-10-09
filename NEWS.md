@@ -1,3 +1,7 @@
+# viewmastR v0.3.1
+
+* bug - recursion bug seen only with Rust 1.90
+
 # viewmastR v0.3.0
 
 * bug - fixed a bug that failed to correctly perform ReLu on all NN
