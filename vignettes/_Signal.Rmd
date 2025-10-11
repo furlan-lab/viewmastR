@@ -35,14 +35,101 @@ cols <- readRDS(file.path(ROOT_DIR4, "230329_rnaAugmented_seurat.RDS"))@misc$col
 # seuF <- readRDS(file.path(ROOT_DIR2, "fetal_bm_seurat.rds"))
 
 
+
 ```
 
+#make ens to symbol
+```{r}
+aml <-readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/AML/1031/coembed/data/AML_062822/bulk_aml_se.rds")
+
+rowData(aml)$ens<-rowData(aml)$gene_id
+rowData(aml)$ens <- strsplit(rowData(aml)$ens, "\\.") %>% sapply("[[", 1)
+rowData(aml)$gene_name[duplicated(rowData(aml)$ens)]<-paste(rowData(aml)$gene_name[duplicated(rowData(aml)$ens)], "_PAR_Y")
+rowData(aml)$ens[duplicated(rowData(aml)$ens)]<-rowData(aml)$gene_id[duplicated(rowData(aml)$ens)]
+
+annot <- rowData(aml)
+write.csv(annot, "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/resources/annotation/GRCh38_symbol_ensembl_harmonized.csv")
+```
+
+
+```{r}
+dat<-data.table::fread("/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt")
+rownames(dat)<-dat$`_TranscriptID`
+dat$`_TranscriptID`<-NULL
+mat <- as.matrix(dat)
+rownames(mat)<-rownames(dat)
+```
+
+
+
+```{r}
+library(biomaRt)
+library(tidyverse)
+cds <- readRDS(file.path(ROOT_DIR4, "healthy_bm_greenleaf.rds"))
+ensembl_list <- rownames(cds)
+human <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
+gene_coords=getBM(attributes=c("hgnc_symbol","ensembl_gene_id", "start_position","end_position"), filters="hgnc_symbol", values=ensembl_list, mart=human)
+gene_coords$size=gene_coords$end_position - gene_coords$start_position
+unique(gene_coords$hgnc_symbol[duplicated(gene_coords$hgnc_symbol)])
+
+gff<-"/Users/sfurlan/refs/GRCh38/genes.gtf"
+gff <- ape::read.gff(gff, na.strings = c(".", "?"), GFF3 = F)
+
+genes <- gff[gff$feature=="gene",]
+library(purrr)
+library(stringr)
+
+
+attr_pattern <- '(\\w+)\\s+"([^"]*)"|(\\w+)\\s+([^;"]+)'
+
+parse_attributes_row <- function(s) {
+  m <- stringr::str_match_all(s, attr_pattern)[[1]]
+  if (nrow(m) == 0) return(tibble())  # empty row guard
+
+  keys  <- ifelse(!is.na(m[,2]), m[,2], m[,4])
+  vals  <- ifelse(!is.na(m[,3]), m[,3], m[,5])
+
+  # clean
+  keys <- trimws(keys)
+  vals <- trimws(vals)
+
+  # collapse duplicates (e.g., multiple 'tag' entries)
+  collapsed <- lapply(split(vals, keys), function(x) paste(unique(x), collapse = ","))
+
+  # return a one-row tibble with named fields
+  tibble(!!!collapsed)
+}
+
+# Suppose your data frame is df with a column `attributes` like the example you pasted
+attrs_wide <- genes %>%
+  mutate(.parsed = map(attributes, parse_attributes_row)) %>%
+  unnest_wider(.parsed, names_repair = "unique") %>%  # handles any repeated keys safely
+  select(-attributes)  # drop original if you like
+
+# Inspect
+glimpse(attrs_wide)
+
+
+attrs_wide$width <- attrs_wide$end - attrs_wide$start
+
+dups <- attrs_wide$gene_name[duplicated(attrs_wide$gene_name)]
+
+final_annot <- attrs_wide[!attrs_wide$gene_name %in% dups,]
+gw <- read.table("/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights.tsv", header=T)
+final_annot$weight <- gw$weight[match(final_annot$gene_id, gw$geneID)]
+final_annot$weight[is.na(final_annot$weight)]<- 1.0
+ 
+write.table(data.frame(ens=final_annot$gene_id, symbol=final_annot$gene_name, length=final_annot$width, weight = final_annot$weight), "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights_withSymbol.tsv", quote = F, sep = "\t")
+
+
+```
 
 
 ```{r}
 
 cds <- readRDS(file.path(ROOT_DIR4, "healthy_bm_greenleaf.rds"))
 plot_cells(cds, color_cells_by = "BioClassification")
+
 rownames(cds)<-rowData(cds)$gene_id
 #cds <- normalized_counts(cds)
 PCs <- 25 #Number of PCs for clustering
