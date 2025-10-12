@@ -26,52 +26,14 @@ library(scCustomize)
 library(monocle3)
 library(magrittr)
 library(flscuts)
-cols <- readRDS(file.path(ROOT_DIR4, "230329_rnaAugmented_seurat.RDS"))@misc$colors
-# seuHR <- readRDS(file.path(ROOT_DIR4, "230329_rnaAugmented_seurat.RDS"))
-# seuHR <- readRDS(file.path(ROOT_DIR4, "healthy_bm_greenleaf.rds"))
-# seuHR <- CreateSeuratObject(counts = seuHR@assays@data$counts, meta.data = data.frame(colData(seuHR)))
-# seuHR <- calculate_feature_dispersion(seuHR)
-# 
-# seuF <- readRDS(file.path(ROOT_DIR2, "fetal_bm_seurat.rds"))
-
 
 
 ```
 
-#make ens to symbol
+
+## Make a harmonized ENS (without version), Symbol, lengths and Weights dataset for deconvolution
 ```{r}
-aml <-readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/AML/1031/coembed/data/AML_062822/bulk_aml_se.rds")
-
-rowData(aml)$ens<-rowData(aml)$gene_id
-rowData(aml)$ens <- strsplit(rowData(aml)$ens, "\\.") %>% sapply("[[", 1)
-rowData(aml)$gene_name[duplicated(rowData(aml)$ens)]<-paste(rowData(aml)$gene_name[duplicated(rowData(aml)$ens)], "_PAR_Y")
-rowData(aml)$ens[duplicated(rowData(aml)$ens)]<-rowData(aml)$gene_id[duplicated(rowData(aml)$ens)]
-
-annot <- rowData(aml)
-write.csv(annot, "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/resources/annotation/GRCh38_symbol_ensembl_harmonized.csv")
-```
-
-
-```{r}
-dat<-data.table::fread("/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt")
-rownames(dat)<-dat$`_TranscriptID`
-dat$`_TranscriptID`<-NULL
-mat <- as.matrix(dat)
-rownames(mat)<-rownames(dat)
-```
-
-
-
-```{r}
-library(biomaRt)
-library(tidyverse)
-cds <- readRDS(file.path(ROOT_DIR4, "healthy_bm_greenleaf.rds"))
-ensembl_list <- rownames(cds)
-human <- useMart("ensembl", dataset="hsapiens_gene_ensembl")
-gene_coords=getBM(attributes=c("hgnc_symbol","ensembl_gene_id", "start_position","end_position"), filters="hgnc_symbol", values=ensembl_list, mart=human)
-gene_coords$size=gene_coords$end_position - gene_coords$start_position
-unique(gene_coords$hgnc_symbol[duplicated(gene_coords$hgnc_symbol)])
-
+## start with the 10X gtf file
 gff<-"/Users/sfurlan/refs/GRCh38/genes.gtf"
 gff <- ape::read.gff(gff, na.strings = c(".", "?"), GFF3 = F)
 
@@ -115,6 +77,8 @@ attrs_wide$width <- attrs_wide$end - attrs_wide$start
 dups <- attrs_wide$gene_name[duplicated(attrs_wide$gene_name)]
 
 final_annot <- attrs_wide[!attrs_wide$gene_name %in% dups,]
+
+#add weights
 gw <- read.table("/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights.tsv", header=T)
 final_annot$weight <- gw$weight[match(final_annot$gene_id, gw$geneID)]
 final_annot$weight[is.na(final_annot$weight)]<- 1.0
@@ -124,6 +88,491 @@ write.table(data.frame(ens=final_annot$gene_id, symbol=final_annot$gene_name, le
 
 ```
 
+
+## Run the python notebook to deconvolute
+
+#Python notebook working as evidenced by this heatmap.
+```{r}
+library(ComplexHeatmap)
+d <- read.csv("/Users/sfurlan/Desktop/test_fit.csv")
+rownames(d)<-d$True
+d$True <- NULL
+d <- d[,!(grepl("LSC", colnames(d)) | grepl("rHSC", colnames(d)) | grepl("Blast", colnames(d)))]
+m <- as.matrix(d)
+cols <- pals::glasbey(13)
+names(cols) <- unique(strsplit(colnames(m), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(m), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(m, bottom_annotation = cola, show_column_names = F, col = viridis_light_high)
+```
+
+#### Claude
+
+```{r}
+#' Deconvolve bulk RNA-seq data using single-cell signatures
+#'
+#' @param signatures Matrix of cellular signatures (genes × cell_types). 
+#'   Each column should be normalized to sum to 1.
+#' @param bulk_counts Matrix of bulk RNA-seq counts (genes × samples).
+#'   Gene names must match signatures.
+#' @param gene_lengths Numeric vector of gene lengths, same length as nrow(signatures).
+#' @param gene_weights Optional numeric vector of gene weights (0-1), same length as 
+#'   nrow(signatures). Default is all 1s.
+#' @param backend Which compute backend to use: "ndarray" (CPU, default), 
+#'   "wgpu" (GPU if compiled with wgpu feature), "cuda" (CUDA if available).
+#' @param insert_size Insert size for RNA-seq fragments. Default 500.
+#' @param init_log_exp Initial value for log exposures. Default -10.
+#' @param learning_rate Learning rate for optimization. Default 0.01.
+#' @param l1_lambda L1 regularization parameter. Default 0.0 (no regularization).
+#' @param l2_lambda L2 regularization parameter. Default 0.0 (no regularization).
+#' @param max_iter Maximum number of iterations. Default 10000.
+#' @param poll_interval Check convergence every N iterations. Default 100.
+#' @param ll_tolerance Log-likelihood convergence tolerance. Default 1e-6.
+#' @param sparsity_tolerance Sparsity convergence tolerance. Default 1e-4.
+#'
+#' @return A list with:
+#'   \item{exposures}{Matrix of cell type proportions (cell_types+intercept × samples)}
+#'   \item{pred_counts}{Matrix of predicted bulk counts (genes × samples)}
+#'   \item{proportions}{Normalized cell type proportions excluding intercept}
+#'
+#' @export
+#' @examples
+#' \dontrun{
+#' # CPU backend (default)
+#' result <- deconvolve_bulk(
+#'   signatures = signatures,
+#'   bulk_counts = bulk_counts,
+#'   gene_lengths = gene_lengths
+#' )
+#' 
+#' # GPU backend (if available)
+#' result <- deconvolve_bulk(
+#'   signatures = signatures,
+#'   bulk_counts = bulk_counts,
+#'   gene_lengths = gene_lengths,
+#'   backend = "wgpu"
+#' )
+#' }
+deconvolve_bulk <- function(
+    signatures,
+    bulk_counts,
+    gene_lengths,
+    gene_weights = NULL,
+    backend = "wgpu",
+    insert_size = 500,
+    init_log_exp = -10,
+    learning_rate = 0.1,
+    l1_lambda = 0.0,
+    l2_lambda = 0.0,
+    max_iter = 2000,
+    poll_interval = 100,
+    ll_tolerance = 1e-6,
+    sparsity_tolerance = 1e-4
+) {
+    # Input validation
+    if (!is.matrix(signatures)) {
+        stop("signatures must be a matrix")
+    }
+    if (!is.matrix(bulk_counts)) {
+        stop("bulk_counts must be a matrix")
+    }
+    if (!is.numeric(gene_lengths)) {
+        stop("gene_lengths must be numeric")
+    }
+    
+    n_genes <- nrow(signatures)
+    n_cell_types <- ncol(signatures)
+    
+    # Check dimensions
+    if (nrow(bulk_counts) != n_genes) {
+        stop("Number of genes in bulk_counts (", nrow(bulk_counts), 
+             ") must match signatures (", n_genes, ")")
+    }
+    
+    if (length(gene_lengths) != n_genes) {
+        stop("Length of gene_lengths (", length(gene_lengths), 
+             ") must match number of genes (", n_genes, ")")
+    }
+    
+    # Check that signatures are normalized
+    col_sums <- colSums(signatures)
+    if (any(abs(col_sums - 1.0) > 1e-6)) {
+        warning("Some signature columns don't sum to 1. Normalizing...")
+        signatures <- sweep(signatures, 2, colSums(signatures), "/")
+    }
+    
+    # Default gene weights
+    if (is.null(gene_weights)) {
+        gene_weights <- rep(1.0, n_genes)
+    }
+    
+    if (length(gene_weights) != n_genes) {
+        stop("Length of gene_weights (", length(gene_weights), 
+             ") must match number of genes (", n_genes, ")")
+    }
+    
+    # Ensure gene weights are in [0, 1]
+    if (any(gene_weights < 0) || any(gene_weights > 1)) {
+        stop("gene_weights must be in [0, 1]")
+    }
+    
+    # Call Rust function
+    cat("Running deconvolution...\n")
+    result <- fit_deconv(
+        signatures,
+        bulk_counts,
+        gene_lengths,
+        gene_weights,
+        backend,
+        insert_size,
+        init_log_exp,
+        learning_rate,
+        l1_lambda,
+        l2_lambda,
+        max_iter,
+        poll_interval,
+        ll_tolerance,
+        sparsity_tolerance
+    )
+    
+    # Add row and column names
+    n_samples <- ncol(bulk_counts)
+    
+    # Exposures: (n_cell_types + 1) × n_samples
+    rownames(result$exposures) <- c(colnames(signatures), "Intercept")
+    colnames(result$exposures) <- colnames(bulk_counts)
+    
+    # Predicted counts: n_genes × n_samples
+    rownames(result$pred_counts) <- rownames(signatures)
+    colnames(result$pred_counts) <- colnames(bulk_counts)
+    
+    # Calculate normalized proportions (excluding intercept)
+    exposures_no_intercept <- result$exposures[1:n_cell_types, , drop = FALSE]
+    proportions <- sweep(exposures_no_intercept, 2, 
+                        colSums(exposures_no_intercept), "/")
+    
+    # Add proportions to result
+    result$proportions <- proportions
+    
+    # Calculate goodness of fit metrics
+    result$metrics <- calculate_fit_metrics(
+        observed = bulk_counts,
+        predicted = result$pred_counts
+    )
+    
+    cat("Done!\n")
+    return(result)
+}
+
+
+#' Calculate goodness of fit metrics
+#' @keywords internal
+calculate_fit_metrics <- function(observed, predicted) {
+    # Per-sample metrics
+    obs_total <- colSums(observed)
+    pred_total <- colSums(predicted)
+    
+    # Correlation per sample
+    correlations <- sapply(1:ncol(observed), function(i) {
+        cor(observed[, i], predicted[, i], method = "pearson")
+    })
+    
+    # RMSE per sample
+    rmse <- sapply(1:ncol(observed), function(i) {
+        sqrt(mean((observed[, i] - predicted[, i])^2))
+    })
+    
+    # Pseudo-R-squared (based on Poisson deviance)
+    # Null model: predicted = mean(observed)
+    null_deviance <- sum(sapply(1:ncol(observed), function(i) {
+        obs <- observed[, i]
+        null_pred <- mean(obs)
+        2 * sum(obs * log(obs / null_pred + 1e-10) - (obs - null_pred))
+    }))
+    
+    # Full model deviance
+    full_deviance <- sum(sapply(1:ncol(observed), function(i) {
+        obs <- observed[, i]
+        pred <- predicted[, i]
+        2 * sum(obs * log(obs / (pred + 1e-10)) - (obs - pred))
+    }))
+    
+    pseudo_r2 <- 1 - (full_deviance / null_deviance)
+    
+    list(
+        correlation = correlations,
+        rmse = rmse,
+        count_ratio = pred_total / obs_total,
+        pseudo_r2 = pseudo_r2,
+        mean_correlation = mean(correlations),
+        mean_rmse = mean(rmse)
+    )
+}
+
+#' Plot deconvolution results
+#'
+#' @param result Output from deconvolve_bulk()
+#' @param type Type of plot: "proportions", "fit", or "both"
+#' @export
+plot_deconvolution <- function(result, type = "both") {
+    if (!requireNamespace("ggplot2", quietly = TRUE)) {
+        stop("ggplot2 is required for plotting")
+    }
+    
+    library(ggplot2)
+    
+    if (type %in% c("proportions", "both")) {
+        # Stacked barplot of proportions
+        prop_df <- as.data.frame(result$proportions)
+        prop_df$CellType <- rownames(prop_df)
+        prop_long <- tidyr::pivot_longer(
+            prop_df, 
+            -CellType, 
+            names_to = "Sample", 
+            values_to = "Proportion"
+        )
+        
+        p1 <- ggplot(prop_long, aes(x = Sample, y = Proportion, fill = CellType)) +
+            geom_bar(stat = "identity") +
+            theme_minimal() +
+            theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+            labs(title = "Cell Type Proportions", y = "Proportion", x = "Sample")
+        
+        print(p1)
+    }
+    
+    if (type %in% c("fit", "both")) {
+        # Observed vs predicted scatter
+        obs_flat <- as.vector(result$pred_counts)
+        pred_flat <- as.vector(result$pred_counts)
+        
+        fit_df <- data.frame(
+            Observed = obs_flat,
+            Predicted = pred_flat
+        )
+        
+        p2 <- ggplot(fit_df, aes(x = log1p(Observed), y = log1p(Predicted))) +
+            geom_point(alpha = 0.3) +
+            geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
+            theme_minimal() +
+            labs(
+                title = "Model Fit Quality",
+                x = "log1p(Observed counts)",
+                y = "log1p(Predicted counts)"
+            )
+        
+        print(p2)
+    }
+}
+
+
+library(Seurat)
+
+# Load single-cell data
+sc_data <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
+
+# Extract normalized counts and cell type labels
+counts <- GetAssayData(sc_data, layer = "data")  # log-normalized
+cell_types <- sc_data$SFClassification
+
+# Aggregate by cell type and create signatures
+signatures <- sapply(unique(cell_types), function(ct) {
+  cells <- which(cell_types == ct)
+  rowMeans(expm1(counts[, cells]))  # Convert back from log
+})
+
+# Normalize to proportions (sum to 1)
+signatures <- sweep(signatures, 2, colSums(signatures), "/")
+
+# Load bulk counts and gene lengths
+bulk_counts <- "/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt"
+bulk_counts <- read.csv(bulk_counts, sep = "\t")
+rn <- bulk_counts$X_TranscriptID
+bulk_counts$X_TranscriptID<- NULL
+bulk_counts <- as.matrix(bulk_counts)
+rownames(bulk_counts) <- rn
+gene_info <- read.table("/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights_withSymbol.tsv", header = TRUE)
+rownames(gene_info) <- gene_info$symbol
+
+# Ensure same genes
+common_genes <- intersect(intersect(rownames(signatures), rownames(bulk_counts)), gene_info$symbol)
+signatures <- signatures[common_genes, ]
+bulk_counts <- bulk_counts[common_genes, ]
+
+# Get gene lengths
+gene_lengths <- gene_info[common_genes, "length"]
+
+dim(signatures)
+dim(bulk_counts)
+length(gene_lengths)
+
+#fast
+  # user  system elapsed 
+  # 3.852   0.809   9.530 
+system.time(result <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts+0.00001,
+  gene_lengths = gene_lengths+0.00001,
+  init_log_exp = -10,  # Start with higher initial values
+  learning_rate = 0.1,  # Increase learning rate
+  max_iter = 50000,
+  backend = "wgpu"
+))
+
+#long 
+ #   user  system elapsed 
+ # 36.121   6.782  39.196 
+
+system.time(result <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts+0.00001,
+  gene_lengths = gene_lengths+0.00001,
+  init_log_exp = -10,  # Start with higher initial values
+  learning_rate = 0.1,  # Increase learning rate
+  max_iter = 2000,
+  backend = "ndarray"
+))
+
+#very very long
+#    user  system elapsed 
+# 199.663 162.284 319.761 
+system.time(result <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts+0.00001,
+  gene_lengths = gene_lengths+0.00001,
+  init_log_exp = -10,  # Start with higher initial values
+  learning_rate = 0.1,  # Increase learning rate
+  max_iter = 2000,
+  backend = "candle"
+))
+
+```
+
+
+
+```{r}
+
+# View cell type proportions
+head(result$proportions)
+
+# Goodness of fit metrics
+print(result$metrics)
+cat("Mean correlation:", result$metrics$mean_correlation, "\n")
+cat("Pseudo R-squared:", result$metrics$pseudo_r2, "\n")
+
+# Plot results
+plot_deconvolution(result, type = "both")
+
+```
+
+```{r}
+res <- result$exposures
+d <- res
+d <- d[,!(grepl("LSC", colnames(d)) | grepl("rHSC", colnames(d)) | grepl("Blast", colnames(d)))]
+m <- as.matrix(d)
+sm <- scale(m)
+cols <- pals::glasbey(13)
+names(cols) <- unique(strsplit(colnames(m), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(m), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(m, top_annotation = cola, show_column_names = F, col = viridis_light_high)
+Heatmap(sm, top_annotation = cola, show_column_names = F, col = viridis_light_high, cluster_rows = F)
+```
+
+#Redo this in R
+
+```{r}
+library(viewmastR)
+
+
+seuHR <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
+DimPlot(seuHR, group.by = "SFClassification")
+bulk_count_data = "/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt"
+gene_weights = "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights_withSymbol.tsv"
+fit_csv = "/Users/sfurlan/Desktop/test_fit_rust.csv"
+
+
+bulk_count_data <- read.csv(bulk_count_data, sep = "\t")
+rn <- bulk_count_data$X_TranscriptID
+bulk_count_data$X_TranscriptID<- NULL
+bulk_count_data <- as.matrix(bulk_count_data)
+rownames(bulk_count_data) <- rn
+gene_weights <- read.table(gene_weights, sep = "\t", header = T)
+
+pseudobulk <- function(seu, by, assay = "RNA", layer = "data"){
+  meta <- seu@meta.data
+  counts_mat <- GetAssayData(seu, assay = assay, layer = layer)
+  # extract your cell‐type factor
+  cell_types <- as.character(meta[[by]])
+  unique_types <- unique(cell_types)
+  
+  # pre‐allocate an empty matrix: genes × n_types
+  genes       <- rownames(counts_mat)
+  scSigs_mat  <- matrix(0,
+                        nrow = length(genes),
+                        ncol = length(unique_types),
+                        dimnames = list(genes, unique_types))
+  
+  # fill it
+  for (ct in unique_types) {
+    idx <- which(cell_types == ct)
+    # sum counts for that cell-type
+    vec <- rowSums(counts_mat[, idx, drop=FALSE])
+    # normalize so they sum to 1
+    scSigs_mat[, ct] <- vec / sum(vec)
+  }
+  scSigs_mat
+}
+
+
+undebug(pseudobulk)
+# 1) build healthy reference from your non-malignant clusters
+ref_mat <- pseudobulk(seuHR, "SFClassification" )
+bulk_mat <- bulk_count_data
+C_mat <- gene_weights$length
+# C_mat <- bulk_count_data$size
+names(C_mat)<-gene_weights$symbol
+# bulk_mat <- as.matrix(bulk_count_data[,3:ncol(bulk_count_data)])
+# rownames(bulk_mat)<-bulk_count_data$X
+
+common_feats <- intersect(intersect(rownames(ref_mat), names(C_mat)), rownames(bulk_mat))
+
+
+ref_mat <- ref_mat[common_feats, ]
+C_mat <- C_mat[common_feats]
+bulk_mat <- bulk_mat[common_feats,]
+w_vec <- gene_weights$weight[match(common_feats, gene_weights$symbol)]
+
+bulk_mat_t <- bulk_mat
+dim(bulk_mat_t)
+
+saveRDS(list(ref_mat, bulk_mat_t, C_mat, w_vec), file.path("~/Desktop/seuHR/test_list.RDS"))
+
+
+
+library(viewmastR)
+
+l<-readRDS("~/Desktop/seuHR/test_list.RDS")
+ref_mat = l[[1]]
+bulk_mat_t = l[[2]]
+C_mat = l[[3]]
+w_vec <- l[[4]]
+
+
+result <- res$exposures
+dim(result)
+rownames(result) <- c(colnames(ref_mat), "Intercept")
+colnames(result) <- colnames(bulk_mat_t)
+d <- result
+d <- d[,!(grepl("LSC", colnames(d)) | grepl("rHSC", colnames(d)) | grepl("Blast", colnames(d)))]
+m <- as.matrix(d)
+cols <- pals::glasbey(13)
+names(cols) <- unique(strsplit(colnames(m), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(m), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(m, bottom_annotation = cola, show_column_names = F, col = viridis_light_high)
+
+
+
+
+```
 
 ```{r}
 
