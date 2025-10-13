@@ -98,11 +98,11 @@ d <- read.csv("/Users/sfurlan/Desktop/test_fit.csv")
 rownames(d)<-d$True
 d$True <- NULL
 d <- d[,!(grepl("LSC", colnames(d)) | grepl("rHSC", colnames(d)) | grepl("Blast", colnames(d)))]
-m <- as.matrix(d)
+m_python <- as.matrix(d)
 cols <- pals::glasbey(13)
-names(cols) <- unique(strsplit(colnames(m), "\\.") %>% sapply("[[", 2))
-cola <- HeatmapAnnotation(bulk = strsplit(colnames(m), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
-Heatmap(m, bottom_annotation = cola, show_column_names = F, col = viridis_light_high)
+names(cols) <- unique(strsplit(colnames(m_python), "\\.") %>% sapply("[[", 2))
+cola_python <- HeatmapAnnotation(bulk = strsplit(colnames(m_python), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(m_python, top_annotation = cola_python, show_column_names = F, col = viridis_light_high)
 ```
 
 #### Claude
@@ -160,10 +160,10 @@ deconvolve_bulk <- function(
     backend = "wgpu",
     insert_size = 500,
     init_log_exp = -10,
-    learning_rate = 0.1,
+    learning_rate = 0.01,
     l1_lambda = 0.0,
     l2_lambda = 0.0,
-    max_iter = 2000,
+    max_iter = 10000,
     poll_interval = 100,
     ll_tolerance = 1e-6,
     sparsity_tolerance = 1e-4
@@ -197,8 +197,15 @@ deconvolve_bulk <- function(
     col_sums <- colSums(signatures)
     if (any(abs(col_sums - 1.0) > 1e-6)) {
         warning("Some signature columns don't sum to 1. Normalizing...")
+        cat("  Signature column sum range: [", 
+            round(min(col_sums), 6), ", ", 
+            round(max(col_sums), 6), "]\n", sep="")
         signatures <- sweep(signatures, 2, colSums(signatures), "/")
+        cat("  Signatures normalized. New range: [", 
+            round(min(colSums(signatures)), 6), ", ", 
+            round(max(colSums(signatures)), 6), "]\n", sep="")
     }
+    
     
     # Default gene weights
     if (is.null(gene_weights)) {
@@ -215,13 +222,21 @@ deconvolve_bulk <- function(
         stop("gene_weights must be in [0, 1]")
     }
     
+    # Validate backend
+    valid_backends <- c("ndarray", "cpu", "wgpu", "gpu")
+    if (!backend %in% valid_backends) {
+        warning("Invalid backend '", backend, "'. Using 'ndarray' (CPU). ",
+                "Valid options: ", paste(valid_backends, collapse = ", "))
+        backend <- "ndarray"
+    }
+    
     # Call Rust function
     cat("Running deconvolution...\n")
     result <- fit_deconv(
         signatures,
-        bulk_counts,
-        gene_lengths,
-        gene_weights,
+        bulk_counts * 1.0,
+        gene_lengths * 1.0,
+        gene_weights * 1.0,
         backend,
         insert_size,
         init_log_exp,
@@ -250,8 +265,17 @@ deconvolve_bulk <- function(
     proportions <- sweep(exposures_no_intercept, 2, 
                         colSums(exposures_no_intercept), "/")
     
+    # Calculate proportions including intercept (for comparison)
+    proportions_with_intercept <- sweep(result$exposures, 2,
+                                       colSums(result$exposures), "/")
+    
+    # Calculate intercept fraction
+    intercept_fraction <- proportions_with_intercept[n_cell_types + 1, ]
+    
     # Add proportions to result
     result$proportions <- proportions
+    result$proportions_with_intercept <- proportions_with_intercept
+    result$intercept_fraction <- intercept_fraction
     
     # Calculate goodness of fit metrics
     result$metrics <- calculate_fit_metrics(
@@ -262,7 +286,6 @@ deconvolve_bulk <- function(
     cat("Done!\n")
     return(result)
 }
-
 
 #' Calculate goodness of fit metrics
 #' @keywords internal
@@ -364,15 +387,14 @@ plot_deconvolution <- function(result, type = "both") {
     }
 }
 
-
 library(Seurat)
 
 # Load single-cell data
 sc_data <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
-
 # Extract normalized counts and cell type labels
 counts <- GetAssayData(sc_data, layer = "data")  # log-normalized
 cell_types <- sc_data$SFClassification
+
 
 # Aggregate by cell type and create signatures
 signatures <- sapply(unique(cell_types), function(ct) {
@@ -382,6 +404,14 @@ signatures <- sapply(unique(cell_types), function(ct) {
 
 # Normalize to proportions (sum to 1)
 signatures <- sweep(signatures, 2, colSums(signatures), "/")
+
+# or load the signatures from a file
+signatures <- "/Users/sfurlan/Desktop/scSigs.csv"
+signatures <- read.csv(signatures)
+rn <- signatures$var_names
+signatures <- as.matrix(signatures[,2:ncol(signatures)])
+rownames(signatures)<-rn
+colnames(signatures) <- substr(colnames(signatures), 2, nchar(colnames(signatures)))
 
 # Load bulk counts and gene lengths
 bulk_counts <- "/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt"
@@ -400,53 +430,72 @@ bulk_counts <- bulk_counts[common_genes, ]
 
 # Get gene lengths
 gene_lengths <- gene_info[common_genes, "length"]
+gene_weights <- gene_info[common_genes, "weight"]
 
 dim(signatures)
 dim(bulk_counts)
 length(gene_lengths)
 
-#fast
-  # user  system elapsed 
-  # 3.852   0.809   9.530 
-system.time(result <- deconvolve_bulk(
-  signatures = signatures,
-  bulk_counts = bulk_counts+0.00001,
-  gene_lengths = gene_lengths+0.00001,
-  init_log_exp = -10,  # Start with higher initial values
-  learning_rate = 0.1,  # Increase learning rate
-  max_iter = 50000,
-  backend = "wgpu"
-))
-
-#long 
- #   user  system elapsed 
- # 36.121   6.782  39.196 
-
-system.time(result <- deconvolve_bulk(
-  signatures = signatures,
-  bulk_counts = bulk_counts+0.00001,
-  gene_lengths = gene_lengths+0.00001,
-  init_log_exp = -10,  # Start with higher initial values
-  learning_rate = 0.1,  # Increase learning rate
-  max_iter = 2000,
-  backend = "ndarray"
-))
-
-#very very long
-#    user  system elapsed 
-# 199.663 162.284 319.761 
-system.time(result <- deconvolve_bulk(
-  signatures = signatures,
-  bulk_counts = bulk_counts+0.00001,
-  gene_lengths = gene_lengths+0.00001,
-  init_log_exp = -10,  # Start with higher initial values
-  learning_rate = 0.1,  # Increase learning rate
-  max_iter = 2000,
-  backend = "candle"
-))
+# #fast
+#   # user  system elapsed 
+#   # 3.852   0.809   9.530 
+# system.time(result <- deconvolve_bulk(
+#   signatures = signatures,
+#   bulk_counts = bulk_counts+0.00001,
+#   gene_lengths = gene_lengths+0.00001,
+#   init_log_exp = -10,  # Start with higher initial values
+#   learning_rate = 0.1,  # Increase learning rate
+#   max_iter = 2000,
+#   backend = "wgpu"
+# ))
+# 
+# #long 
+#  #   user  system elapsed 
+#  # 36.121   6.782  39.196 
+# 
+# system.time(result <- deconvolve_bulk(
+#   signatures = signatures,
+#   bulk_counts = bulk_counts+0.00001,
+#   gene_lengths = gene_lengths+0.00001,
+#   init_log_exp = -10,  # Start with higher initial values
+#   learning_rate = 0.1,  # Increase learning rate
+#   max_iter = 2000,
+#   backend = "ndarray"
+# ))
+# 
+# #very very long
+# #    user  system elapsed 
+# # 199.663 162.284 319.761 
+# system.time(result <- deconvolve_bulk(
+#   signatures = signatures,
+#   bulk_counts = bulk_counts+0.00001,
+#   gene_lengths = gene_lengths+0.00001,
+#   init_log_exp = -10,  # Start with higher initial values
+#   learning_rate = 0.1,  # Increase learning rate
+#   max_iter = 2000,
+#   backend = "candle"
+# ))
 
 ```
 
+## tuning
+```{r}
+
+result <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  insert_size = 500,
+  init_log_exp = -10,   
+  learning_rate = 0.01,     
+  max_iter = 50000,       
+  ll_tolerance = 1e-6,      
+  sparsity_tolerance = 1e-4, 
+  backend = "wgpu"
+)
+
+```
 
 
 ```{r}
@@ -465,17 +514,67 @@ plot_deconvolution(result, type = "both")
 ```
 
 ```{r}
-res <- result$exposures
+res <- result$proportions_with_intercept
 d <- res
 d <- d[,!(grepl("LSC", colnames(d)) | grepl("rHSC", colnames(d)) | grepl("Blast", colnames(d)))]
-m <- as.matrix(d)
-sm <- scale(m)
+mr <- as.matrix(d)
+sm <- scale(mr)
 cols <- pals::glasbey(13)
-names(cols) <- unique(strsplit(colnames(m), "\\.") %>% sapply("[[", 2))
-cola <- HeatmapAnnotation(bulk = strsplit(colnames(m), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
-Heatmap(m, top_annotation = cola, show_column_names = F, col = viridis_light_high)
-Heatmap(sm, top_annotation = cola, show_column_names = F, col = viridis_light_high, cluster_rows = F)
+names(cols) <- unique(strsplit(colnames(mr), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(mr), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(mr, top_annotation = cola, show_column_names = F, col = viridis_light_high)
+
 ```
+
+
+
+```{r}
+library(ggplot2)
+m_python <- m_python[,colnames(mr)]
+
+seuHR <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
+ggplot(data.frame(Rust=as.vector(mr), Python=as.vector(m_python), Decon = rep(rownames(mr), ncol(mr))), aes(x=Python, y=Rust, colour = Decon))+geom_point()+scale_color_manual(values = seuHR@misc$colors)
+
+
+cor(data.frame(Rust=as.vector(mr), Python=as.vector(m_python)))
+
+```
+
+
+```{r}
+# 1. Are signature column sums exactly 1?
+colSums(signatures)
+
+# 2. Which cell types have the lowest mean expression in signatures?
+colMeans(signatures)
+
+# 3. Are there any cell types with extreme values?
+apply(signatures, 2, function(x) c(min=min(x), max=max(x), nonzero=mean(x>0)))
+
+# 4. What do the raw exposures look like for the problematic cell types?
+# Compare pDC (cell type 9) and B cells (cell type 14)
+rust_pdc <- result$exposures[9,]
+rust_b <- result$exposures[14,]
+summary(rust_pdc)
+summary(rust_b)
+
+```
+
+```{r}
+# Check raw exposures
+summary(result$exposures)
+
+# Check if intercept dominates
+mean(result$intercept_fraction)
+
+# Check predicted vs observed counts
+cor(as.vector(result$pred_counts), as.vector(bulk_counts))
+plot(log1p(as.vector(bulk_counts)), log1p(as.vector(result$pred_counts)))
+
+
+```
+
+
 
 #Redo this in R
 
