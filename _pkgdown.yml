@@ -58,6 +58,7 @@ reference:
   - confusion_matrix
   - plot_training_data
   - make3file
+  - deconvolute_bulk
 - title: Additional functions
   desc: Helper functions to add or modify elements
   contents:
@@ -67,6 +68,7 @@ reference:
   - common_variant_genes
   - sparseRowVariances
   - writeMMgz
+  - plot_deconvolution
   - viewmastR-package
 articles:
 - title: Get Started
@@ -82,3 +84,4 @@ articles:
   - SavedModel
   - Extras
   - BigQuery
+  - Deconvolute

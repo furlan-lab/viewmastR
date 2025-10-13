@@ -18,7 +18,7 @@ mod common;
 mod inference;
 mod nb;
 // mod signal;
-mod signal2;
+mod signal;
 
 use std::path::Path;
 use std::time::Instant;
@@ -610,8 +610,9 @@ fn fit_deconv(
     poll_interval: Robj,
     ll_tol: Robj,
     sparsity_tol: Robj,
+    verbose: Robj,
 ) -> Result<List>{
-    signal2::fit_deconv(
+    signal::fit_deconv(
         sigs,
         bulk,
         gene_lengths,
@@ -625,7 +626,8 @@ fn fit_deconv(
         max_iter,
         poll_interval,
         ll_tol,
-        sparsity_tol
+        sparsity_tol,
+        verbose
     )
 }
 

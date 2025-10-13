@@ -23,7 +23,7 @@ computeSparseRowVariances <- function(j, val, rm, n) .Call(wrap__computeSparseRo
 
 #'@export
 #'@keywords internal
-fit_deconv <- function(sigs, bulk, gene_lengths, w_vec, backend, insert_size, init_log_exp, lr, l1_lambda, l2_lambda, max_iter, poll_interval, ll_tol, sparsity_tol) .Call(wrap__fit_deconv, sigs, bulk, gene_lengths, w_vec, backend, insert_size, init_log_exp, lr, l1_lambda, l2_lambda, max_iter, poll_interval, ll_tol, sparsity_tol)
+fit_deconv <- function(sigs, bulk, gene_lengths, w_vec, backend, insert_size, init_log_exp, lr, l1_lambda, l2_lambda, max_iter, poll_interval, ll_tol, sparsity_tol, verbose) .Call(wrap__fit_deconv, sigs, bulk, gene_lengths, w_vec, backend, insert_size, init_log_exp, lr, l1_lambda, l2_lambda, max_iter, poll_interval, ll_tol, sparsity_tol, verbose)
 
 infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend)
 

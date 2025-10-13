@@ -8,7 +8,7 @@ editor_options:
 ---
 
 
-```{r, echo=FALSE, message=FALSE, warning=FALSE}
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 rm(list=ls())
 
 
@@ -21,376 +21,26 @@ if(grepl("^gizmo", Sys.info()["nodename"])){
   ROOT_DIR3 <- "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/AML/1031/coembed/data"
   ROOT_DIR4 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
 }
+seurat_object_loc <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS"
+```
+
+#### Load a seurat object
+
+This is an atlas of healthy bone marrow celltypes taken from:
+
+Granja JM, Klemm S, McGinnis LM, Kathiria AS, Mezger A, Corces MR, Parks B, Gars E, Liedtke M, Zheng GXY, Chang HY, Majeti R, Greenleaf WJ. Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype acute leukemia. Nat Biotechnol. 2019 Dec;37(12):1458-1465. doi: 10.1038/s41587-019-0332-7. Epub 2019 Dec 2. PMID: 31792411; PMCID: PMC7258684.
+
+```{r}
 library(Seurat)
-library(scCustomize)
-library(monocle3)
-library(magrittr)
-library(flscuts)
-
-
-```
-
-
-## Make a harmonized ENS (without version), Symbol, lengths and Weights dataset for deconvolution
-```{r}
-## start with the 10X gtf file
-gff<-"/Users/sfurlan/refs/GRCh38/genes.gtf"
-gff <- ape::read.gff(gff, na.strings = c(".", "?"), GFF3 = F)
-
-genes <- gff[gff$feature=="gene",]
-library(purrr)
-library(stringr)
-
-
-attr_pattern <- '(\\w+)\\s+"([^"]*)"|(\\w+)\\s+([^;"]+)'
-
-parse_attributes_row <- function(s) {
-  m <- stringr::str_match_all(s, attr_pattern)[[1]]
-  if (nrow(m) == 0) return(tibble())  # empty row guard
-
-  keys  <- ifelse(!is.na(m[,2]), m[,2], m[,4])
-  vals  <- ifelse(!is.na(m[,3]), m[,3], m[,5])
-
-  # clean
-  keys <- trimws(keys)
-  vals <- trimws(vals)
-
-  # collapse duplicates (e.g., multiple 'tag' entries)
-  collapsed <- lapply(split(vals, keys), function(x) paste(unique(x), collapse = ","))
-
-  # return a one-row tibble with named fields
-  tibble(!!!collapsed)
-}
-
-# Suppose your data frame is df with a column `attributes` like the example you pasted
-attrs_wide <- genes %>%
-  mutate(.parsed = map(attributes, parse_attributes_row)) %>%
-  unnest_wider(.parsed, names_repair = "unique") %>%  # handles any repeated keys safely
-  select(-attributes)  # drop original if you like
-
-# Inspect
-glimpse(attrs_wide)
-
-
-attrs_wide$width <- attrs_wide$end - attrs_wide$start
-
-dups <- attrs_wide$gene_name[duplicated(attrs_wide$gene_name)]
-
-final_annot <- attrs_wide[!attrs_wide$gene_name %in% dups,]
-
-#add weights
-gw <- read.table("/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights.tsv", header=T)
-final_annot$weight <- gw$weight[match(final_annot$gene_id, gw$geneID)]
-final_annot$weight[is.na(final_annot$weight)]<- 1.0
- 
-write.table(data.frame(ens=final_annot$gene_id, symbol=final_annot$gene_name, length=final_annot$width, weight = final_annot$weight), "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights_withSymbol.tsv", quote = F, sep = "\t")
-
-
-```
-
-
-## Run the python notebook to deconvolute
-
-#Python notebook working as evidenced by this heatmap.
-```{r}
-library(ComplexHeatmap)
-d <- read.csv("/Users/sfurlan/Desktop/test_fit.csv")
-rownames(d)<-d$True
-d$True <- NULL
-d <- d[,!(grepl("LSC", colnames(d)) | grepl("rHSC", colnames(d)) | grepl("Blast", colnames(d)))]
-m_python <- as.matrix(d)
-cols <- pals::glasbey(13)
-names(cols) <- unique(strsplit(colnames(m_python), "\\.") %>% sapply("[[", 2))
-cola_python <- HeatmapAnnotation(bulk = strsplit(colnames(m_python), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
-Heatmap(m_python, top_annotation = cola_python, show_column_names = F, col = viridis_light_high)
-```
-
-#### Claude
-
-```{r}
-#' Deconvolve bulk RNA-seq data using single-cell signatures
-#'
-#' @param signatures Matrix of cellular signatures (genes × cell_types). 
-#'   Each column should be normalized to sum to 1.
-#' @param bulk_counts Matrix of bulk RNA-seq counts (genes × samples).
-#'   Gene names must match signatures.
-#' @param gene_lengths Numeric vector of gene lengths, same length as nrow(signatures).
-#' @param gene_weights Optional numeric vector of gene weights (0-1), same length as 
-#'   nrow(signatures). Default is all 1s.
-#' @param backend Which compute backend to use: "ndarray" (CPU, default), 
-#'   "wgpu" (GPU if compiled with wgpu feature), "cuda" (CUDA if available).
-#' @param insert_size Insert size for RNA-seq fragments. Default 500.
-#' @param init_log_exp Initial value for log exposures. Default -10.
-#' @param learning_rate Learning rate for optimization. Default 0.01.
-#' @param l1_lambda L1 regularization parameter. Default 0.0 (no regularization).
-#' @param l2_lambda L2 regularization parameter. Default 0.0 (no regularization).
-#' @param max_iter Maximum number of iterations. Default 10000.
-#' @param poll_interval Check convergence every N iterations. Default 100.
-#' @param ll_tolerance Log-likelihood convergence tolerance. Default 1e-6.
-#' @param sparsity_tolerance Sparsity convergence tolerance. Default 1e-4.
-#'
-#' @return A list with:
-#'   \item{exposures}{Matrix of cell type proportions (cell_types+intercept × samples)}
-#'   \item{pred_counts}{Matrix of predicted bulk counts (genes × samples)}
-#'   \item{proportions}{Normalized cell type proportions excluding intercept}
-#'
-#' @export
-#' @examples
-#' \dontrun{
-#' # CPU backend (default)
-#' result <- deconvolve_bulk(
-#'   signatures = signatures,
-#'   bulk_counts = bulk_counts,
-#'   gene_lengths = gene_lengths
-#' )
-#' 
-#' # GPU backend (if available)
-#' result <- deconvolve_bulk(
-#'   signatures = signatures,
-#'   bulk_counts = bulk_counts,
-#'   gene_lengths = gene_lengths,
-#'   backend = "wgpu"
-#' )
-#' }
-deconvolve_bulk <- function(
-    signatures,
-    bulk_counts,
-    gene_lengths,
-    gene_weights = NULL,
-    backend = "wgpu",
-    insert_size = 500,
-    init_log_exp = -10,
-    learning_rate = 0.01,
-    l1_lambda = 0.0,
-    l2_lambda = 0.0,
-    max_iter = 10000,
-    poll_interval = 100,
-    ll_tolerance = 1e-6,
-    sparsity_tolerance = 1e-4
-) {
-    # Input validation
-    if (!is.matrix(signatures)) {
-        stop("signatures must be a matrix")
-    }
-    if (!is.matrix(bulk_counts)) {
-        stop("bulk_counts must be a matrix")
-    }
-    if (!is.numeric(gene_lengths)) {
-        stop("gene_lengths must be numeric")
-    }
-    
-    n_genes <- nrow(signatures)
-    n_cell_types <- ncol(signatures)
-    
-    # Check dimensions
-    if (nrow(bulk_counts) != n_genes) {
-        stop("Number of genes in bulk_counts (", nrow(bulk_counts), 
-             ") must match signatures (", n_genes, ")")
-    }
-    
-    if (length(gene_lengths) != n_genes) {
-        stop("Length of gene_lengths (", length(gene_lengths), 
-             ") must match number of genes (", n_genes, ")")
-    }
-    
-    # Check that signatures are normalized
-    col_sums <- colSums(signatures)
-    if (any(abs(col_sums - 1.0) > 1e-6)) {
-        warning("Some signature columns don't sum to 1. Normalizing...")
-        cat("  Signature column sum range: [", 
-            round(min(col_sums), 6), ", ", 
-            round(max(col_sums), 6), "]\n", sep="")
-        signatures <- sweep(signatures, 2, colSums(signatures), "/")
-        cat("  Signatures normalized. New range: [", 
-            round(min(colSums(signatures)), 6), ", ", 
-            round(max(colSums(signatures)), 6), "]\n", sep="")
-    }
-    
-    
-    # Default gene weights
-    if (is.null(gene_weights)) {
-        gene_weights <- rep(1.0, n_genes)
-    }
-    
-    if (length(gene_weights) != n_genes) {
-        stop("Length of gene_weights (", length(gene_weights), 
-             ") must match number of genes (", n_genes, ")")
-    }
-    
-    # Ensure gene weights are in [0, 1]
-    if (any(gene_weights < 0) || any(gene_weights > 1)) {
-        stop("gene_weights must be in [0, 1]")
-    }
-    
-    # Validate backend
-    valid_backends <- c("ndarray", "cpu", "wgpu", "gpu")
-    if (!backend %in% valid_backends) {
-        warning("Invalid backend '", backend, "'. Using 'ndarray' (CPU). ",
-                "Valid options: ", paste(valid_backends, collapse = ", "))
-        backend <- "ndarray"
-    }
-    
-    # Call Rust function
-    cat("Running deconvolution...\n")
-    result <- fit_deconv(
-        signatures,
-        bulk_counts * 1.0,
-        gene_lengths * 1.0,
-        gene_weights * 1.0,
-        backend,
-        insert_size,
-        init_log_exp,
-        learning_rate,
-        l1_lambda,
-        l2_lambda,
-        max_iter,
-        poll_interval,
-        ll_tolerance,
-        sparsity_tolerance
-    )
-    
-    # Add row and column names
-    n_samples <- ncol(bulk_counts)
-    
-    # Exposures: (n_cell_types + 1) × n_samples
-    rownames(result$exposures) <- c(colnames(signatures), "Intercept")
-    colnames(result$exposures) <- colnames(bulk_counts)
-    
-    # Predicted counts: n_genes × n_samples
-    rownames(result$pred_counts) <- rownames(signatures)
-    colnames(result$pred_counts) <- colnames(bulk_counts)
-    
-    # Calculate normalized proportions (excluding intercept)
-    exposures_no_intercept <- result$exposures[1:n_cell_types, , drop = FALSE]
-    proportions <- sweep(exposures_no_intercept, 2, 
-                        colSums(exposures_no_intercept), "/")
-    
-    # Calculate proportions including intercept (for comparison)
-    proportions_with_intercept <- sweep(result$exposures, 2,
-                                       colSums(result$exposures), "/")
-    
-    # Calculate intercept fraction
-    intercept_fraction <- proportions_with_intercept[n_cell_types + 1, ]
-    
-    # Add proportions to result
-    result$proportions <- proportions
-    result$proportions_with_intercept <- proportions_with_intercept
-    result$intercept_fraction <- intercept_fraction
-    
-    # Calculate goodness of fit metrics
-    result$metrics <- calculate_fit_metrics(
-        observed = bulk_counts,
-        predicted = result$pred_counts
-    )
-    
-    cat("Done!\n")
-    return(result)
-}
-
-#' Calculate goodness of fit metrics
-#' @keywords internal
-calculate_fit_metrics <- function(observed, predicted) {
-    # Per-sample metrics
-    obs_total <- colSums(observed)
-    pred_total <- colSums(predicted)
-    
-    # Correlation per sample
-    correlations <- sapply(1:ncol(observed), function(i) {
-        cor(observed[, i], predicted[, i], method = "pearson")
-    })
-    
-    # RMSE per sample
-    rmse <- sapply(1:ncol(observed), function(i) {
-        sqrt(mean((observed[, i] - predicted[, i])^2))
-    })
-    
-    # Pseudo-R-squared (based on Poisson deviance)
-    # Null model: predicted = mean(observed)
-    null_deviance <- sum(sapply(1:ncol(observed), function(i) {
-        obs <- observed[, i]
-        null_pred <- mean(obs)
-        2 * sum(obs * log(obs / null_pred + 1e-10) - (obs - null_pred))
-    }))
-    
-    # Full model deviance
-    full_deviance <- sum(sapply(1:ncol(observed), function(i) {
-        obs <- observed[, i]
-        pred <- predicted[, i]
-        2 * sum(obs * log(obs / (pred + 1e-10)) - (obs - pred))
-    }))
-    
-    pseudo_r2 <- 1 - (full_deviance / null_deviance)
-    
-    list(
-        correlation = correlations,
-        rmse = rmse,
-        count_ratio = pred_total / obs_total,
-        pseudo_r2 = pseudo_r2,
-        mean_correlation = mean(correlations),
-        mean_rmse = mean(rmse)
-    )
-}
-
-#' Plot deconvolution results
-#'
-#' @param result Output from deconvolve_bulk()
-#' @param type Type of plot: "proportions", "fit", or "both"
-#' @export
-plot_deconvolution <- function(result, type = "both") {
-    if (!requireNamespace("ggplot2", quietly = TRUE)) {
-        stop("ggplot2 is required for plotting")
-    }
-    
-    library(ggplot2)
-    
-    if (type %in% c("proportions", "both")) {
-        # Stacked barplot of proportions
-        prop_df <- as.data.frame(result$proportions)
-        prop_df$CellType <- rownames(prop_df)
-        prop_long <- tidyr::pivot_longer(
-            prop_df, 
-            -CellType, 
-            names_to = "Sample", 
-            values_to = "Proportion"
-        )
-        
-        p1 <- ggplot(prop_long, aes(x = Sample, y = Proportion, fill = CellType)) +
-            geom_bar(stat = "identity") +
-            theme_minimal() +
-            theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-            labs(title = "Cell Type Proportions", y = "Proportion", x = "Sample")
-        
-        print(p1)
-    }
-    
-    if (type %in% c("fit", "both")) {
-        # Observed vs predicted scatter
-        obs_flat <- as.vector(result$pred_counts)
-        pred_flat <- as.vector(result$pred_counts)
-        
-        fit_df <- data.frame(
-            Observed = obs_flat,
-            Predicted = pred_flat
-        )
-        
-        p2 <- ggplot(fit_df, aes(x = log1p(Observed), y = log1p(Predicted))) +
-            geom_point(alpha = 0.3) +
-            geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
-            theme_minimal() +
-            labs(
-                title = "Model Fit Quality",
-                x = "log1p(Observed counts)",
-                y = "log1p(Predicted counts)"
-            )
-        
-        print(p2)
-    }
-}
-
-library(Seurat)
-
+library(viewmastR)
 # Load single-cell data
-sc_data <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
+sc_data <- readRDS(seurat_object_loc)
+DimPlot(sc_data, group.by = "SFClassification", cols = sc_data@misc$colors)
+```
+
+Now we pseudobulk the samples to get their "signatures"
+
+```{r}
 # Extract normalized counts and cell type labels
 counts <- GetAssayData(sc_data, layer = "data")  # log-normalized
 cell_types <- sc_data$SFClassification
@@ -480,42 +130,54 @@ length(gene_lengths)
 
 ## tuning
 ```{r}
-
+undebug(deconvolve_bulk)
+debug(calculate_fit_metrics)
+system.time(
 result <- deconvolve_bulk(
   signatures = signatures,
   bulk_counts = bulk_counts,
   gene_lengths = gene_lengths,
   gene_weights = gene_weights,
+  poll_interval = 300,
   insert_size = 500,
-  init_log_exp = -10,   
-  learning_rate = 0.01,     
-  max_iter = 50000,       
-  ll_tolerance = 1e-6,      
-  sparsity_tolerance = 1e-4, 
+  init_log_exp = -3,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 100,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
   backend = "wgpu"
 )
+)
+
+ #   user  system elapsed 
+ # 51.647   9.889 119.599 
+
+
+cor(as.vector(result$pred_counts[gene_weights>0,]), as.vector(bulk_counts[gene_weights>0,]))
+
+obs_flat <- as.vector(bulk_counts[gene_weights>0,])
+pred_flat <- as.vector(result$pred_counts[gene_weights>0,])
+
+# Remove zeros for log scale
+keep_idx <- obs_flat > 0 & pred_flat > 0
+
+fit_df <- data.frame(
+  Observed = log1p(obs_flat[keep_idx]),
+  Predicted = log1p(pred_flat[keep_idx])
+)
+    
+    
+ggplot(fit_df, aes(x=Observed, y=Predicted))+geom_hex(bins = 100)+scale_fill_viridis_c(trans = "log10")
+
+print_metrics_summary(result)
+
+plot_deconvolution(result, observed_counts = bulk_counts, type = "all")
 
 ```
 
 
 ```{r}
-
-# View cell type proportions
-head(result$proportions)
-
-# Goodness of fit metrics
-print(result$metrics)
-cat("Mean correlation:", result$metrics$mean_correlation, "\n")
-cat("Pseudo R-squared:", result$metrics$pseudo_r2, "\n")
-
-# Plot results
-plot_deconvolution(result, type = "both")
-
-```
-
-```{r}
-res <- result$proportions_with_intercept
-d <- res
+d <- result0$proportions_with_intercept
 d <- d[,!(grepl("LSC", colnames(d)) | grepl("rHSC", colnames(d)) | grepl("Blast", colnames(d)))]
 mr <- as.matrix(d)
 sm <- scale(mr)
@@ -532,7 +194,7 @@ Heatmap(mr, top_annotation = cola, show_column_names = F, col = viridis_light_hi
 library(ggplot2)
 m_python <- m_python[,colnames(mr)]
 
-seuHR <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
+#seuHR <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
 ggplot(data.frame(Rust=as.vector(mr), Python=as.vector(m_python), Decon = rep(rownames(mr), ncol(mr))), aes(x=Python, y=Rust, colour = Decon))+geom_point()+scale_color_manual(values = seuHR@misc$colors)
 
 
@@ -540,6 +202,40 @@ cor(data.frame(Rust=as.vector(mr), Python=as.vector(m_python)))
 
 ```
 
+
+```{r}
+# Find the worst-predicted genes
+pred_full_matrix <- result$pred_counts
+obs_matrix <- bulk_counts
+
+# Calculate residuals for each gene across all samples
+residuals <- obs_matrix - pred_full_matrix
+abs_residuals <- abs(residuals)
+mean_abs_resid <- rowMeans(abs_residuals)
+
+# Find worst genes
+worst_genes_idx <- order(mean_abs_resid, decreasing = TRUE)[1:20]
+
+cat("Top 20 worst-predicted genes:\n")
+for (i in worst_genes_idx[1:10]) {
+  cat(sprintf("Gene %d: mean_obs=%.0f, mean_pred=%.0f, mean_|error|=%.0f\n",
+              i, 
+              mean(obs_matrix[i,]), 
+              mean(pred_full_matrix[i,]),
+              mean_abs_resid[i]))
+}
+
+# Check if these are weighted zero
+cat("\nGene weights for worst genes:\n")
+print(gene_weights[worst_genes_idx[1:10]])
+
+# Plot residuals vs observed for worst gene
+worst_gene <- worst_genes_idx[1]
+plot(obs_matrix[worst_gene,], residuals[worst_gene,],
+     main = paste("Residuals for worst gene", worst_gene),
+     xlab = "Observed", ylab = "Residual (obs - pred)")
+abline(h = 0, col = "red")
+```
 
 ```{r}
 # 1. Are signature column sums exactly 1?
@@ -574,7 +270,108 @@ plot(log1p(as.vector(bulk_counts)), log1p(as.vector(result$pred_counts)))
 
 ```
 
+## testing scaled regularization
+```{r}
+result4 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 1e-4,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
 
+result3 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 1e-3,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+result2 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 1e-2,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+result1 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 1e-1,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+result0 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 5,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+
+
+result01 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 100,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+
+
+# Compare
+compare_results <- function(r1, r2, name1, name2) {
+  n1 <- sum(rowMeans(r1$exposures) > 0.01)
+  n2 <- sum(rowMeans(r2$exposures) > 0.01)
+  cat(sprintf("%s: %d non-zero cell types, mean_exp=%.1f\n", 
+              name1, n1, mean(r1$exposures)))
+  cat(sprintf("%s: %d non-zero cell types, mean_exp=%.1f\n", 
+              name2, n2, mean(r2$exposures)))
+  cat(sprintf("Difference: %d cell types\n\n", n1 - n2))
+}
+
+compare_results(result4, result4, "L1=0.0001", "L1=0.001")
+compare_results(result3, result2, "L1=0.001", "L1=0.01")
+compare_results(result2, result1, "L1=0.01", "L1=0.1")
+compare_results(result1, result0, "L1=0.1", "L1=1")
+compare_results(result0, result01, "L1=1", "L1=100")
+```
 
 #Redo this in R
 

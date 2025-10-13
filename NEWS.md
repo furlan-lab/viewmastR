@@ -1,3 +1,7 @@
+# viewmastR v0.4
+
+* new feature - deconvolution of bulk RNA seq type data
+
 # viewmastR v0.3.1
 
 * bug - recursion bug seen only with Rust 1.90
