@@ -1,268 +1,166 @@
-//! inference.rs   (only the parts that changed are shown)
 
 use crate::common::*;
-use crate::scrna_mlr::{Model as MlrModel, ModelConfig as MlrCfg};
-use crate::scrna_ann::{Model as AnnModel, ModelConfig as AnnCfg};
-use crate::scrna_ann2l::{Model as Ann2Model, ModelConfig as Ann2Cfg};
-
+use crate::scrna_mlr::ModelConfig as MlrCfg;
+use crate::scrna_ann ::ModelConfig as AnnCfg;
+use crate::scrna_ann2l::ModelConfig as Ann2Cfg;
 use burn::{
-    backend::wgpu::{Wgpu, WgpuDevice},
-    data::{
-        dataloader::DataLoaderBuilder,
-        dataset::{transform::MapperDataset, InMemDataset},
-    },
+    data::{dataloader::DataLoaderBuilder, dataset::{InMemDataset, transform::MapperDataset}},
     module::Module,
     record::{FullPrecisionSettings, NamedMpkFileRecorder, Recorder},
-    tensor::{backend::Backend, Tensor},
+    tensor::{Tensor, DType, backend::Backend as BurnBackend},
 };
+use num_traits::ToPrimitive;
 
-type B = Wgpu<f32, i32>;          // our single backend alias
-type Dev = WgpuDevice;            // shorthand
 
-/* ------------------------------------------------------------------------- */
-/* 1. A tiny trait so the generic core is allowed to call `forward`          */
-/* ------------------------------------------------------------------------- */
-trait Infer<Bk: Backend> {
-    fn infer(&self, x: Tensor<Bk, 2>) -> Tensor<Bk, 2>;
+
+#[derive(Debug)]
+pub enum NetKind {
+    Mlr,
+    Ann  { hidden: usize },
+    Ann2 { hidden1: usize, hidden2: usize },
 }
 
-impl<Bk: Backend> Infer<Bk> for MlrModel<Bk> {
-    fn infer(&self, x: Tensor<Bk, 2>) -> Tensor<Bk, 2> { self.forward(x) }
-}
-impl<Bk: Backend> Infer<Bk> for AnnModel<Bk>  {
-    fn infer(&self, x: Tensor<Bk, 2>) -> Tensor<Bk, 2> { self.forward(x) }
-}
-impl<Bk: Backend> Infer<Bk> for Ann2Model<Bk> {
-    fn infer(&self, x: Tensor<Bk, 2>) -> Tensor<Bk, 2> { self.forward(x) }
-}
 
-/* ------------------------------------------------------------------------- */
-/* 2. The one shared engine                                                  */
-/* ------------------------------------------------------------------------- */
-fn infer_with_builder<M, Build>(
-    path: &str,
-    build_model: Build,
-    query: Vec<SCItemRaw>,
-    batch: usize,
+fn run_inference<B, F>(
+    mut f      : F,
+    device     : <B as BurnBackend>::Device,
+    query      : Vec<SCItemRaw>,
+    batch_size : usize,
 ) -> Vec<f32>
 where
-    M: Module<B> + Infer<B>,
-    Build: FnOnce(&Dev) -> M,
+    B: BurnBackend + 'static,
+    B::FloatElem: ToPrimitive,      // ← was Elem, now correct
+    F: FnMut(Tensor<B, 2>) -> Tensor<B, 2>,
 {
-    // device ---------------------------------------------------------------
-    let device = Dev::default();
+    let dataset = MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
+    let loader  = DataLoaderBuilder::new(SCBatcher::<B>::new(device))
+        .batch_size(batch_size)
+        .build(dataset);
 
-    // model skeleton -------------------------------------------------------
-    let mut model = build_model(&device);
 
-    // --- A) load the weights  --------------------------------------------
-    let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
-        .load(path.into(), &device)
-        .expect("load weights");
-    model = model.load_record(record);
+    loader
+        .iter()
+        .flat_map(|batch| {
+            // 1.  Run the model
+            let mut data = f(batch.counts).into_data();   // TensorData
 
-    // dataloader -----------------------------------------------------------
-    let ds = MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-    let loader = DataLoaderBuilder::new(SCBatcher::<B>::new(device.clone()))
-        .batch_size(batch)
-        .build(ds);
+            // 2.  Make sure the buffer is f32-typed
+            if data.dtype != DType::F32 {
+                data = data.convert::<f32>();             // still TensorData
+            }
 
-    // inference loop -------------------------------------------------------
-    let mut probs = Vec::new();
-    for batch in loader.iter() {
-        probs.extend(
-            model.infer(batch.counts)
-                .to_data()
-                .iter::<f32>()
-        );
+            // 3.  Take the buffer out as a Vec<f32>
+            let vec = data.into_vec::<f32>().unwrap();    // Vec<f32>
+
+            vec.into_iter()
+        })
+        .collect()
+}
+
+
+pub fn infer<B>(
+    model_path   : &str,
+    net          : NetKind,
+    num_classes  : usize,
+    num_features : usize,
+    query        : Vec<SCItemRaw>,
+    batch_size   : Option<usize>,
+    device : <B as BurnBackend>::Device,
+) -> Vec<f32>
+where
+    B: BurnBackend + 'static,
+    B::FloatElem: ToPrimitive,
+{
+    let bs = batch_size.unwrap_or(64);
+
+    match net {
+        NetKind::Mlr => {
+            let rec   = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
+                           .load(model_path.into(), &device)
+                           .expect("load MLR weights");
+            let model = MlrCfg::new(num_classes)
+                           .init(num_features, device.clone())
+                           .load_record(rec);
+
+            run_inference::<B, _>(move |x| model.forward(x), device, query, bs)
+        }
+
+        NetKind::Ann { hidden } => {
+            let rec   = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
+                           .load(model_path.into(), &device)
+                           .expect("load ANN-1L weights");
+            let model = AnnCfg::new(num_classes, 0, hidden, 0.0)
+                           .init(num_features, device.clone())
+                           .load_record(rec);
+
+            run_inference::<B, _>(move |x| model.forward(x), device, query, bs)
+        }
+
+        NetKind::Ann2 { hidden1, hidden2 } => {
+            let rec   = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
+                           .load(model_path.into(), &device)
+                           .expect("load ANN-2L weights");
+            let model = Ann2Cfg::new(num_classes, 0, hidden1, hidden2, 0.0)
+                           .init(num_features, device.clone())
+                           .load_record(rec);
+
+            run_inference::<B, _>(move |x| model.forward(x), device, query, bs)
+        }
     }
-    probs
 }
 
-/* ------------------------------------------------------------------------- */
-/* 3. Thin, model-specific façades                                           */
-/* ------------------------------------------------------------------------- */
-pub fn infer_helper_mlr(
-    path: String,
-    n_classes: usize,
-    n_feats: usize,
-    query: Vec<SCItemRaw>,
-    batch: Option<usize>,
+
+pub fn infer_wgpu(
+    model_path   : &str,
+    net          : NetKind,
+    num_classes  : usize,
+    num_features : usize,
+    query        : Vec<SCItemRaw>,
+    batch_size   : Option<usize>,
 ) -> Vec<f32> {
-    infer_with_builder::<MlrModel<B>, _>(
-        &path,
-        |device| {
-            MlrCfg::new(n_classes)
-                .init(n_feats, device.clone())            // `init` needs the device
-        },
+    use burn::backend::wgpu::{Wgpu, WgpuDevice};
+    type B = Wgpu<f32, i32>;
+    infer::<B>(model_path,
+        net,
+        num_classes,
+        num_features,
         query,
-        batch.unwrap_or(64),
-    )
+        batch_size, WgpuDevice::default())
 }
 
-pub fn infer_helper_ann(
-    path: String,
-    n_classes: usize,
-    n_feats: usize,
-    query: Vec<SCItemRaw>,
-    hidden: usize,
-    batch: Option<usize>,
+pub fn infer_nd(
+    model_path   : &str,
+    net          : NetKind,
+    num_classes  : usize,
+    num_features : usize,
+    query        : Vec<SCItemRaw>,
+    batch_size   : Option<usize>,
 ) -> Vec<f32> {
-    infer_with_builder::<AnnModel<B>, _>(
-        &path,
-        |device| {
-            //  ANN `init` *does not* take the device
-            AnnCfg::new(n_classes, 0, hidden, 0.0).init(n_feats, device.clone())
-        },
+    use burn::backend::ndarray::{NdArray, NdArrayDevice}; 
+    type B = NdArray<f32, i32>;
+    infer::<B>(model_path,
+        net,
+        num_classes,
+        num_features,
         query,
-        batch.unwrap_or(64),
-    )
+        batch_size, NdArrayDevice::default())
 }
 
-pub fn infer_helper_ann2l(
-    path: String,
-    n_classes: usize,
-    n_feats: usize,
-    query: Vec<SCItemRaw>,
-    h1: usize,
-    h2: usize,
-    batch: Option<usize>,
+pub fn infer_candle(
+    model_path   : &str,
+    net          : NetKind,
+    num_classes  : usize,
+    num_features : usize,
+    query        : Vec<SCItemRaw>,
+    batch_size   : Option<usize>,
 ) -> Vec<f32> {
-    infer_with_builder::<Ann2Model<B>, _>(
-        &path,
-        |device| {
-            Ann2Cfg::new(n_classes, 0, h1, h2, 0.0).init(n_feats, device.clone()) // same: no device
-        },
+    use burn::backend::candle::{Candle, CandleDevice}; 
+    type B = Candle<f32, i64>;
+    infer::<B>(model_path,
+        net,
+        num_classes,
+        num_features,
         query,
-        batch.unwrap_or(64),
-    )
+        batch_size, CandleDevice::default())
 }
-
-
-// use crate::common::*;
-// use crate::scrna_mlr::ModelConfig as MLR_ModelConfig;
-// use crate::scrna_ann::ModelConfig as ANN_ModelConfig;
-// use crate::scrna_ann2l::ModelConfig as ANN_2_ModelConfig;
-
-// // use num_traits::ToPrimitive;
-
-// use burn::{
-//     backend::wgpu::{WgpuDevice, Wgpu},
-//     data::{dataloader::DataLoaderBuilder, dataset::InMemDataset, dataset::transform::MapperDataset},
-//     record::{NamedMpkFileRecorder, FullPrecisionSettings, Recorder},
-//     module::Module
-// };
-// // use serde::de;
-
-// pub fn infer_helper_mlr(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, batch_size: Option<usize>) -> Vec<f32>{
-//     type MyBackend = Wgpu<f32, i32>;
-//     let device = WgpuDevice::default();
-//     let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
-//         .load(model_path.into(), &device)
-//         .expect("Failed to load model weights");
-
-//     // Directly initialize a new model with the loaded record/weights
-//     let config_model = MLR_ModelConfig::new(num_classes);
-//     let model = config_model.init(num_features, device.clone()).load_record(record);
-//     let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-//     MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-//     // Create the batchers.
-//     let batcher_query = SCBatcher::<MyBackend>::new(device.clone());
-
-//     // Create the dataloaders.
-//     let dataloader_query = DataLoaderBuilder::new(batcher_query)
-//         .batch_size(batch_size.unwrap_or(64))
-//         .build(query_dataset);
-
-//     // let model_valid = model.valid();
-//     let mut probs = Vec::new();
-
-//     // Assuming dataloader_query is built
-//     for batch in dataloader_query.iter() {
-//         let output = model.forward(batch.counts);
-//         for val in output.to_data().iter::<f32>() {
-//             probs.push(val);
-//         }
-//         // output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
-//         // let output_data = output.to_data().value;
-//         // probs.extend(output_data.iter().map(|x| x.to_f32().unwrap()));
-//     }
-//     probs
-
-// }
-
-// pub fn infer_helper_ann(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, hidden_size: usize, batch_size: Option<usize>) -> Vec<f32>{
-//     type MyBackend = Wgpu<f32, i32>;
-//     let device = WgpuDevice::default();
-//     let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
-//         .load(model_path.into(), &device.clone())
-//         .expect("Failed to load model weights");
-
-//     // Directly initialize a new model with the loaded record/weights
-//     let config_model = ANN_ModelConfig::new(num_classes, 0, hidden_size, 0.0);
-//     let model = config_model.init(num_features).load_record(record);
-//     let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-//     MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-//     // Create the batchers.
-//     let batcher_query = SCBatcher::<MyBackend>::new(device.clone());
-
-//     // Create the dataloaders.
-//     let dataloader_query = DataLoaderBuilder::new(batcher_query)
-//         .batch_size(batch_size.unwrap_or(64))
-//         .build(query_dataset);
-
-//     // let model_valid = model.valid();
-//     let mut probs = Vec::new();
-
-//     // Assuming dataloader_query is built
-//     for batch in dataloader_query.iter() {
-//         let output = model.forward(batch.counts);
-//         for val in output.to_data().iter::<f32>() {
-//             probs.push(val);
-//         }
-//         // output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
-//         // let output_data = output.to_data().value;
-//         // probs.extend(output_data.iter().map(|x| x.to_f32().unwrap()));
-//     }
-//     probs
-
-// }
-
-
-// pub fn infer_helper_ann2l(model_path: String, num_classes: usize, num_features: usize, query: Vec<SCItemRaw>, hidden_size1: usize, hidden_size2: usize, batch_size: Option<usize>) -> Vec<f32>{
-//     type MyBackend = Wgpu<f32, i32>;
-//     let device = WgpuDevice::default();
-//     let record = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
-//         .load(model_path.into(), &device)
-//         .expect("Failed to load model weights");
-
-//     // Directly initialize a new model with the loaded record/weights
-//     let config_model = ANN_2_ModelConfig::new(num_classes, 0, hidden_size1, hidden_size2, 0.0);
-//     let model = config_model.init(num_features).load_record(record);
-//     let query_dataset: MapperDataset<InMemDataset<SCItemRaw>, LocalCountstoMatrix, SCItemRaw> =
-//     MapperDataset::new(InMemDataset::new(query), LocalCountstoMatrix);
-//     // Create the batchers.
-//     let batcher_query = SCBatcher::<MyBackend>::new(device.clone());
-
-//     // Create the dataloaders.
-//     let dataloader_query = DataLoaderBuilder::new(batcher_query)
-//         .batch_size(batch_size.unwrap_or(64))
-//         .build(query_dataset);
-
-//     // let model_valid = model.valid();
-//     let mut probs = Vec::new();
-
-//     // Assuming dataloader_query is built
-//     for batch in dataloader_query.iter() {
-//         let output = model.forward(batch.counts);
-//         for val in output.to_data().iter::<f32>() {
-//             probs.push(val);
-//         }
-//         // output.to_data().value.iter().for_each(|x| probs.push(x.to_f32().expect("failed to unwrap probs")));
-//         // let output_data = output.to_data().value;
-//         // probs.extend(output_data.iter().map(|x| x.to_f32().unwrap()));
-//     }
-//     probs
-
-// }
 

@@ -40,12 +40,17 @@ splat_bulk_reference<-function(query=NULL,
                                         max(sizes)], 0)
     final_newsizes <- sample(trimmed_newdata, N)
     rsums <- counts[,n]
+    total <- sum(rsums)
     if(is.null(names(rsums))){
       names(rsums)<-rownames(counts)
     }
     splat <- names(rsums)[rep(seq_along(rsums), rsums)]
     dl <- lapply(final_newsizes, function(i) {
-      tab <- table(sample(splat, i, replace=replace_counts))
+      if(i>total){
+        tab <- table(sample(splat, i, replace=T))
+      } else {
+        tab <- table(sample(splat, i, replace=replace_counts))
+      }
       nf <- universe[!universe %in% names(tab)]
       all <- c(tab, setNames(rep(0, length(nf)), nf))
       all[match(universe, names(all))]

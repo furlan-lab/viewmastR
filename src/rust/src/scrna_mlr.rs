@@ -246,7 +246,7 @@ where
     let tduration = start.elapsed();
     let mut probs = Vec::new();
 
-    if let Some(query_items) = query {
+     if let Some(query_items) = query {
         let query_dataset = MapperDataset::new(InMemDataset::new(query_items), LocalCountstoMatrix);
         let batcher_query = SCBatcher::<B>::new(device.clone());
         let dataloader_query = DataLoaderBuilder::new(batcher_query)

@@ -50,6 +50,7 @@ We have a few vignettes for
 - `vignette("HowTo")` to explore the basics of the package. 
 - `vignette("Augment")` to explore data augmentation
 - `vignette("BulkClassify")` to see how to use a bulk dataset to classify single-cell profiles
+- `vignette("Deconvolute")` to see how to deconvolute a bulk dataset using single-cell profiles
 
 
 ## License 

@@ -1,0 +1,815 @@
+---
+title: "How to use viewmastR to deconvolute"
+output: html_document
+date: "2024-12-10"
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+rm(list=ls())
+
+
+if(grepl("^gizmo", Sys.info()["nodename"])){
+  ROOT_DIR1<-"/fh/fast/furlan_s/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/fh/fast/furlan_s/grp/data/ddata/BM_data"
+} else {
+  ROOT_DIR1<-"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/experiments/MB_10X_5p/cds"
+  ROOT_DIR2<-"/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data"
+  ROOT_DIR3 <- "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/AML/1031/coembed/data"
+  ROOT_DIR4 <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
+}
+seurat_object_loc <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS"
+```
+
+#### Load a seurat object
+
+This is an atlas of healthy bone marrow celltypes taken from:
+
+Granja JM, Klemm S, McGinnis LM, Kathiria AS, Mezger A, Corces MR, Parks B, Gars E, Liedtke M, Zheng GXY, Chang HY, Majeti R, Greenleaf WJ. Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype acute leukemia. Nat Biotechnol. 2019 Dec;37(12):1458-1465. doi: 10.1038/s41587-019-0332-7. Epub 2019 Dec 2. PMID: 31792411; PMCID: PMC7258684.
+
+```{r}
+library(Seurat)
+library(viewmastR)
+# Load single-cell data
+sc_data <- readRDS(seurat_object_loc)
+DimPlot(sc_data, group.by = "SFClassification", cols = sc_data@misc$colors)
+```
+
+Now we pseudobulk the samples to get their "signatures"
+
+```{r}
+# Extract normalized counts and cell type labels
+counts <- GetAssayData(sc_data, layer = "data")  # log-normalized
+cell_types <- sc_data$SFClassification
+
+
+# Aggregate by cell type and create signatures
+signatures <- sapply(unique(cell_types), function(ct) {
+  cells <- which(cell_types == ct)
+  rowMeans(expm1(counts[, cells]))  # Convert back from log
+})
+
+# Normalize to proportions (sum to 1)
+signatures <- sweep(signatures, 2, colSums(signatures), "/")
+
+# or load the signatures from a file
+signatures <- "/Users/sfurlan/Desktop/scSigs.csv"
+signatures <- read.csv(signatures)
+rn <- signatures$var_names
+signatures <- as.matrix(signatures[,2:ncol(signatures)])
+rownames(signatures)<-rn
+colnames(signatures) <- substr(colnames(signatures), 2, nchar(colnames(signatures)))
+
+# Load bulk counts and gene lengths
+bulk_counts <- "/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt"
+bulk_counts <- read.csv(bulk_counts, sep = "\t")
+rn <- bulk_counts$X_TranscriptID
+bulk_counts$X_TranscriptID<- NULL
+bulk_counts <- as.matrix(bulk_counts)
+rownames(bulk_counts) <- rn
+gene_info <- read.table("/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights_withSymbol.tsv", header = TRUE)
+rownames(gene_info) <- gene_info$symbol
+
+# Ensure same genes
+common_genes <- intersect(intersect(rownames(signatures), rownames(bulk_counts)), gene_info$symbol)
+signatures <- signatures[common_genes, ]
+bulk_counts <- bulk_counts[common_genes, ]
+
+# Get gene lengths
+gene_lengths <- gene_info[common_genes, "length"]
+gene_weights <- gene_info[common_genes, "weight"]
+
+dim(signatures)
+dim(bulk_counts)
+length(gene_lengths)
+
+# #fast
+#   # user  system elapsed 
+#   # 3.852   0.809   9.530 
+# system.time(result <- deconvolve_bulk(
+#   signatures = signatures,
+#   bulk_counts = bulk_counts+0.00001,
+#   gene_lengths = gene_lengths+0.00001,
+#   init_log_exp = -10,  # Start with higher initial values
+#   learning_rate = 0.1,  # Increase learning rate
+#   max_iter = 2000,
+#   backend = "wgpu"
+# ))
+# 
+# #long 
+#  #   user  system elapsed 
+#  # 36.121   6.782  39.196 
+# 
+# system.time(result <- deconvolve_bulk(
+#   signatures = signatures,
+#   bulk_counts = bulk_counts+0.00001,
+#   gene_lengths = gene_lengths+0.00001,
+#   init_log_exp = -10,  # Start with higher initial values
+#   learning_rate = 0.1,  # Increase learning rate
+#   max_iter = 2000,
+#   backend = "ndarray"
+# ))
+# 
+# #very very long
+# #    user  system elapsed 
+# # 199.663 162.284 319.761 
+# system.time(result <- deconvolve_bulk(
+#   signatures = signatures,
+#   bulk_counts = bulk_counts+0.00001,
+#   gene_lengths = gene_lengths+0.00001,
+#   init_log_exp = -10,  # Start with higher initial values
+#   learning_rate = 0.1,  # Increase learning rate
+#   max_iter = 2000,
+#   backend = "candle"
+# ))
+
+```
+
+## tuning
+```{r}
+undebug(deconvolve_bulk)
+debug(calculate_fit_metrics)
+system.time(
+result <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  insert_size = 500,
+  init_log_exp = -3,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 100,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+)
+
+ #   user  system elapsed 
+ # 51.647   9.889 119.599 
+
+
+cor(as.vector(result$pred_counts[gene_weights>0,]), as.vector(bulk_counts[gene_weights>0,]))
+
+obs_flat <- as.vector(bulk_counts[gene_weights>0,])
+pred_flat <- as.vector(result$pred_counts[gene_weights>0,])
+
+# Remove zeros for log scale
+keep_idx <- obs_flat > 0 & pred_flat > 0
+
+fit_df <- data.frame(
+  Observed = log1p(obs_flat[keep_idx]),
+  Predicted = log1p(pred_flat[keep_idx])
+)
+    
+    
+ggplot(fit_df, aes(x=Observed, y=Predicted))+geom_hex(bins = 100)+scale_fill_viridis_c(trans = "log10")
+
+print_metrics_summary(result)
+
+plot_deconvolution(result, observed_counts = bulk_counts, type = "all")
+
+```
+
+
+```{r}
+d <- result0$proportions_with_intercept
+d <- d[,!(grepl("LSC", colnames(d)) | grepl("rHSC", colnames(d)) | grepl("Blast", colnames(d)))]
+mr <- as.matrix(d)
+sm <- scale(mr)
+cols <- pals::glasbey(13)
+names(cols) <- unique(strsplit(colnames(mr), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(mr), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(mr, top_annotation = cola, show_column_names = F, col = viridis_light_high)
+
+```
+
+
+
+```{r}
+library(ggplot2)
+m_python <- m_python[,colnames(mr)]
+
+#seuHR <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
+ggplot(data.frame(Rust=as.vector(mr), Python=as.vector(m_python), Decon = rep(rownames(mr), ncol(mr))), aes(x=Python, y=Rust, colour = Decon))+geom_point()+scale_color_manual(values = seuHR@misc$colors)
+
+
+cor(data.frame(Rust=as.vector(mr), Python=as.vector(m_python)))
+
+```
+
+
+```{r}
+# Find the worst-predicted genes
+pred_full_matrix <- result$pred_counts
+obs_matrix <- bulk_counts
+
+# Calculate residuals for each gene across all samples
+residuals <- obs_matrix - pred_full_matrix
+abs_residuals <- abs(residuals)
+mean_abs_resid <- rowMeans(abs_residuals)
+
+# Find worst genes
+worst_genes_idx <- order(mean_abs_resid, decreasing = TRUE)[1:20]
+
+cat("Top 20 worst-predicted genes:\n")
+for (i in worst_genes_idx[1:10]) {
+  cat(sprintf("Gene %d: mean_obs=%.0f, mean_pred=%.0f, mean_|error|=%.0f\n",
+              i, 
+              mean(obs_matrix[i,]), 
+              mean(pred_full_matrix[i,]),
+              mean_abs_resid[i]))
+}
+
+# Check if these are weighted zero
+cat("\nGene weights for worst genes:\n")
+print(gene_weights[worst_genes_idx[1:10]])
+
+# Plot residuals vs observed for worst gene
+worst_gene <- worst_genes_idx[1]
+plot(obs_matrix[worst_gene,], residuals[worst_gene,],
+     main = paste("Residuals for worst gene", worst_gene),
+     xlab = "Observed", ylab = "Residual (obs - pred)")
+abline(h = 0, col = "red")
+```
+
+```{r}
+# 1. Are signature column sums exactly 1?
+colSums(signatures)
+
+# 2. Which cell types have the lowest mean expression in signatures?
+colMeans(signatures)
+
+# 3. Are there any cell types with extreme values?
+apply(signatures, 2, function(x) c(min=min(x), max=max(x), nonzero=mean(x>0)))
+
+# 4. What do the raw exposures look like for the problematic cell types?
+# Compare pDC (cell type 9) and B cells (cell type 14)
+rust_pdc <- result$exposures[9,]
+rust_b <- result$exposures[14,]
+summary(rust_pdc)
+summary(rust_b)
+
+```
+
+```{r}
+# Check raw exposures
+summary(result$exposures)
+
+# Check if intercept dominates
+mean(result$intercept_fraction)
+
+# Check predicted vs observed counts
+cor(as.vector(result$pred_counts), as.vector(bulk_counts))
+plot(log1p(as.vector(bulk_counts)), log1p(as.vector(result$pred_counts)))
+
+
+```
+
+## testing scaled regularization
+```{r}
+result4 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 1e-4,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+
+result3 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 1e-3,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+result2 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 1e-2,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+result1 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 1e-1,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+result0 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 5,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+
+
+result01 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights,
+  poll_interval = 300,
+  init_log_exp = -10,     # CHANGED: Start higher
+  learning_rate = 0.01,
+  l1_lambda = 100,       # CHANGED: Start smaller  
+  l2_lambda = 0,
+  max_iter = 5000,       
+  backend = "wgpu"
+)
+
+
+# Compare
+compare_results <- function(r1, r2, name1, name2) {
+  n1 <- sum(rowMeans(r1$exposures) > 0.01)
+  n2 <- sum(rowMeans(r2$exposures) > 0.01)
+  cat(sprintf("%s: %d non-zero cell types, mean_exp=%.1f\n", 
+              name1, n1, mean(r1$exposures)))
+  cat(sprintf("%s: %d non-zero cell types, mean_exp=%.1f\n", 
+              name2, n2, mean(r2$exposures)))
+  cat(sprintf("Difference: %d cell types\n\n", n1 - n2))
+}
+
+compare_results(result4, result4, "L1=0.0001", "L1=0.001")
+compare_results(result3, result2, "L1=0.001", "L1=0.01")
+compare_results(result2, result1, "L1=0.01", "L1=0.1")
+compare_results(result1, result0, "L1=0.1", "L1=1")
+compare_results(result0, result01, "L1=1", "L1=100")
+```
+
+#Redo this in R
+
+```{r}
+library(viewmastR)
+
+
+seuHR <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS")
+DimPlot(seuHR, group.by = "SFClassification")
+bulk_count_data = "/Users/sfurlan/Library/CloudStorage/OneDrive-FredHutchCancerCenter/computation/Analysis/ddata/MPAL/data/bulk/GSE74246_RNAseq_All_Counts.txt"
+gene_weights = "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights_withSymbol.tsv"
+fit_csv = "/Users/sfurlan/Desktop/test_fit_rust.csv"
+
+
+bulk_count_data <- read.csv(bulk_count_data, sep = "\t")
+rn <- bulk_count_data$X_TranscriptID
+bulk_count_data$X_TranscriptID<- NULL
+bulk_count_data <- as.matrix(bulk_count_data)
+rownames(bulk_count_data) <- rn
+gene_weights <- read.table(gene_weights, sep = "\t", header = T)
+
+pseudobulk <- function(seu, by, assay = "RNA", layer = "data"){
+  meta <- seu@meta.data
+  counts_mat <- GetAssayData(seu, assay = assay, layer = layer)
+  # extract your cell‐type factor
+  cell_types <- as.character(meta[[by]])
+  unique_types <- unique(cell_types)
+  
+  # pre‐allocate an empty matrix: genes × n_types
+  genes       <- rownames(counts_mat)
+  scSigs_mat  <- matrix(0,
+                        nrow = length(genes),
+                        ncol = length(unique_types),
+                        dimnames = list(genes, unique_types))
+  
+  # fill it
+  for (ct in unique_types) {
+    idx <- which(cell_types == ct)
+    # sum counts for that cell-type
+    vec <- rowSums(counts_mat[, idx, drop=FALSE])
+    # normalize so they sum to 1
+    scSigs_mat[, ct] <- vec / sum(vec)
+  }
+  scSigs_mat
+}
+
+
+undebug(pseudobulk)
+# 1) build healthy reference from your non-malignant clusters
+ref_mat <- pseudobulk(seuHR, "SFClassification" )
+bulk_mat <- bulk_count_data
+C_mat <- gene_weights$length
+# C_mat <- bulk_count_data$size
+names(C_mat)<-gene_weights$symbol
+# bulk_mat <- as.matrix(bulk_count_data[,3:ncol(bulk_count_data)])
+# rownames(bulk_mat)<-bulk_count_data$X
+
+common_feats <- intersect(intersect(rownames(ref_mat), names(C_mat)), rownames(bulk_mat))
+
+
+ref_mat <- ref_mat[common_feats, ]
+C_mat <- C_mat[common_feats]
+bulk_mat <- bulk_mat[common_feats,]
+w_vec <- gene_weights$weight[match(common_feats, gene_weights$symbol)]
+
+bulk_mat_t <- bulk_mat
+dim(bulk_mat_t)
+
+saveRDS(list(ref_mat, bulk_mat_t, C_mat, w_vec), file.path("~/Desktop/seuHR/test_list.RDS"))
+
+
+
+library(viewmastR)
+
+l<-readRDS("~/Desktop/seuHR/test_list.RDS")
+ref_mat = l[[1]]
+bulk_mat_t = l[[2]]
+C_mat = l[[3]]
+w_vec <- l[[4]]
+
+
+result <- res$exposures
+dim(result)
+rownames(result) <- c(colnames(ref_mat), "Intercept")
+colnames(result) <- colnames(bulk_mat_t)
+d <- result
+d <- d[,!(grepl("LSC", colnames(d)) | grepl("rHSC", colnames(d)) | grepl("Blast", colnames(d)))]
+m <- as.matrix(d)
+cols <- pals::glasbey(13)
+names(cols) <- unique(strsplit(colnames(m), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(m), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(m, bottom_annotation = cola, show_column_names = F, col = viridis_light_high)
+
+
+
+
+```
+
+```{r}
+
+cds <- readRDS(file.path(ROOT_DIR4, "healthy_bm_greenleaf.rds"))
+plot_cells(cds, color_cells_by = "BioClassification")
+
+rownames(cds)<-rowData(cds)$gene_id
+#cds <- normalized_counts(cds)
+PCs <- 25 #Number of PCs for clustering
+n_top <- c(3000,2500,2500) #number of features
+cds<-iterative_LSI(cds, num_dim = PCs, num_features = n_top, resolution = c(2e-4, 9e-4, 1e-3), verbose = T)
+cds<-reduce_dimension(cds, reduction_method = "UMAP", preprocess_method = "LSI", umap.min_dist = 0.45,  umap.n_neighbors = 35, umap.metric = "euclidean", verbose=T)
+plot_cells(cds, color_cells_by = "BioClassification")
+
+
+feats <- cds@int_metadata$LSI_model$features
+
+#make a seurat object for export
+counts <- cds@assays@data$counts
+rownames(counts)<-rowData(cds)$gene_id
+seuHR <- CreateSeuratObject(counts = counts , meta.data = data.frame(colData(cds)))
+seuHR <- NormalizeData(seuHR) %>% ScaleData()
+lsimat <- cds@int_metadata$LSI_model$svd$v
+rownames(lsimat)<-colnames(cds)
+colnames(lsimat)<-paste0("LSI_", 1:ncol(lsimat))
+seuHR$lsi <- CreateDimReducObject(embeddings = lsimat, assay = "RNA")
+# seuHR <- readRDS(file.path(ROOT_DIR4, "healthy_bm_greenleaf.rds"))
+# seuHR <- CreateSeuratObject(counts = seuHR@assays@data$counts, meta.data = data.frame(colData(seuHR)))
+# seuHR <- NormalizeData(seuHR) %>% ScaleData()
+# VariableFeatures(seuHR)<- feats
+# seuHR <- Signac::RunTFIDF(seuHR)
+# seuHR <- Signac::RunSVD(seuHR)
+VariableFeatures(seuHR)<-feats
+seuHR <- RunUMAP(seuHR, dims = 1:25, reduction = "lsi", min.dist = 0.45, n.neighbors = 35, metric = "euclidean")
+DimPlot(seuHR, group.by = "BioClassification")
+DimPlot(seuHR, group.by = "Group")
+
+dir.create("~/Desktop/seuHR")
+flscuts::export_seurat_to_10x(seuHR, dir = "~/Desktop/seuHR")
+```
+
+
+
+
+```{r}
+
+library(viewmastR)
+
+bulk_count_data = "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/AML/1031/coembed/data/aml_all_bulk_counts.csv"
+gene_weights = "/Users/sfurlan/Fred Hutch Cancer Center/Furlan_Lab - General/datasets/fetalBM/data/geneWeights.tsv"
+
+bulk_count_data <- read.csv(bulk_count_data)
+gene_weights <- read.table(gene_weights, sep = "\t", header = T)
+
+pseudobulk <- function(seu, by, assay = "RNA", layer = "counts"){
+  meta <- seu@meta.data
+  counts_mat <- GetAssayData(seu, assay = assay, layer = layer)
+  # extract your cell‐type factor
+  cell_types <- as.character(meta[[by]])
+  unique_types <- unique(cell_types)
+  
+  # pre‐allocate an empty matrix: genes × n_types
+  genes       <- rownames(counts_mat)
+  scSigs_mat  <- matrix(0,
+                        nrow = length(genes),
+                        ncol = length(unique_types),
+                        dimnames = list(genes, unique_types))
+  
+  # fill it
+  for (ct in unique_types) {
+    idx <- which(cell_types == ct)
+    # sum counts for that cell-type
+    vec <- rowSums(counts_mat[, idx, drop=FALSE])
+    # normalize so they sum to 1
+    scSigs_mat[, ct] <- vec / sum(vec)
+  }
+  scSigs_mat
+}
+
+
+
+# 1) build healthy reference from your non-malignant clusters
+ref_mat <- pseudobulk(seuHR, "BioClassification" )
+C_mat <- bulk_count_data$size
+names(C_mat)<-bulk_count_data$X
+bulk_mat <- as.matrix(bulk_count_data[,3:ncol(bulk_count_data)])
+rownames(bulk_mat)<-bulk_count_data$X
+
+common_feats <- intersect(intersect(rownames(ref_mat), names(C_mat)), gene_weights$geneID)
+
+
+ref_mat <- ref_mat[common_feats, ]
+C_mat <- C_mat[common_feats]
+bulk_mat <- bulk_mat[common_feats,]
+w_vec <- gene_weights$weight[match(common_feats, gene_weights$geneID)]
+
+
+tester <- c(2116, 3432, 3391, 963, 4374, 1277, 3943, 1295, 3714, 3576, 1263, 2275, 583, 2497, 889, 1380, 4483, 4431, 3146, 1955, 1997, 133, 3573, 3622, 660, 2902, 30, 1017, 2783, 1919, 2996, 4908, 2051, 1474, 1018, 631, 180, 3758, 2229, 986, 2302, 2197, 3451, 3267, 2347, 4867, 2328, 2638, 2827, 737, 371, 4592, 647, 3349, 3562, 3482, 2389, 489, 3046, 479, 2293, 1079, 2131, 4072, 1907, 3456, 2255, 540, 4294, 3011, 4610, 2970, 4819, 3088, 3114, 584, 192, 2751, 945, 1158, 1696, 3889, 1020, 2533, 1579, 4598, 3182, 2362, 1580, 2713, 3603, 4635, 3678, 2451, 2332, 4, 2168, 3370, 3502, 305)
+
+bulk_mat_t <- bulk_mat[,tester]
+dim(bulk_mat_t)
+
+#saveRDS(list(ref_mat, bulk_mat_t, C_mat, w_vec), file.path("~/Desktop/seuHR/test_list.RDS"))
+
+
+
+library(viewmastR)
+
+l<-readRDS("~/Desktop/seuHR/test_list.RDS")
+ref_mat = l[[1]]
+bulk_mat_t = l[[2]]
+C_mat = l[[3]]
+w_vec <- l[[4]]
+
+deconvolute <- function(
+    ref_mat, 
+    bulk_mat, 
+    length_vec, 
+    weight_vec,
+    init_log_exp = -5,
+    lr           = 1e-3,
+    l1_lambda    = 0.01,
+    l2_lambda    = 0.01,
+    epochs       = 300)
+{
+    fit <- fit_deconv(
+      sigs = ref_mat,
+      bulk = bulk_mat,
+      mol2read = length_vec,
+      w_vec = weight_vec,
+      init_log_exp =init_log_exp,
+      lr          = lr,
+      l1_lambda   = l1_lambda,
+      l2_lambda   = l2_lambda,
+      epochs      = epochs)
+  
+        ## -- 1. sort the sample columns the way pandas .sort_index(axis=1) does ----
+      loss <- fit$loss
+      fit <- fit$exposures[ , order(colnames(bulk_mat))]
+      # 
+      # 
+      # ## -- 2. split out “goodness-of-fit” rows -----------------------------------
+      # gof_noms <- c("pR2", "fitCount", "obsCount")
+      # gof <- fit[gof_noms, , drop = FALSE]
+      # 
+      # ## add log2(countRatio) = log2(fitCount / obsCount) per sample
+      # gof["log2(countRatio)", ] <- log2(gof["fitCount", ] / gof["obsCount", ])
+      # 
+      # ## -- 3. raw exposures (everything that is *not* a GOF row) -----------------
+      # expos_idx <- !rownames(fit) %in% gof_noms
+      # raw <- fit[expos_idx, , drop = FALSE]
+    
+      ## -- 4. column-wise normalisation so each sample sums to 1 -----------------
+      exposures <- sweep(fit, 2, colSums(fit), FUN = "/")
+    
+      ## -- 5. return a list mimicking the Python dict ----------------------------
+      list(
+        exposures = exposures
+        # gof       = gof,
+        # raw       = raw          # raw (unnormalised) exposure matrix
+      )
+}
+
+# C_mat <- matrix(
+#   as.numeric(C_mat),
+#   nrow = length(C_mat),
+#   ncol = ncol(bulk_mat_t),
+#   byrow = FALSE
+# )
+
+dim(ref_mat)
+length(C_mat)
+dim(bulk_mat_t)
+length(w_vec)
+
+undebug(deconvolute)
+res <- deconvolute(ref_mat, bulk_mat_t, length_vec = C_mat, weight_vec = w_vec, lr = 0.01, epochs = 3000)
+
+
+ComplexHeatmap::Heatmap(res$exposures, cluster_rows = F, cluster_columns = F,col = viridis_light_high)
+```
+
+```{r}
+#debug(flscuts::iterative_LSI)
+
+
+cor(cds@int_metadata$LSI_model$svd$d, seuHR@reductions$lsi@misc$svd$d)       # ≈ 1.00
+
+identical(
+  cds@int_metadata$LSI_model$features,
+  seuHR@reductions$lsi@misc$features
+)
+
+identical(
+  cds@int_metadata$LSI_model$features,
+  VariableFeatures(seuHR)
+)
+
+library(SeuratDisk)
+SeuratDisk::SaveH5Seurat(seuHR, filename = file.path("~/Desktop/seuHR.h5Seurat"))
+SeuratDisk::Convert("~/Desktop/seuHR.h5Seurat", dest = "h5ad", overwrite = T)
+
+
+```
+
+
+
+
+```{r}
+filter_calls <- function(seu_obj, training_result, prob_thresh = 0.95, pop_thresh = 0.05, labels, output_name = "tumor_call"){
+  max <- apply(training_result$training_output$probs, 1, max)
+  names(max) <- labels[apply(training_result$training_output$probs, 1, which.max)]
+  names(max)[max<prob_thresh]<- NA
+  seu_obj[[output_name]] <- names(max)
+  tk <- names(table(names(max)))[table(names(max)) > pop_thresh * sum(table(names(max)))]
+  seu_obj[[paste0(output_name, "_filtered")]]<- NA
+  seu_obj[[paste0(output_name, "_filtered")]][names(max) %in% tk,1] <- names(max)[names(max) %in% tk]
+  return(seu_obj)
+}
+
+
+```
+
+
+
+```{r}
+plot_gene_dispersion(seuHR)
+seuHR <- select_features(seuHR, top_n = 5000, logmean_ul = -1, logmean_ll = -9)
+
+vgHR <- get_selected_features(seuHR)
+
+seuF <- calculate_feature_dispersion(seuF)
+plot_gene_dispersion(seuF)
+seuF <- select_features(seuF, top_n = 5000, logmean_ul = -3, logmean_ll = -10)
+vgF <- get_selected_features(seuF)
+
+seuF <- NormalizeData(seuF) %>% ScaleData()
+
+
+res <- viewmastR(query_cds = seuHR, ref_cds = seuF, ref_celldata_col = "cell.labels", selected_features = vgF, return_probs = T, return_type = "list")
+seuHR <- filter_calls(seuHR, prob_thresh = .9, pop_thresh = 0.001, training_result = res, labels = levels(factor(seuF$cell.labels)), output_name = "fetal")
+
+DimPlot(seuHR, group.by = "fetal_filtered", cols = as.character(c(pals::alphabet(), pals::polychrome(), pals::glasbey())))
+
+
+seu3 <- readRDS('/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/experiments/Peds_UCSF/cds/KMT2Apatients_seuratobject_cleaned.rds')
+
+res3 <- viewmastR(query_cds = seu3, ref_cds = seuF, ref_celldata_col = "cell.labels", selected_features = vgF, return_probs = T, return_type = "list")
+seu3 <- filter_calls(seu3, prob_thresh = .2, pop_thresh = 0.001, training_result = res3, labels = levels(factor(seuF$cell.labels)), output_name = "fetal")
+DimPlot(seu3, group.by = "fetal_filtered", cols = as.character(c(pals::alphabet(), pals::polychrome(), pals::glasbey())))
+
+
+plotly::ggplotly(DimPlot(seuHR, group.by = "viewmastR_pred", cols = as.character(c(pals::alphabet(), pals::polychrome(), pals::glasbey()))))
+
+seuF <- viewmastR(seuF, seuHR, ref_celldata_col = "SFClassification", selected_features = vgHR)
+seuF@meta.data
+DimPlot(seuF, group.by = "viewmastR_pred", cols = cols)
+FeaturePlot_scCustom(seuF, features = "FOXP3")
+plotly::ggplotly(DimPlot(seuF, group.by = "cell.labels", raster = F, cols = as.character(c(pals::alphabet(), pals::polychrome(), pals::glasbey()))))
+```
+
+
+```{r}
+colnames(seuHR@assays$RNA@data)
+
+n_top <- c(3000,2500,2500) #number of features
+seuHR <- flscuts::iterative_LSI(seuHR, num_dim = 25, num_features = n_top, resolution = c(2e-4, 9e-4, 1e-3), verbose = T, do_tf_idf = F)
+
+
+undebug(flscuts::iterative_LSI)
+
+
+single_cell_ref_column = "cell.labels"
+bulk_count_data = file.path(ROOT_DIR3, "aml_all_bulk_counts.csv")
+# bulk_meta_data = "~/Fred Hutchinson Cancer Research Center/Furlan_Lab - General/datasets/AML/1031/coembed/data/bulk_meta.csv" #don't really need this
+gene_weights = file.path(ROOT_DIR2, "geneWeights.tsv")
+
+
+seuHR <- file.path()
+```
+
+```{r}
+library(Seurat)
+seu <- readRDS(single_cell_ref)
+plotly::ggplotly(DimPlot(seu, group.by = "cell.labels", raster = F, cols = as.character(c(pals::alphabet(), pals::polychrome(), pals::glasbey()))))
+
+```
+
+
+
+## Running viewmastR
+
+```{r, dpi=300, fig.height=4, fig.width = 6}
+suppressPackageStartupMessages({
+library(viewmastR)
+library(Seurat)
+library(ggplot2)
+})
+
+#query dataset
+seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
+#reference dataset
+seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
+vg <- get_selected_features(seu)
+```
+
+## Build the model and infer for small dataset (not using chunks and parallelization)
+
+This is also covered elsewhere
+```{r}
+results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 4, train_only = T)
+
+
+
+seu<-viewmastR_infer(seu, results[["model_dir"]], vg, labels = levels(factor(seur$SFClassification)), batch_size = 250)
+DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+```
+
+## Build the model and infer for large dataset (dividing the query into chunks and using parallelization)
+
+By using chunks and workers, you can infer from the model only chunks at a time using multiple workers in parallel.
+```{r}
+options(future.globals.maxSize = 16 * 1024^3)
+seu<-viewmastR_infer(seu, results[["model_dir"]], query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 4, workers = 4)
+DimPlot(seu, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
+```
+
+We see no difference if parallelization is used
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_inferred_parallel), cols = seur@misc$colors)
+```
+
+
+## Bigger dataset
+By optimising chunk size, workers and batch size, you can achieve faster results on big datasets. Here we are just inferring back on the larger reference set (because it is larger, but this is not advisable in normal practice)
+```{r}
+seur<-viewmastR_infer(seur, results[["model_dir"]], query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 20, workers = 16, batch_size = 3000)
+DimPlot(seur, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
+```
+
+```{r, dpi=300, fig.height=6, fig.width=10}
+confusion_matrix(pred = factor(seur$SFClassification), gt = factor(seur$viewmastR_inferred_parallel), cols = seur@misc$colors)
+```
+
