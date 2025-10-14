@@ -8,9 +8,9 @@
 <title>How to use viewmastR with saved models • viewmastR</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/IBM_Plex_Sans-0.4.9/font.css" rel="stylesheet">
-<link href="../deps/Fira_Mono-0.4.9/font.css" rel="stylesheet">
-<link href="../deps/Alegreya_Sans_SC-0.4.9/font.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/IBM_Plex_Sans-0.4.10/font.css" rel="stylesheet">
+<link href="../deps/Fira_Mono-0.4.10/font.css" rel="stylesheet">
+<link href="../deps/Alegreya_Sans_SC-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><link href="../extra.css" rel="stylesheet">
@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">viewmastR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,6 +48,7 @@
     <li><a class="dropdown-item" href="../articles/SavedModel.html">How to use viewmastR with saved models</a></li>
     <li><a class="dropdown-item" href="../articles/Extras.html">Extra functions</a></li>
     <li><a class="dropdown-item" href="../articles/BigQuery.html">How to use viewmastR with large query objects</a></li>
+    <li><a class="dropdown-item" href="../articles/Deconvolute.html">How to deconvolute bulk RNAseq</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -171,110 +172,110 @@ viewmastR_infer having saved the model to disc.<a class="anchor" aria-label="anc
 <span><span class="co">## [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## other attached packages:</span></span>
-<span><span class="co">## [1] ggplot2_3.5.2      Seurat_5.2.1       SeuratObject_5.0.2 sp_2.2-0          </span></span>
-<span><span class="co">## [5] viewmastR_0.3.0   </span></span>
+<span><span class="co">## [1] ggplot2_3.5.2      Seurat_5.3.0       SeuratObject_5.1.0 sp_2.2-0          </span></span>
+<span><span class="co">## [5] viewmastR_0.4.0   </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## loaded via a namespace (and not attached):</span></span>
-<span><span class="co">##   [1] fs_1.6.5                    matrixStats_1.5.0          </span></span>
+<span><span class="co">##   [1] fs_1.6.6                    matrixStats_1.5.0          </span></span>
 <span><span class="co">##   [3] spatstat.sparse_3.1-0       RcppMsgPack_0.2.4          </span></span>
 <span><span class="co">##   [5] lubridate_1.9.4             httr_1.4.7                 </span></span>
 <span><span class="co">##   [7] RColorBrewer_1.1-3          doParallel_1.0.17          </span></span>
-<span><span class="co">##   [9] tools_4.4.3                 sctransform_0.4.1          </span></span>
+<span><span class="co">##   [9] tools_4.4.3                 sctransform_0.4.2          </span></span>
 <span><span class="co">##  [11] backports_1.5.0             R6_2.6.1                   </span></span>
 <span><span class="co">##  [13] lazyeval_0.2.2              uwot_0.2.3                 </span></span>
 <span><span class="co">##  [15] GetoptLong_1.0.5            withr_3.0.2                </span></span>
 <span><span class="co">##  [17] gridExtra_2.3               scCustomize_3.0.1          </span></span>
-<span><span class="co">##  [19] progressr_0.15.1            cli_3.6.4                  </span></span>
+<span><span class="co">##  [19] progressr_0.15.1            cli_3.6.5                  </span></span>
 <span><span class="co">##  [21] Biobase_2.66.0              textshaping_1.0.0          </span></span>
-<span><span class="co">##  [23] Cairo_1.6-2                 spatstat.explore_3.4-2     </span></span>
+<span><span class="co">##  [23] Cairo_1.6-2                 spatstat.explore_3.4-3     </span></span>
 <span><span class="co">##  [25] fastDummies_1.7.5           labeling_0.4.3             </span></span>
-<span><span class="co">##  [27] sass_0.4.9                  spatstat.data_3.1-6        </span></span>
+<span><span class="co">##  [27] sass_0.4.10                 spatstat.data_3.1-6        </span></span>
 <span><span class="co">##  [29] proxy_0.4-27                ggridges_0.5.6             </span></span>
 <span><span class="co">##  [31] pbapply_1.7-2               pkgdown_2.1.1              </span></span>
 <span><span class="co">##  [33] systemfonts_1.2.2           foreign_0.8-90             </span></span>
-<span><span class="co">##  [35] R.utils_2.13.0              parallelly_1.43.0          </span></span>
-<span><span class="co">##  [37] rstudioapi_0.17.1           generics_0.1.3             </span></span>
-<span><span class="co">##  [39] shape_1.4.6.1               ica_1.0-3                  </span></span>
-<span><span class="co">##  [41] spatstat.random_3.3-3       dplyr_1.1.4                </span></span>
-<span><span class="co">##  [43] Matrix_1.7-3                ggbeeswarm_0.7.2           </span></span>
-<span><span class="co">##  [45] S4Vectors_0.44.0            abind_1.4-8                </span></span>
-<span><span class="co">##  [47] R.methodsS3_1.8.2           lifecycle_1.0.4            </span></span>
-<span><span class="co">##  [49] yaml_2.3.10                 snakecase_0.11.1           </span></span>
-<span><span class="co">##  [51] SummarizedExperiment_1.36.0 recipes_1.2.1              </span></span>
-<span><span class="co">##  [53] SparseArray_1.6.2           Rtsne_0.17                 </span></span>
-<span><span class="co">##  [55] paletteer_1.6.0             grid_4.4.3                 </span></span>
-<span><span class="co">##  [57] promises_1.3.2              crayon_1.5.3               </span></span>
-<span><span class="co">##  [59] miniUI_0.1.1.1              lattice_0.22-7             </span></span>
-<span><span class="co">##  [61] cowplot_1.1.3               pillar_1.10.2              </span></span>
-<span><span class="co">##  [63] knitr_1.50                  ComplexHeatmap_2.22.0      </span></span>
-<span><span class="co">##  [65] GenomicRanges_1.58.0        rjson_0.2.23               </span></span>
-<span><span class="co">##  [67] boot_1.3-31                 future.apply_1.11.3        </span></span>
-<span><span class="co">##  [69] codetools_0.2-20            glue_1.8.0                 </span></span>
-<span><span class="co">##  [71] spatstat.univar_3.1-2       data.table_1.17.0          </span></span>
-<span><span class="co">##  [73] vctrs_0.6.5                 png_0.1-8                  </span></span>
-<span><span class="co">##  [75] spam_2.11-1                 Rdpack_2.6.4               </span></span>
-<span><span class="co">##  [77] gtable_0.3.6                rematch2_2.1.2             </span></span>
-<span><span class="co">##  [79] assertthat_0.2.1            cachem_1.1.0               </span></span>
-<span><span class="co">##  [81] gower_1.0.2                 xfun_0.52                  </span></span>
-<span><span class="co">##  [83] rbibutils_2.3               S4Arrays_1.6.0             </span></span>
-<span><span class="co">##  [85] mime_0.13                   prodlim_2025.04.28         </span></span>
-<span><span class="co">##  [87] reformulas_0.4.0            survival_3.8-3             </span></span>
-<span><span class="co">##  [89] timeDate_4041.110           SingleCellExperiment_1.28.1</span></span>
-<span><span class="co">##  [91] iterators_1.0.14            pbmcapply_1.5.1            </span></span>
-<span><span class="co">##  [93] hardhat_1.4.1               lava_1.8.1                 </span></span>
-<span><span class="co">##  [95] fitdistrplus_1.2-2          ROCR_1.0-11                </span></span>
-<span><span class="co">##  [97] ipred_0.9-15                nlme_3.1-168               </span></span>
-<span><span class="co">##  [99] RcppAnnoy_0.0.22            GenomeInfoDb_1.42.3        </span></span>
-<span><span class="co">## [101] bslib_0.9.0                 irlba_2.3.5.1              </span></span>
-<span><span class="co">## [103] vipor_0.4.7                 KernSmooth_2.23-26         </span></span>
-<span><span class="co">## [105] rpart_4.1.24                colorspace_2.1-1           </span></span>
-<span><span class="co">## [107] BiocGenerics_0.52.0         Hmisc_5.2-3                </span></span>
-<span><span class="co">## [109] nnet_7.3-20                 ggrastr_1.0.2              </span></span>
-<span><span class="co">## [111] tidyselect_1.2.1            compiler_4.4.3             </span></span>
-<span><span class="co">## [113] htmlTable_2.4.3             desc_1.4.3                 </span></span>
-<span><span class="co">## [115] DelayedArray_0.32.0         plotly_4.10.4              </span></span>
-<span><span class="co">## [117] checkmate_2.3.2             scales_1.3.0               </span></span>
-<span><span class="co">## [119] lmtest_0.9-40               stringr_1.5.1              </span></span>
-<span><span class="co">## [121] digest_0.6.37               goftest_1.2-3              </span></span>
-<span><span class="co">## [123] spatstat.utils_3.1-3        minqa_1.2.8                </span></span>
-<span><span class="co">## [125] rmarkdown_2.29              XVector_0.46.0             </span></span>
-<span><span class="co">## [127] htmltools_0.5.8.1           pkgconfig_2.0.3            </span></span>
-<span><span class="co">## [129] base64enc_0.1-3             lme4_1.1-37                </span></span>
-<span><span class="co">## [131] sparseMatrixStats_1.18.0    MatrixGenerics_1.18.1      </span></span>
-<span><span class="co">## [133] fastmap_1.2.0               rlang_1.1.6                </span></span>
-<span><span class="co">## [135] GlobalOptions_0.1.2         htmlwidgets_1.6.4          </span></span>
-<span><span class="co">## [137] UCSC.utils_1.2.0            shiny_1.10.0               </span></span>
-<span><span class="co">## [139] DelayedMatrixStats_1.28.1   farver_2.1.2               </span></span>
-<span><span class="co">## [141] jquerylib_0.1.4             zoo_1.8-14                 </span></span>
-<span><span class="co">## [143] jsonlite_2.0.0              ModelMetrics_1.2.2.2       </span></span>
-<span><span class="co">## [145] R.oo_1.27.0                 magrittr_2.0.3             </span></span>
-<span><span class="co">## [147] Formula_1.2-5               GenomeInfoDbData_1.2.13    </span></span>
-<span><span class="co">## [149] dotCall64_1.2               patchwork_1.3.0            </span></span>
-<span><span class="co">## [151] munsell_0.5.1               Rcpp_1.0.14                </span></span>
-<span><span class="co">## [153] reticulate_1.42.0           stringi_1.8.7              </span></span>
-<span><span class="co">## [155] pROC_1.18.5                 zlibbioc_1.52.0            </span></span>
-<span><span class="co">## [157] MASS_7.3-65                 plyr_1.8.9                 </span></span>
-<span><span class="co">## [159] parallel_4.4.3              listenv_0.9.1              </span></span>
-<span><span class="co">## [161] ggrepel_0.9.6               forcats_1.0.0              </span></span>
-<span><span class="co">## [163] deldir_2.0-4                splines_4.4.3              </span></span>
-<span><span class="co">## [165] tensor_1.5                  circlize_0.4.16            </span></span>
-<span><span class="co">## [167] igraph_2.1.4                spatstat.geom_3.3-6        </span></span>
-<span><span class="co">## [169] RcppHNSW_0.6.0              reshape2_1.4.4             </span></span>
-<span><span class="co">## [171] stats4_4.4.3                evaluate_1.0.3             </span></span>
-<span><span class="co">## [173] ggprism_1.0.5               nloptr_2.2.1               </span></span>
-<span><span class="co">## [175] foreach_1.5.2               httpuv_1.6.15              </span></span>
-<span><span class="co">## [177] RANN_2.6.2                  tidyr_1.3.1                </span></span>
-<span><span class="co">## [179] purrr_1.0.4                 polyclip_1.10-7            </span></span>
-<span><span class="co">## [181] future_1.40.0               clue_0.3-66                </span></span>
-<span><span class="co">## [183] scattermore_1.2             janitor_2.2.1              </span></span>
-<span><span class="co">## [185] xtable_1.8-4                monocle3_1.3.7             </span></span>
-<span><span class="co">## [187] e1071_1.7-16                RSpectra_0.16-2            </span></span>
-<span><span class="co">## [189] later_1.4.2                 viridisLite_0.4.2          </span></span>
-<span><span class="co">## [191] class_7.3-23                ragg_1.4.0                 </span></span>
-<span><span class="co">## [193] tibble_3.2.1                beeswarm_0.4.0             </span></span>
-<span><span class="co">## [195] IRanges_2.40.1              cluster_2.1.8.1            </span></span>
-<span><span class="co">## [197] timechange_0.3.0            globals_0.16.3             </span></span>
-<span><span class="co">## [199] caret_7.0-1</span></span></code></pre>
+<span><span class="co">##  [35] R.utils_2.13.0              dichromat_2.0-0.1          </span></span>
+<span><span class="co">##  [37] parallelly_1.45.0           rstudioapi_0.17.1          </span></span>
+<span><span class="co">##  [39] generics_0.1.4              shape_1.4.6.1              </span></span>
+<span><span class="co">##  [41] ica_1.0-3                   spatstat.random_3.4-1      </span></span>
+<span><span class="co">##  [43] dplyr_1.1.4                 Matrix_1.7-3               </span></span>
+<span><span class="co">##  [45] ggbeeswarm_0.7.2            S4Vectors_0.44.0           </span></span>
+<span><span class="co">##  [47] abind_1.4-8                 R.methodsS3_1.8.2          </span></span>
+<span><span class="co">##  [49] lifecycle_1.0.4             yaml_2.3.10                </span></span>
+<span><span class="co">##  [51] snakecase_0.11.1            SummarizedExperiment_1.36.0</span></span>
+<span><span class="co">##  [53] recipes_1.2.1               SparseArray_1.6.2          </span></span>
+<span><span class="co">##  [55] Rtsne_0.17                  paletteer_1.6.0            </span></span>
+<span><span class="co">##  [57] grid_4.4.3                  promises_1.3.3             </span></span>
+<span><span class="co">##  [59] crayon_1.5.3                miniUI_0.1.2               </span></span>
+<span><span class="co">##  [61] lattice_0.22-7              cowplot_1.1.3              </span></span>
+<span><span class="co">##  [63] magick_2.9.0                pillar_1.10.2              </span></span>
+<span><span class="co">##  [65] knitr_1.50                  ComplexHeatmap_2.22.0      </span></span>
+<span><span class="co">##  [67] GenomicRanges_1.58.0        rjson_0.2.23               </span></span>
+<span><span class="co">##  [69] boot_1.3-31                 future.apply_1.20.0        </span></span>
+<span><span class="co">##  [71] codetools_0.2-20            glue_1.8.0                 </span></span>
+<span><span class="co">##  [73] spatstat.univar_3.1-3       data.table_1.17.6          </span></span>
+<span><span class="co">##  [75] vctrs_0.6.5                 png_0.1-8                  </span></span>
+<span><span class="co">##  [77] spam_2.11-1                 Rdpack_2.6.4               </span></span>
+<span><span class="co">##  [79] gtable_0.3.6                rematch2_2.1.2             </span></span>
+<span><span class="co">##  [81] assertthat_0.2.1            cachem_1.1.0               </span></span>
+<span><span class="co">##  [83] gower_1.0.2                 xfun_0.52                  </span></span>
+<span><span class="co">##  [85] rbibutils_2.3               S4Arrays_1.6.0             </span></span>
+<span><span class="co">##  [87] mime_0.13                   prodlim_2025.04.28         </span></span>
+<span><span class="co">##  [89] reformulas_0.4.0            survival_3.8-3             </span></span>
+<span><span class="co">##  [91] timeDate_4041.110           SingleCellExperiment_1.28.1</span></span>
+<span><span class="co">##  [93] iterators_1.0.14            pbmcapply_1.5.1            </span></span>
+<span><span class="co">##  [95] hardhat_1.4.1               lava_1.8.1                 </span></span>
+<span><span class="co">##  [97] fitdistrplus_1.2-2          ROCR_1.0-11                </span></span>
+<span><span class="co">##  [99] ipred_0.9-15                nlme_3.1-168               </span></span>
+<span><span class="co">## [101] RcppAnnoy_0.0.22            GenomeInfoDb_1.42.3        </span></span>
+<span><span class="co">## [103] bslib_0.9.0                 irlba_2.3.5.1              </span></span>
+<span><span class="co">## [105] vipor_0.4.7                 KernSmooth_2.23-26         </span></span>
+<span><span class="co">## [107] rpart_4.1.24                colorspace_2.1-1           </span></span>
+<span><span class="co">## [109] BiocGenerics_0.52.0         Hmisc_5.2-3                </span></span>
+<span><span class="co">## [111] nnet_7.3-20                 ggrastr_1.0.2              </span></span>
+<span><span class="co">## [113] tidyselect_1.2.1            compiler_4.4.3             </span></span>
+<span><span class="co">## [115] htmlTable_2.4.3             desc_1.4.3                 </span></span>
+<span><span class="co">## [117] DelayedArray_0.32.0         plotly_4.11.0              </span></span>
+<span><span class="co">## [119] checkmate_2.3.2             scales_1.4.0               </span></span>
+<span><span class="co">## [121] lmtest_0.9-40               stringr_1.5.1              </span></span>
+<span><span class="co">## [123] digest_0.6.37               goftest_1.2-3              </span></span>
+<span><span class="co">## [125] spatstat.utils_3.1-4        minqa_1.2.8                </span></span>
+<span><span class="co">## [127] rmarkdown_2.29              XVector_0.46.0             </span></span>
+<span><span class="co">## [129] htmltools_0.5.8.1           pkgconfig_2.0.3            </span></span>
+<span><span class="co">## [131] base64enc_0.1-3             lme4_1.1-37                </span></span>
+<span><span class="co">## [133] sparseMatrixStats_1.18.0    MatrixGenerics_1.18.1      </span></span>
+<span><span class="co">## [135] fastmap_1.2.0               rlang_1.1.6                </span></span>
+<span><span class="co">## [137] GlobalOptions_0.1.2         htmlwidgets_1.6.4          </span></span>
+<span><span class="co">## [139] UCSC.utils_1.2.0            shiny_1.10.0               </span></span>
+<span><span class="co">## [141] DelayedMatrixStats_1.28.1   farver_2.1.2               </span></span>
+<span><span class="co">## [143] jquerylib_0.1.4             zoo_1.8-14                 </span></span>
+<span><span class="co">## [145] jsonlite_2.0.0              ModelMetrics_1.2.2.2       </span></span>
+<span><span class="co">## [147] R.oo_1.27.0                 magrittr_2.0.3             </span></span>
+<span><span class="co">## [149] Formula_1.2-5               GenomeInfoDbData_1.2.13    </span></span>
+<span><span class="co">## [151] dotCall64_1.2               patchwork_1.3.1            </span></span>
+<span><span class="co">## [153] Rcpp_1.0.14                 reticulate_1.42.0          </span></span>
+<span><span class="co">## [155] stringi_1.8.7               pROC_1.18.5                </span></span>
+<span><span class="co">## [157] zlibbioc_1.52.0             MASS_7.3-65                </span></span>
+<span><span class="co">## [159] plyr_1.8.9                  parallel_4.4.3             </span></span>
+<span><span class="co">## [161] listenv_0.9.1               ggrepel_0.9.6              </span></span>
+<span><span class="co">## [163] forcats_1.0.0               deldir_2.0-4               </span></span>
+<span><span class="co">## [165] splines_4.4.3               tensor_1.5.1               </span></span>
+<span><span class="co">## [167] circlize_0.4.16             igraph_2.1.4               </span></span>
+<span><span class="co">## [169] spatstat.geom_3.4-1         RcppHNSW_0.6.0             </span></span>
+<span><span class="co">## [171] reshape2_1.4.4              stats4_4.4.3               </span></span>
+<span><span class="co">## [173] evaluate_1.0.4              ggprism_1.0.5              </span></span>
+<span><span class="co">## [175] nloptr_2.2.1                foreach_1.5.2              </span></span>
+<span><span class="co">## [177] httpuv_1.6.16               RANN_2.6.2                 </span></span>
+<span><span class="co">## [179] tidyr_1.3.1                 purrr_1.0.4                </span></span>
+<span><span class="co">## [181] polyclip_1.10-7             future_1.58.0              </span></span>
+<span><span class="co">## [183] clue_0.3-66                 scattermore_1.2            </span></span>
+<span><span class="co">## [185] janitor_2.2.1               xtable_1.8-4               </span></span>
+<span><span class="co">## [187] monocle3_1.3.7              e1071_1.7-16               </span></span>
+<span><span class="co">## [189] RSpectra_0.16-2             later_1.4.2                </span></span>
+<span><span class="co">## [191] viridisLite_0.4.2           class_7.3-23               </span></span>
+<span><span class="co">## [193] ragg_1.4.0                  tibble_3.3.0               </span></span>
+<span><span class="co">## [195] beeswarm_0.4.0              IRanges_2.40.1             </span></span>
+<span><span class="co">## [197] cluster_2.1.8.1             timechange_0.3.0           </span></span>
+<span><span class="co">## [199] globals_0.18.0              caret_7.0-1</span></span></code></pre>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] "/Users/sfurlan/develop/viewmastR/vignettes"</span></span></code></pre>

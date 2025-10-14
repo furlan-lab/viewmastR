@@ -5,11 +5,12 @@ articles:
   Augment: Augment.html
   BigQuery: BigQuery.html
   BulkReference: BulkReference.html
+  Deconvolute: Deconvolute.html
   Extras: Extras.html
   HowTo: HowTo.html
   InDepth: InDepth.html
   SavedModel: SavedModel.html
-last_built: 2025-06-27T03:43Z
+last_built: 2025-10-14T00:40Z
 urls:
   reference: https://furlan-lab.github.io/viewmastR/reference
   article: https://furlan-lab.github.io/viewmastR/articles
