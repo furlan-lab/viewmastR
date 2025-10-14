@@ -19,6 +19,7 @@ mod inference;
 mod nb;
 // mod signal;
 mod signal;
+mod em;
 
 use std::path::Path;
 use std::time::Instant;
@@ -171,7 +172,7 @@ fn process_learning_obj(
     query: Robj,
     labels: Robj,
     feature_names: Robj,
-    hidden_size: Nullable<Robj>,      // <- optional
+    hidden_size: Nullable<Integers>,      // <- optional
     learning_rate: Robj,
     num_epochs: Robj,
     directory: Robj,
@@ -323,8 +324,8 @@ fn infer_from_model(
     num_classes : Robj,
     num_features: Robj,
     model_type  : Robj,
-    hidden1     : Nullable<Robj>,
-    hidden2     : Nullable<Robj>,
+    hidden1     : Nullable<Integers>,
+    hidden2     : Nullable<Integers>,
     verbose     : Robj,
     batch_size  : Robj,
     backend: Robj
@@ -437,24 +438,37 @@ fn infer_from_model(
 
 
 // ---------- util -------------------------------------------------------------
-fn usize_from_nullable(n: Nullable<Robj>) -> Option<usize> {
+// fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
+//     match n {
+//         Nullable::Null => None,
+
+//         Nullable::NotNull(robj) => {
+//             // Parse again as Nullable<Option<i32>>
+//             let parsed: Nullable<Option<i32>> = robj.try_into().ok()?;
+
+//             match parsed {
+//                 Nullable::Null          => None,          // shouldn’t occur
+//                 Nullable::NotNull(None) => None,          // NA
+//                 Nullable::NotNull(Some(x)) => Some(x as usize),
+//             }
+//         }
+//     }
+// }
+
+fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
     match n {
         Nullable::Null => None,
-
-        Nullable::NotNull(robj) => {
-            // Parse again as Nullable<Option<i32>>
-            let parsed: Nullable<Option<i32>> = robj.try_into().ok()?;
-
-            match parsed {
-                Nullable::Null          => None,          // shouldn’t occur
-                Nullable::NotNull(None) => None,          // NA
-                Nullable::NotNull(Some(x)) => Some(x as usize),
+        Nullable::NotNull(x) => {
+            if x.is_number() {
+                let vec = x.into_robj().as_integer_vector().unwrap();
+                let int = vec.first().unwrap();
+                Some(*int as usize)
+            } else {
+                None
             }
         }
     }
 }
-
-
 // /// @export
 // /// @keywords internal
 // #[extendr]
@@ -632,7 +646,22 @@ fn fit_deconv(
 }
 
 
-
+// Use EM for deconvolution prediction.
+///@export
+///@keywords internal
+#[extendr]
+fn fit_deconvolution_em(
+    sigs: Robj,
+    bulk: Robj,
+    gene_lengths: Robj,
+    gene_weights: Robj,
+    max_iter: Robj,
+    tolerance: Robj,
+    l1_lambda: Robj,
+    verbose: Robj,
+) -> Result<List> {
+    em::fit_deconv_em(sigs, bulk, gene_lengths, gene_weights, max_iter, tolerance, l1_lambda, verbose)
+}
 
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
@@ -642,6 +671,7 @@ extendr_module! {
   fn readR;
   fn computeSparseRowVariances;
   fn fit_deconv;
+  fn fit_deconvolution_em;
   // fn process_learning_obj_ann;
   // fn process_learning_obj_mlr;
   fn infer_from_model;

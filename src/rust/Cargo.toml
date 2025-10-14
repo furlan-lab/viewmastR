@@ -12,21 +12,21 @@ name = 'viewmastR'
 num-traits = "0.2"
 # ciborium = "0.2.2"
 time = "0.3.35"
-extendr-api = "0.6"
-extendr-macros = "0.6"
-burn = { version =  "0.17.0" , features = ["wgpu",  "train", "ndarray", "candle"] }
-image = {version = "0.24.7", features = ["png"]}
+extendr-api = "0.8.1"
+extendr-macros = "0.8.1"
+burn = { version =  "0.18.0" , features = ["wgpu",  "train", "ndarray", "candle"] }
+image = {version = "0.25.8", features = ["png"]}
 byteorder = "1.5.0"
 serde_json = "1.0"
-rand = "0.8.5"
+rand = "0.9.2"
 flate2 = "1.0.28"
-ndarray = "0.15"
-linfa-bayes = "0.7.0"
-linfa = "0.7.0"
+ndarray = "0.16.1"
+linfa-bayes = "0.8.0"
+linfa = "0.8.0"
 rmp-serde = "1.0.3"
 anyhow = "1.0.80"
 statrs = "0.18.0"
-burn-derive =  "0.17.0"
+burn-derive =  "0.18.0"
 chrono = "0.4.37"
 
 # Serialization

@@ -1,4 +1,5 @@
 
+#![allow(dead_code)]
 use std::ops::Div;
 // use extendr_api::*;
 // use burn::prelude::Device;

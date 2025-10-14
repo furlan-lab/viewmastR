@@ -354,7 +354,7 @@ fn fit_null_model<B: AutodiffBackend>(
 
 // R INTERFACE
 
-fn rmat_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B, 2>> {
+pub fn rmat_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B, 2>> {
     let dims = robj.dim()
         .ok_or_else(|| Error::Other("Matrix must have dimensions".into()))?;
     
@@ -397,7 +397,7 @@ fn rmat_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B
     Ok(t3)
 }
 
-fn rvec_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B, 1>> {
+pub fn rvec_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B, 1>> {
     let data: Vec<f32> = robj
         .as_real_vector()
         .ok_or_else(|| Error::Other("Vector must be numeric".into()))?
@@ -408,7 +408,7 @@ fn rvec_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B
     Ok(Tensor::<B, 1>::from_floats(data.as_slice(), device))
 }
 
-fn robj_to_bool(robj: Robj, default: bool, name: &str) -> bool {
+pub fn robj_to_bool(robj: Robj, default: bool, name: &str) -> bool {
     robj.as_logical_vector()
         .and_then(|v| v.first().copied())
         .map(|rbool| rbool.is_true())  // Convert Rbool to bool
@@ -418,7 +418,7 @@ fn robj_to_bool(robj: Robj, default: bool, name: &str) -> bool {
         })
 }
 
-fn robj_to_f64(robj: Robj, default: f64, name: &str) -> f64 {
+pub fn robj_to_f64(robj: Robj, default: f64, name: &str) -> f64 {
     robj.as_real_vector()
         .and_then(|v| v.first().copied())
         .unwrap_or_else(|| {
@@ -427,7 +427,7 @@ fn robj_to_f64(robj: Robj, default: f64, name: &str) -> f64 {
         })
 }
 
-fn robj_to_usize(robj: Robj, default: usize, name: &str) -> usize {
+pub fn robj_to_usize(robj: Robj, default: usize, name: &str) -> usize {
     robj.as_real_vector()
         .and_then(|v| v.first().copied())
         .map(|x| x as usize)
@@ -567,7 +567,7 @@ fn fit_deconv_impl<B: AutodiffBackend>(
         }
     }
     
-    let robj_exp = Robj::from(exp_col_major);
+    let mut robj_exp = Robj::from(exp_col_major);
     let _ = robj_exp.set_attrib("dim", Robj::from(vec![exp_dims[0] as i32, exp_dims[1] as i32]));
     
     let pred_data: Vec<f32> = pred_counts.to_data().to_vec()
@@ -581,7 +581,7 @@ fn fit_deconv_impl<B: AutodiffBackend>(
         }
     }
     
-    let robj_pred = Robj::from(pred_col_major);
+    let mut robj_pred = Robj::from(pred_col_major);
     let _ = robj_pred.set_attrib("dim", Robj::from(vec![pred_dims[0] as i32, pred_dims[1] as i32]));
     
     eprintln!("Training complete!");

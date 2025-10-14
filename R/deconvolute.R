@@ -19,6 +19,7 @@
 #' @param ll_tolerance Log-likelihood convergence tolerance. Default 1e-6.
 #' @param sparsity_tolerance Sparsity convergence tolerance. Default 1e-4.
 #' @param verbose emit learning progress stats
+#' @param method either default - gd (Poisson regression with gradient descent) or em (Expectation-Maximization algorithm)
 #'
 #' @return A list with:
 #'   \item{exposures}{Matrix of cell type proportions (cell_types+intercept × samples)}
@@ -58,8 +59,10 @@ deconvolve_bulk <- function(
     poll_interval = 100,
     ll_tolerance = 1e-6,
     sparsity_tolerance = 1e-4,
-    verbose = TRUE
+    verbose = TRUE,
+    method = c("gd", "em")
 ) {
+  method <- match.arg(method)
   # Input validation
   if (!is.matrix(signatures)) {
     stop("signatures must be a matrix")
@@ -124,7 +127,8 @@ deconvolve_bulk <- function(
   
   # Call Rust function
   message("Running deconvolution...\n")
-  result <- fit_deconv(
+  if(method=="gd"){
+    result <- fit_deconv(
     signatures,
     bulk_counts * 1.0,
     gene_lengths * 1.0,
@@ -139,9 +143,20 @@ deconvolve_bulk <- function(
     poll_interval,
     ll_tolerance,
     sparsity_tolerance,
-    verbose
-  )
+    verbose)
+  }
   
+  if(method=="em"){
+    result <- fit_deconvolution_em(
+      signatures,
+      bulk_counts * 1.0,
+      gene_lengths * 1.0,
+      gene_weights * 1.0,
+      max_iter,
+      ll_tolerance,
+      l1_lambda,
+      verbose)
+  }
   # Add row and column names
   n_samples <- ncol(bulk_counts)
   

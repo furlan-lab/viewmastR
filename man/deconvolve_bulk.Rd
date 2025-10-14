@@ -19,7 +19,8 @@ deconvolve_bulk(
   poll_interval = 100,
   ll_tolerance = 1e-06,
   sparsity_tolerance = 1e-04,
-  verbose = TRUE
+  verbose = TRUE,
+  method = c("gd", "em")
 )
 }
 \arguments{
@@ -56,6 +57,8 @@ nrow(signatures). Default is all 1s.}
 \item{sparsity_tolerance}{Sparsity convergence tolerance. Default 1e-4.}
 
 \item{verbose}{emit learning progress stats}
+
+\item{method}{either default - gd (Poisson regression with gradient descent) or em (Expectation-Maximization algorithm)}
 }
 \value{
 A list with:

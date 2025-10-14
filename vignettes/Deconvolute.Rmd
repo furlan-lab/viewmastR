@@ -24,10 +24,11 @@ These data are not included in the viewmastR package.
 
 ```{r, message=FALSE, warning=FALSE}
 suppressPackageStartupMessages({library(Seurat)
-library(viewmastR)
-library(magrittr)
-library(viridis)
-library(ComplexHeatmap)})
+  library(viewmastR)
+  library(magrittr)
+  library(viridis)
+  library(ggplot2)
+  library(ComplexHeatmap)})
 
 # Load single-cell data
 sc_data <- readRDS(seurat_object_loc)
@@ -91,13 +92,22 @@ You can read more on our implementation below, but here is a minimally working e
 
 ```{r}
 
-result <- deconvolve_bulk(
+system.time(result_gd <- deconvolve_bulk(
   signatures = signatures,
   bulk_counts = bulk_counts,
   gene_lengths = gene_lengths,
   gene_weights = gene_weights, 
   max_iter = 3000
-)
+))
+
+system.time(result_em <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights, 
+  max_iter = 3000,
+  method = "em"
+))
 ```
 
 ## Visualize
@@ -106,7 +116,7 @@ We will remove some of the bulk data that contains tumor cells or recombinant HS
 
 ```{r, message=FALSE, warning=FALSE}
 
-data <- as.matrix(result$proportions_with_intercept)
+data <- as.matrix(result_gd$proportions_with_intercept)
 data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | grepl("Blast", colnames(data)))]
 cols <- pals::glasbey(13)
 names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
@@ -120,10 +130,23 @@ One can also use our build in plotting functions
 
 ```{r, message=FALSE, warning=FALSE}
 
-plot_deconvolution(result)
+plot_deconvolution(result_gd)
 ```
 
-## Mathematical Summary
+
+```{r, message=FALSE, warning=FALSE}
+df <- data.frame(GradDescent=as.vector(as.matrix(result_gd$proportions_with_intercept)), ExpMax=as.vector(result_em$proportions_with_intercept), Celltype = rep(rownames(as.matrix(result_gd$proportions_with_intercept)), ncol(as.matrix(result_gd$proportions_with_intercept))))
+g <- ggplot(df, aes(x=GradDescent, y=ExpMax, colour = Celltype))+geom_point()+scale_color_manual(values=c(sc_data@misc$colors, "Intercept"="black"))
+
+cor(df$GradDescent, df$ExpMax)
+
+plotly::ggplotly(g)
+
+
+```
+
+
+# Mathematical Summary of Poisson regression with gradient descent
 
 **Inputs:** Signatures `S` (G×C), bulk counts `k` (G×N), gene lengths `L`, weights `w`  
 **Output:** Exposures `E` (C×N) = cell type abundances
@@ -194,3 +217,147 @@ Quality:     intercept / (Σ E + intercept)       # <0.1 = good fit
 - **Scale:** Set by signature normalization (Σ S[g,c] = 1)
 - **Gene length correction:** Essential for RNA-seq (longer genes → more reads)
 - **Performance:** 10-30 sec GPU, 1-5 min CPU (typical: 18k genes, 21 types, 81 samples)
+
+# Mathematical Summary of Expectation-Maximization for Deconvolution
+
+**Inputs:** Signatures `S` (G×C), bulk counts `k` (G×N), gene lengths `L`, weights `w`  
+**Output:** Exposures `E` (C×N) = cell type abundances
+
+---
+
+## Probabilistic Model
+
+### Generative Process
+```
+For each gene g in sample n:
+  1. Each read comes from source j ∈ {cell types, noise}
+     P(source=j) ∝ S[g,j] × E[j,n]
+  
+  2. Noise has uniform signature: S[g,noise] = 1/G
+  
+  3. Observed counts: k[g,n] ~ Poisson(ŷ[g,n])
+     where ŷ[g,n] = Σ_j S[g,j] × E[j,n] × (L[g] / insert_size)
+```
+
+### Hidden Variable
+```
+z[g,j,n] = # of reads from gene g, sample n, assigned to source j
+           (unobserved, inferred by EM)
+```
+
+---
+
+## EM Algorithm
+
+### E-step: Compute Responsibilities
+```
+For each source j (cell type or noise):
+  contribution[g,j,n] = S[g,j] × E[j,n]
+  
+  responsibility[g,j,n] = contribution[g,j,n] / Σ_j' contribution[g,j',n]
+  
+Interpretation: "What fraction of counts for gene g came from source j?"
+```
+
+### M-step: Update Exposures
+```
+For each source j:
+  E[j,n] = Σ_g w[g] × k[g,n] × responsibility[g,j,n]
+  
+Interpretation: "Total weighted counts assigned to source j"
+
+Intercept[n] = E[noise,n]  # Learned automatically
+```
+
+### Log-Likelihood (Monitoring)
+```
+ŷ = [S | 1/G] × [E; intercept] × (L / insert_size)
+LL = Σ w[g] × [k·log(ŷ+ε) - ŷ - k·log(k) + k]
+
+Guarantee: LL increases every iteration (or numerical precision)
+```
+
+---
+
+## Optimization
+
+**Single unified phase** (no null model needed!)
+
+```
+Initialize: E[c,n] = total_counts[n] / C
+            intercept[n] = 0.05 × total_counts[n]
+
+Repeat:
+  1. E-step: Compute responsibilities for all sources
+  2. M-step: Update E and intercept simultaneously
+  3. Check: |ΔLL| < tolerance
+
+Convergence: Typically 100-400 iterations
+```
+
+**With L1 regularization:**
+```
+After M-step: E ← max(E - λ₁, 0)  # Soft-thresholding
+```
+
+---
+
+## Output
+
+```
+Exposures:   E[c,n]                              # Cell-equivalents
+Intercept:   intercept[n]                        # Noise level
+Proportions: P[c,n] = E[c,n] / Σ_c E[c,n]       # Fractions (sum to 1)
+Quality:     intercept / (mean(E) + intercept)   # <0.1 = good fit
+```
+
+---
+
+## Key Parameters
+
+| Parameter | Default | Range | Purpose |
+|-----------|---------|-------|---------|
+| `l1_lambda` | 0 | 0-10 | Sparsity via soft-thresholding |
+| `tolerance` | 10⁻⁶ | 10⁻⁸-10⁻⁴ | Convergence criterion (ΔLL) |
+| `insert_size` | 500 | 150-500 | Fragment length correction |
+| `max_iterations` | 1000 | 100-10000 | Safety limit |
+
+**Recommendation:** Defaults work well. No learning rate tuning needed!
+
+---
+
+## Properties
+
+- **Non-negativity:** Guaranteed by model structure (no transforms needed)
+- **Monotonic improvement:** Log-likelihood never decreases
+- **No hyperparameters:** Learning rate, momentum, warmup not needed
+- **Natural intercept:** Noise competes with signatures automatically
+- **Scale:** Set by total counts and signature normalization
+- **Gene length correction:** Essential for RNA-seq (longer genes → more reads)
+- **Performance:** 15-25 sec (typical: 18k genes, 21 types, 81 samples, 300 iters)
+
+---
+
+## Comparison to Gradient Descent
+
+| Aspect | EM | Gradient Descent |
+|--------|-----|------------------|
+| **Convergence** | Guaranteed monotonic | Can oscillate/diverge |
+| **Hyperparameters** | None (just tolerance) | Learning rate, warmup |
+| **Iterations** | 100-400 | 1000-3000 |
+| **Null model** | Not needed | Requires separate fit |
+| **Interpretation** | Missing data framework | Optimization of loss |
+| **Speed** | 15-25 sec | 20-30 sec |
+| **Stability** | Very stable | Needs careful tuning |
+
+---
+
+## Intuition
+
+**EM treats deconvolution as:**  
+"For each read, which cell type (or noise) generated it?"
+
+- **E-step:** Probabilistically assign reads to sources
+- **M-step:** Count up assignments to estimate abundances
+
+This "soft assignment" framework is more natural than gradient-based optimization for count data, leading to stable convergence without tuning.
