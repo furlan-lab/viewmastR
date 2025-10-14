@@ -282,6 +282,7 @@ calculate_fit_metrics <- function(observed, predicted, gene_weights) {
 #' @param observed_counts Original bulk counts matrix (for fit plots)
 #' @param type Type of plot: "proportions", "fit", "residuals", or "all"
 #' @export
+
 plot_deconvolution <- function(result, observed_counts = NULL, type = "all") {
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("ggplot2 is required for plotting")
@@ -456,6 +457,7 @@ plot_deconvolution <- function(result, observed_counts = NULL, type = "all") {
 
 #' Print summary of deconvolution metrics
 #' @export
+#' @keywords internal
 print_metrics_summary <- function(result) {
   if (is.null(result$metrics)) {
     message("No metrics available. Run calculate_fit_metrics() first.\n")

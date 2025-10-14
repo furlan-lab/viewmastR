@@ -58,7 +58,7 @@ reference:
   - confusion_matrix
   - plot_training_data
   - make3file
-  - deconvolute_bulk
+  - deconvolve_bulk
 - title: Additional functions
   desc: Helper functions to add or modify elements
   contents:

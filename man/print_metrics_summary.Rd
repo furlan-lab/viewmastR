@@ -9,3 +9,4 @@ print_metrics_summary(result)
 \description{
 Print summary of deconvolution metrics
 }
+\keyword{internal}

@@ -646,6 +646,7 @@ extendr_module! {
   // fn process_learning_obj_mlr;
   fn infer_from_model;
   fn process_learning_obj;
+  fn process_learning_obj_nb;
   // fn run_nb_test;
 
 }
