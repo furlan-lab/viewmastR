@@ -121,7 +121,7 @@ data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | g
 cols <- pals::glasbey(13)
 names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
 cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
-Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])))
+Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])), name = "GD Result")
 
 
 data <- as.matrix(result_em$proportions_with_intercept)
@@ -129,7 +129,7 @@ data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | g
 cols <- pals::glasbey(13)
 names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
 cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
-Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])))
+Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])), name = "EM Result")
 
 ```
 
