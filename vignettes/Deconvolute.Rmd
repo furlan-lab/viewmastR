@@ -150,6 +150,40 @@ cor(df$GradDescent, df$ExpMax)
 plotly::ggplotly(g)
 
 
+hex_plot <- function(result, bulk_counts){
+  cor(as.vector(result$pred_counts[gene_weights>0,]), as.vector(bulk_counts[gene_weights>0,]))
+  obs_flat <- as.vector(bulk_counts[gene_weights>0,])
+  pred_flat <- as.vector(result$pred_counts[gene_weights>0,])
+  # Remove zeros for log scale
+  keep_idx <- obs_flat > 0 & pred_flat > 0
+  fit_df <- data.frame(
+    Observed = log1p(obs_flat[keep_idx]),
+    Predicted = log1p(pred_flat[keep_idx])
+  )
+  rsq <- cor(fit_df$Observed, fit_df$Predicted)^2
+ggplot(fit_df, aes(x=Observed, y=Predicted))+geom_hex(bins = 100)+scale_fill_viridis_c(trans = "log10")+ggtitle(rsq)
+}
+
+
+
+hex_plot(result_em, bulk_counts = bulk_counts)
+hex_plot(result_gd, bulk_counts = bulk_counts)
+library(MuSiC)
+library(SingleCellExperiment)
+sce <- SingleCellExperiment(list(counts = sc_data@assays$RNA@counts), colData = DataFrame(sc_data@meta.data), rowData=DataFrame(symbol=rownames(sc_data)))
+
+sce$sample <- "sample"
+sce$orig.ident
+
+prop <- music_prop(bulk_counts, sce, markers = NULL, clusters = "SFClassification", samples = "orig.ident")
+
+data <- as.matrix(t(prop$Est.prop.weighted))
+data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | grepl("Blast", colnames(data)))]
+cols <- pals::glasbey(13)
+names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(data, top_annotation = cola, show_column_names = F, col = viridis(100), name = "MuSiC Result")
+
 ```
 
 
