@@ -142,12 +142,16 @@ plot_deconvolution(result_gd)
 
 
 ```{r, message=FALSE, warning=FALSE}
-df <- data.frame(GradDescent=as.vector(as.matrix(result_gd$proportions_with_intercept)), ExpMax=as.vector(result_em$proportions_with_intercept), Celltype = rep(rownames(as.matrix(result_gd$proportions_with_intercept)), ncol(as.matrix(result_gd$proportions_with_intercept))))
+df <- data.frame(GradDescent=as.vector(as.matrix(result_gd$proportions_with_intercept)), ExpMax=as.vector(result_em$proportions_with_intercept), Celltype = rep(rownames(as.matrix(result_gd$proportions_with_intercept)), ncol(as.matrix(result_gd$proportions_with_intercept))), Sample = rep(strsplit(colnames(as.matrix(result_em$proportions_with_intercept)), "\\.") %>% sapply("[[", 2), each = nrow(as.matrix(result_em$proportions_with_intercept))))
 g <- ggplot(df, aes(x=GradDescent, y=ExpMax, colour = Celltype))+geom_point()+scale_color_manual(values=c(sc_data@misc$colors, "Intercept"="black"))
+plotly::ggplotly(g)
+
+g <- ggplot(df, aes(x=GradDescent, y=ExpMax, colour = Sample))+geom_point()+scale_color_manual(values=pals::glasbey(17))
+plotly::ggplotly(g)
+
 
 cor(df$GradDescent, df$ExpMax)
 
-plotly::ggplotly(g)
 
 
 hex_plot <- function(result, bulk_counts){
@@ -168,6 +172,8 @@ ggplot(fit_df, aes(x=Observed, y=Predicted))+geom_hex(bins = 100)+scale_fill_vir
 
 hex_plot(result_em, bulk_counts = bulk_counts)
 hex_plot(result_gd, bulk_counts = bulk_counts)
+
+
 library(MuSiC)
 library(SingleCellExperiment)
 sce <- SingleCellExperiment(list(counts = sc_data@assays$RNA@counts), colData = DataFrame(sc_data@meta.data), rowData=DataFrame(symbol=rownames(sc_data)))
@@ -184,8 +190,51 @@ names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
 cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
 Heatmap(data, top_annotation = cola, show_column_names = F, col = viridis(100), name = "MuSiC Result")
 
+
+
+df <- data.frame(MuSiC=as.vector(as.matrix(t(prop$Est.prop.weighted))), ExpMax=as.vector(result_em$proportions), Celltype = rep(rownames(as.matrix(result_em$proportions)), ncol(as.matrix(result_em$proportions))), Sample = rep(strsplit(colnames(as.matrix(result_em$proportions)), "\\.") %>% sapply("[[", 2), each = nrow(as.matrix(result_em$proportions))))
+
+g <- ggplot(df, aes(x=MuSiC, y=ExpMax, colour = Celltype))+geom_point()+scale_color_manual(values=c(sc_data@misc$colors, "Intercept"="black"))
+plotly::ggplotly(g)
+
+g <- ggplot(df, aes(x=MuSiC, y=ExpMax, colour = Sample))+geom_point()+scale_color_manual(values=pals::glasbey(17))
+plotly::ggplotly(g)
+
+cor(df$MuSiC, df$ExpMax)
+
+df <- data.frame(MuSiC=as.vector(as.matrix(t(prop$Est.prop.weighted))), GD=as.vector(result_gd$proportions), Celltype = rep(rownames(as.matrix(result_gd$proportions)), ncol(as.matrix(result_gd$proportions))), Sample = rep(strsplit(colnames(as.matrix(result_em$proportions)), "\\.") %>% sapply("[[", 2), each = nrow(as.matrix(result_em$proportions))))
+g <- ggplot(df, aes(x=MuSiC, y=GD, colour = Celltype))+geom_point()+scale_color_manual(values=c(sc_data@misc$colors, "Intercept"="black"))
+plotly::ggplotly(g)
+
+g <- ggplot(df, aes(x=MuSiC, y=GD, colour = Sample))+geom_point()+scale_color_manual(values=pals::glasbey(17))
+plotly::ggplotly(g)
+
+cor(df$MuSiC, df$GD)
 ```
 
+
+```{r}
+
+# # Extract tumor program
+tumor_prog <- extract_tumor_program(result_em, signatures, bulk_counts,
+                                     gene_names = rownames(signatures),
+                                     top_n = 500)
+# 
+# # View top tumor genes
+head(tumor_prog$tumor_upregulated, 20)
+head(tumor_prog$tumor_downregulated, 20)
+# 
+# # Visualize
+visualize_tumor_program(tumor_prog, bulk)
+# 
+# # Check consistency
+ consistency <- compare_tumor_consistency(tumor_prog)
+ length(consistency$consistent_upregulated)  # Core tumor program
+# 
+# # Export for pathway analysis
+export_tumor_genes(tumor_prog, "AML_tumor_program")
+
+```
 
 # Mathematical Summary of Poisson regression with gradient descent
 
