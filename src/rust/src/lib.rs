@@ -455,20 +455,44 @@ fn infer_from_model(
 //     }
 // }
 
+// fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
+//     match n {
+//         Nullable::Null => None,
+//         Nullable::NotNull(x) => {
+//             if x.is_number() {
+//                 let vec = x.into_robj().as_integer_vector().unwrap();
+//                 let int = vec.first().unwrap();
+//                 Some(*int as usize)
+//             } else {
+//                 None
+//             }
+//         }
+//     }
+// }
+
 fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
     match n {
         Nullable::Null => None,
         Nullable::NotNull(x) => {
             if x.is_number() {
-                let vec = x.into_robj().as_integer_vector().unwrap();
-                let int = vec.first().unwrap();
-                Some(*int as usize)
+                let robj = x.into_robj();
+                
+                if let Some(vec) = robj.as_integer_vector() {
+                    if let Some(int) = vec.first() {
+                        if *int >= 0 {
+                            return Some(*int as usize);
+                        }
+                    }
+                }
+                None
             } else {
                 None
             }
         }
     }
 }
+
+
 // /// @export
 // /// @keywords internal
 // #[extendr]
