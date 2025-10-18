@@ -19,6 +19,8 @@ mod inference;
 mod nb;
 // mod signal;
 mod signal;
+mod em;
+mod splat;
 
 use std::path::Path;
 use std::time::Instant;
@@ -171,7 +173,7 @@ fn process_learning_obj(
     query: Robj,
     labels: Robj,
     feature_names: Robj,
-    hidden_size: Nullable<Robj>,      // <- optional
+    hidden_size: Nullable<Integers>,      // <- optional
     learning_rate: Robj,
     num_epochs: Robj,
     directory: Robj,
@@ -323,8 +325,8 @@ fn infer_from_model(
     num_classes : Robj,
     num_features: Robj,
     model_type  : Robj,
-    hidden1     : Nullable<Robj>,
-    hidden2     : Nullable<Robj>,
+    hidden1     : Nullable<Integers>,
+    hidden2     : Nullable<Integers>,
     verbose     : Robj,
     batch_size  : Robj,
     backend: Robj
@@ -437,18 +439,55 @@ fn infer_from_model(
 
 
 // ---------- util -------------------------------------------------------------
-fn usize_from_nullable(n: Nullable<Robj>) -> Option<usize> {
+// fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
+//     match n {
+//         Nullable::Null => None,
+
+//         Nullable::NotNull(robj) => {
+//             // Parse again as Nullable<Option<i32>>
+//             let parsed: Nullable<Option<i32>> = robj.try_into().ok()?;
+
+//             match parsed {
+//                 Nullable::Null          => None,          // shouldn’t occur
+//                 Nullable::NotNull(None) => None,          // NA
+//                 Nullable::NotNull(Some(x)) => Some(x as usize),
+//             }
+//         }
+//     }
+// }
+
+// fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
+//     match n {
+//         Nullable::Null => None,
+//         Nullable::NotNull(x) => {
+//             if x.is_number() {
+//                 let vec = x.into_robj().as_integer_vector().unwrap();
+//                 let int = vec.first().unwrap();
+//                 Some(*int as usize)
+//             } else {
+//                 None
+//             }
+//         }
+//     }
+// }
+
+fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
     match n {
         Nullable::Null => None,
-
-        Nullable::NotNull(robj) => {
-            // Parse again as Nullable<Option<i32>>
-            let parsed: Nullable<Option<i32>> = robj.try_into().ok()?;
-
-            match parsed {
-                Nullable::Null          => None,          // shouldn’t occur
-                Nullable::NotNull(None) => None,          // NA
-                Nullable::NotNull(Some(x)) => Some(x as usize),
+        Nullable::NotNull(x) => {
+            if x.is_number() {
+                let robj = x.into_robj();
+                
+                if let Some(vec) = robj.as_integer_vector() {
+                    if let Some(int) = vec.first() {
+                        if *int >= 0 {
+                            return Some(*int as usize);
+                        }
+                    }
+                }
+                None
+            } else {
+                None
             }
         }
     }
@@ -632,7 +671,47 @@ fn fit_deconv(
 }
 
 
+// Use EM for deconvolution prediction.
+///@export
+///@keywords internal
+#[extendr]
+fn fit_deconvolution_em(
+    sigs: Robj,
+    bulk: Robj,
+    gene_lengths: Robj,
+    gene_weights: Robj,
+    max_iter: Robj,
+    tolerance: Robj,
+    l1_lambda: Robj,
+    verbose: Robj,
+) -> Result<List> {
+    em::fit_deconv_em(sigs, bulk, gene_lengths, gene_weights, max_iter, tolerance, l1_lambda, verbose)
+}
 
+///@export
+///@keywords internal
+#[extendr]
+fn splat_bulk_reference_rust(
+    counts_matrix: Robj,
+    universe: Robj,
+    sizes: Robj,
+    bandwidth: Robj,
+    n_cells_per_bulk: Robj,
+    replace_counts: Robj,
+    seed: Robj,
+    verbose: Robj,
+) -> Result<List>{
+    splat::splat_bulk_reference_rust_core(
+        counts_matrix,
+        universe,
+        sizes,
+        bandwidth,
+        n_cells_per_bulk,
+        replace_counts,
+        seed,
+        verbose
+    )
+}
 
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
@@ -642,11 +721,13 @@ extendr_module! {
   fn readR;
   fn computeSparseRowVariances;
   fn fit_deconv;
+  fn fit_deconvolution_em;
   // fn process_learning_obj_ann;
   // fn process_learning_obj_mlr;
   fn infer_from_model;
   fn process_learning_obj;
   fn process_learning_obj_nb;
+  fn splat_bulk_reference_rust;
   // fn run_nb_test;
 
 }

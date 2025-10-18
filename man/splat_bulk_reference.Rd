@@ -10,28 +10,33 @@ splat_bulk_reference(
   N = 2,
   assay = "RNA",
   bulk_feature_row = "gene_short_name",
-  bulk_assay_name = "counts",
-  dist = c("sc-direct", "sc-mimic", "bulk")
+  bulk_assay_name = "RNA",
+  dist = c("sc-direct", "sc-mimic", "bulk"),
+  seed = 42
 )
 }
 \arguments{
 \item{query}{a single cell object (Seurat) with a size distribution of counts to be mimicked in the assay argument}
 
-\item{ref}{the reference object (Summarized Experiment)}
+\item{ref}{the reference object (SummarizedExperiment or Seurat)}
+
+\item{N}{the number of simulated cells to create per bulk sample}
 
 \item{assay}{the assay slot of the query (Seurat)}
 
-\item{bulk_feature_row}{the column name of gene symbols in ref}
+\item{bulk_feature_row}{the column name of gene symbols in ref (only used if ref is SummarizedExperiment)}
 
 \item{bulk_assay_name}{the name of the assay object in the ref}
 
-\item{dist}{IN DEVELOPMENT}
+\item{dist}{distribution method: "sc-direct", "sc-mimic", or "bulk"}
+
+\item{seed}{random seed for reproducibility}
 }
 \value{
 a classified seurat object labeled according to the bulk reference
 }
 \description{
 This function creates a seurat object (typically single cell genomics) of multiple single cell profiles from each sample from a
-bulk object (SummarizedExperiment object currently supported).  In doing so, the function creates single cell profiles with a size distribution
+bulk object (SummarizedExperiment or Seurat object currently supported).  In doing so, the function creates single cell profiles with a size distribution
 that approximates the provided single cell object (query)
 }

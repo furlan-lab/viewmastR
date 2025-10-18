@@ -232,7 +232,8 @@ impl ProgressBar {
                         sec_digits.0,
                         sec_digits.1);
                 }
-                terminal_string = format!("{} it/s {:.2}", terminal_string, e.it_s);
+                terminal_string = format!("{}", terminal_string);
+                // terminal_string = format!("{} it/s {:.2}", terminal_string, e.it_s);
             }
         }
         

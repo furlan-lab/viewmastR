@@ -301,7 +301,7 @@ pub fn run_custom_nd(
     use burn::backend::ndarray::{NdArray, NdArrayDevice};
 
     let device = NdArrayDevice::default();
-    run_custom::<NdArray<f64>>(
+    run_custom::<NdArray<f32>>(
         train,
         test,
         query,
@@ -355,7 +355,7 @@ pub fn run_custom_candle(
     use burn::backend::candle::{Candle, CandleDevice};
 
     let device = CandleDevice::default();
-    run_custom::<Candle<f64, i64>>(
+    run_custom::<Candle<f32, i64>>(
         train,
         test,
         query,

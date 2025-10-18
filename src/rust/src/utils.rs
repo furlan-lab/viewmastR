@@ -1,4 +1,5 @@
 
+#![allow(dead_code)]
 use std::ops::Div;
 // use extendr_api::*;
 // use burn::prelude::Device;
@@ -26,6 +27,7 @@ impl Div<Scalar> for Vector {
         Vector { value: self.value.iter().map(|v| v / rhs.value).collect() }
     }
 }
+
 
 
 // pub fn rmat_to_tensor(mat: Robj, device: &Device<B>) -> Result<Tensor<B, 2>> {

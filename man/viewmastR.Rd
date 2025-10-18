@@ -27,9 +27,7 @@ viewmastR(
   return_probs = FALSE,
   return_type = c("object", "list"),
   debug = FALSE,
-  train_only = FALSE,
-  addbias = FALSE,
-  ...
+  train_only = FALSE
 )
 }
 \arguments{

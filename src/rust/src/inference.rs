@@ -37,10 +37,16 @@ where
         .batch_size(batch_size)
         .build(dataset);
 
-
+    //  let mut first_batch = true;
     loader
         .iter()
         .flat_map(|batch| {
+
+            // if first_batch {
+            //     eprintln!("First batch input shape: {:?}", batch.counts.dims());
+            //     first_batch = false;
+            // }
+
             // 1.  Run the model
             let mut data = f(batch.counts).into_data();   // TensorData
 
@@ -81,9 +87,61 @@ where
             let model = MlrCfg::new(num_classes)
                            .init(num_features, device.clone())
                            .load_record(rec);
-
+            // eprintln!("Model initialized with:");
+            // eprintln!("  num_features: {}", num_features);
+            // eprintln!("  num_classes: {}", num_classes);
             run_inference::<B, _>(move |x| model.forward(x), device, query, bs)
         }
+        // NetKind::Mlr => {
+        //     eprintln!("=== Debug Info ===");
+        //     eprintln!("Model path: {}", model_path);
+            
+        //     // Load the record to inspect it
+        //     let rec = NamedMpkFileRecorder::<FullPrecisionSettings>::new()
+        //         .load(model_path.into(), &device)
+        //         .expect("load MLR weights");
+            
+        //     // Try creating a fresh model and see what happens
+        //     let fresh_model = MlrCfg::new(num_classes)
+        //         .init(num_features, device.clone());
+            
+        //     // Test the fresh model first
+        //     let test_input = Tensor::<B, 2>::zeros([1, num_features], &device);
+        //     eprintln!("Testing fresh model (before loading weights)...");
+            
+        //     let fresh_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        //         fresh_model.forward(test_input.clone())
+        //     }));
+            
+        //     match fresh_result {
+        //         Ok(output) => {
+        //             eprintln!("Fresh model works! Output shape: {:?}", output.dims());
+        //             eprintln!("Now loading saved weights...");
+                    
+        //             // Now try loading the weights
+        //             let loaded_model = fresh_model.load_record(rec);
+                    
+        //             let loaded_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        //                 loaded_model.forward(test_input.clone())
+        //             }));
+                    
+        //             match loaded_result {
+        //                 Ok(output2) => {
+        //                     eprintln!("Loaded model works! Output shape: {:?}", output2.dims());
+                            
+        //                     // Proceed with actual inference
+        //                     run_inference::<B, _>(move |x| loaded_model.forward(x), device, query, bs)
+        //                 },
+        //                 Err(_) => {
+        //                     panic!("Model fails after loading weights - dimension mismatch in saved file");
+        //                 }
+        //             }
+        //         },
+        //         Err(_) => {
+        //             panic!("Fresh model fails - initialization problem");
+        //         }
+        //     }
+        // }
 
         NetKind::Ann { hidden } => {
             let rec   = NamedMpkFileRecorder::<FullPrecisionSettings>::new()

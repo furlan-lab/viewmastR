@@ -48,6 +48,8 @@ seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 vg <- get_selected_features(seu)
+
+
 ```
 
 ## Now you run viewmastR

@@ -352,91 +352,6 @@ fn fit_null_model<B: AutodiffBackend>(
     nll_matrix.sum_dim(0).squeeze(0)
 }
 
-// R INTERFACE
-
-fn rmat_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B, 2>> {
-    let dims = robj.dim()
-        .ok_or_else(|| Error::Other("Matrix must have dimensions".into()))?;
-    
-    if dims.len() != 2 {
-        return Err(Error::Other("Expected 2D matrix".into()));
-    }
-    
-    let nrow = dims[0].inner() as usize;
-    let ncol = dims[1].inner() as usize;
-    
-    // eprintln!("▶ rmat_to_tensor: target shape = [{}, {}]", nrow, ncol);
-    
-    let data: Vec<f32> = robj
-        .as_real_vector()
-        .ok_or_else(|| Error::Other("Matrix must be numeric".into()))?
-        .iter()
-        .map(|&x| x as f32)
-        .collect();
-    
-    // eprintln!("  data length = {}", data.len());
-    
-    if data.len() != nrow * ncol {
-        return Err(Error::Other(format!(
-            "Data length {} doesn't match dimensions {} × {} = {}",
-            data.len(), nrow, ncol, nrow * ncol
-        ).into()));
-    }
-    
-    let mut row_major = vec![0.0f32; data.len()];
-    for i in 0..nrow {
-        for j in 0..ncol {
-            row_major[i * ncol + j] = data[j * nrow + i];
-        }
-    }
-    
-    let t1 = Tensor::<B, 1>::from_floats(row_major.as_slice(), device);
-    let t2 = t1.unsqueeze::<2>();
-    let t3 = t2.reshape([nrow, ncol]);
-    
-    Ok(t3)
-}
-
-fn rvec_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B, 1>> {
-    let data: Vec<f32> = robj
-        .as_real_vector()
-        .ok_or_else(|| Error::Other("Vector must be numeric".into()))?
-        .iter()
-        .map(|&x| x as f32)
-        .collect();
-    
-    Ok(Tensor::<B, 1>::from_floats(data.as_slice(), device))
-}
-
-fn robj_to_bool(robj: Robj, default: bool, name: &str) -> bool {
-    robj.as_logical_vector()
-        .and_then(|v| v.first().copied())
-        .map(|rbool| rbool.is_true())  // Convert Rbool to bool
-        .unwrap_or_else(|| {
-            rprintln!("Warning: Using default value {} for {}", default, name);
-            default
-        })
-}
-
-fn robj_to_f64(robj: Robj, default: f64, name: &str) -> f64 {
-    robj.as_real_vector()
-        .and_then(|v| v.first().copied())
-        .unwrap_or_else(|| {
-            eprintln!("Warning: Using default value {} for {}", default, name);
-            default
-        })
-}
-
-fn robj_to_usize(robj: Robj, default: usize, name: &str) -> usize {
-    robj.as_real_vector()
-        .and_then(|v| v.first().copied())
-        .map(|x| x as usize)
-        .unwrap_or_else(|| {
-            eprintln!("Warning: Using default value {} for {}", default, name);
-            default
-        })
-}
-
 
 pub fn fit_deconv(
     sigs: Robj,
@@ -567,7 +482,7 @@ fn fit_deconv_impl<B: AutodiffBackend>(
         }
     }
     
-    let robj_exp = Robj::from(exp_col_major);
+    let mut robj_exp = Robj::from(exp_col_major);
     let _ = robj_exp.set_attrib("dim", Robj::from(vec![exp_dims[0] as i32, exp_dims[1] as i32]));
     
     let pred_data: Vec<f32> = pred_counts.to_data().to_vec()
@@ -581,7 +496,7 @@ fn fit_deconv_impl<B: AutodiffBackend>(
         }
     }
     
-    let robj_pred = Robj::from(pred_col_major);
+    let mut robj_pred = Robj::from(pred_col_major);
     let _ = robj_pred.set_attrib("dim", Robj::from(vec![pred_dims[0] as i32, pred_dims[1] as i32]));
     
     eprintln!("Training complete!");
@@ -591,3 +506,90 @@ fn fit_deconv_impl<B: AutodiffBackend>(
         pred_counts = robj_pred
     ))
 }
+
+
+
+pub fn rmat_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B, 2>> {
+    let dims = robj.dim()
+        .ok_or_else(|| Error::Other("Matrix must have dimensions".into()))?;
+    
+    if dims.len() != 2 {
+        return Err(Error::Other("Expected 2D matrix".into()));
+    }
+    
+    let nrow = dims[0].inner() as usize;
+    let ncol = dims[1].inner() as usize;
+    
+    // eprintln!("▶ rmat_to_tensor: target shape = [{}, {}]", nrow, ncol);
+    
+    let data: Vec<f32> = robj
+        .as_real_vector()
+        .ok_or_else(|| Error::Other("Matrix must be numeric".into()))?
+        .iter()
+        .map(|&x| x as f32)
+        .collect();
+    
+    // eprintln!("  data length = {}", data.len());
+    
+    if data.len() != nrow * ncol {
+        return Err(Error::Other(format!(
+            "Data length {} doesn't match dimensions {} × {} = {}",
+            data.len(), nrow, ncol, nrow * ncol
+        ).into()));
+    }
+    
+    let mut row_major = vec![0.0f32; data.len()];
+    for i in 0..nrow {
+        for j in 0..ncol {
+            row_major[i * ncol + j] = data[j * nrow + i];
+        }
+    }
+    
+    let t1 = Tensor::<B, 1>::from_floats(row_major.as_slice(), device);
+    let t2 = t1.unsqueeze::<2>();
+    let t3 = t2.reshape([nrow, ncol]);
+    
+    Ok(t3)
+}
+
+
+pub fn rvec_to_tensor<B: Backend>(robj: Robj, device: &B::Device) -> Result<Tensor<B, 1>> {
+    let data: Vec<f32> = robj
+        .as_real_vector()
+        .ok_or_else(|| Error::Other("Vector must be numeric".into()))?
+        .iter()
+        .map(|&x| x as f32)
+        .collect();
+    
+    Ok(Tensor::<B, 1>::from_floats(data.as_slice(), device))
+}
+
+pub fn robj_to_bool(robj: Robj, default: bool, name: &str) -> bool {
+    robj.as_logical_vector()
+        .and_then(|v| v.first().copied())
+        .map(|rbool| rbool.is_true())  // Convert Rbool to bool
+        .unwrap_or_else(|| {
+            rprintln!("Warning: Using default value {} for {}", default, name);
+            default
+        })
+}
+
+pub fn robj_to_f64(robj: Robj, default: f64, name: &str) -> f64 {
+    robj.as_real_vector()
+        .and_then(|v| v.first().copied())
+        .unwrap_or_else(|| {
+            eprintln!("Warning: Using default value {} for {}", default, name);
+            default
+        })
+}
+
+pub fn robj_to_usize(robj: Robj, default: usize, name: &str) -> usize {
+    robj.as_real_vector()
+        .and_then(|v| v.first().copied())
+        .map(|x| x as usize)
+        .unwrap_or_else(|| {
+            eprintln!("Warning: Using default value {} for {}", default, name);
+            default
+        })
+}
+

@@ -152,9 +152,8 @@ viewmastR <- function(query_cds,
                       return_probs = FALSE,
                       return_type = c("object", "list"), 
                       debug = FALSE,
-                      train_only = FALSE,
-                      addbias = FALSE, #not implemented yet
-                      ...) {
+                      train_only = FALSE
+                      ) {
   FUNC <- match.arg(FUNC)
   return_type <- match.arg(return_type)
   backend <- match.arg(backend)
@@ -795,8 +794,8 @@ get_norm_counts<-function (cds, norm_method = c("log", "binary", "size_only", "n
   return(norm_mat)
 }
 
-get_counts_seurat <- function(cds){
-  GetAssayData(object = cds, assay = cds@active.assay, slot = "counts")
+get_counts_seurat <- function(cds, assay="RNA"){
+  GetAssayData(object = cds, assay = assay, slot = "counts")
   # res<-tryCatch(
   # {cds@assays[[cds@active.assay]]@counts},
   # error = function() {
