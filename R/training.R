@@ -76,7 +76,6 @@ optimize_backend <- function(){
 #' @param debug Logical, whether to print debugging messages and dimension checks.
 #' @param train_only Logical, if \code{TRUE}, only the reference data is processed and no query data is included.
 #' @param addbias Logical, whether to add a bias term (a row of ones) to the data.
-#' @param ... Additional arguments passed to \code{\link{setup_training}}.
 #'
 #' @details 
 #' The function first calls \code{\link{setup_training}} to preprocess and split the data into training, testing, and 
@@ -242,8 +241,7 @@ viewmastR <- function(query_cds,
       verbose = verbose,
       addbias = addbias,
       return_type = "list",
-      debug = debug,
-      ...
+      debug = debug
     )
 
     if (debug) {
@@ -347,7 +345,6 @@ viewmastR <- function(query_cds,
 #' @param addbias A logical indicating whether to add a bias row (ones) to the data matrices.
 #' @param return_type A character string specifying the return format. One of \code{"list"}, \code{"matrix"}, or \code{"S4obj"}.
 #' @param debug A logical indicating whether to print debugging messages.
-#' @param ... Additional arguments passed to internal functions.
 #'
 #' @details 
 #' This function handles two scenarios:
