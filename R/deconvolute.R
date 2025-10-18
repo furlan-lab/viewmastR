@@ -534,8 +534,8 @@ print_metrics_summary <- function(result) {
 #' cannot be explained by normal hematopoietic cell types.
 #'
 #' @param deconv_result List returned from fit_deconv_em() containing 'exposures' and 'pred_counts'
-#' @param signatures Matrix of cell type signatures used in deconvolution [genes x cell_types]
-#' @param bulk_counts Matrix of observed bulk expression [genes x samples]
+#' @param signatures Matrix of cell type signatures used in deconvolution %\[%\genes x cell_types%\[%\
+#' @param bulk_counts Matrix of observed bulk expression %\[%\genes x samples%\[%\
 #' @param gene_names Optional vector of gene names (default: rownames of signatures)
 #' @param top_n Number of top genes to return (default: 500)
 #' @param return_all If TRUE, return all genes ranked; if FALSE, return top_n (default: FALSE)
@@ -544,7 +544,7 @@ print_metrics_summary <- function(result) {
 #'   - tumor_upregulated: Genes overexpressed in tumor vs normal hematopoiesis
 #'   - tumor_downregulated: Genes underexpressed in tumor vs normal hematopoiesis
 #'   - intercept_values: Per-sample intercept (noise) levels
-#'   - residuals: Full residual matrix [genes x samples]
+#'   - residuals: Full residual matrix %\[%\genes x samples%\[%\
 #'   - mean_residual: Mean residual per gene across samples
 #'   - intercept_fraction: Fraction of total signal from intercept per sample
 #'

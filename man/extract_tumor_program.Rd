@@ -16,9 +16,9 @@ extract_tumor_program(
 \arguments{
 \item{deconv_result}{List returned from fit_deconv_em() containing 'exposures' and 'pred_counts'}
 
-\item{signatures}{Matrix of cell type signatures used in deconvolution \link{genes x cell_types}}
+\item{signatures}{Matrix of cell type signatures used in deconvolution \%[\%\genes x cell_types\%[\%\}
 
-\item{bulk_counts}{Matrix of observed bulk expression \link{genes x samples}}
+\item{bulk_counts}{Matrix of observed bulk expression \%[\%\genes x samples\%[\%\}
 
 \item{gene_names}{Optional vector of gene names (default: rownames of signatures)}
 
@@ -32,7 +32,7 @@ A list containing:
 \item tumor_upregulated: Genes overexpressed in tumor vs normal hematopoiesis
 \item tumor_downregulated: Genes underexpressed in tumor vs normal hematopoiesis
 \item intercept_values: Per-sample intercept (noise) levels
-\item residuals: Full residual matrix \link{genes x samples}
+\item residuals: Full residual matrix \%[\%\genes x samples\%[\%\
 \item mean_residual: Mean residual per gene across samples
 \item intercept_fraction: Fraction of total signal from intercept per sample
 }
