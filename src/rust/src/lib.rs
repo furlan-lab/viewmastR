@@ -20,6 +20,7 @@ mod nb;
 // mod signal;
 mod signal;
 mod em;
+mod splat;
 
 use std::path::Path;
 use std::time::Instant;
@@ -687,6 +688,31 @@ fn fit_deconvolution_em(
     em::fit_deconv_em(sigs, bulk, gene_lengths, gene_weights, max_iter, tolerance, l1_lambda, verbose)
 }
 
+///@export
+///@keywords internal
+#[extendr]
+fn splat_bulk_reference_rust(
+    counts_matrix: Robj,
+    universe: Robj,
+    sizes: Robj,
+    bandwidth: Robj,
+    n_cells_per_bulk: Robj,
+    replace_counts: Robj,
+    seed: Robj,
+    verbose: Robj,
+) -> Result<List>{
+    splat::splat_bulk_reference_rust_core(
+        counts_matrix,
+        universe,
+        sizes,
+        bandwidth,
+        n_cells_per_bulk,
+        replace_counts,
+        seed,
+        verbose
+    )
+}
+
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
@@ -701,6 +727,7 @@ extendr_module! {
   fn infer_from_model;
   fn process_learning_obj;
   fn process_learning_obj_nb;
+  fn splat_bulk_reference_rust;
   // fn run_nb_test;
 
 }

@@ -29,6 +29,7 @@ impl Div<Scalar> for Vector {
 }
 
 
+
 // pub fn rmat_to_tensor(mat: Robj, device: &Device<B>) -> Result<Tensor<B, 2>> {
 //     // 1) get dims
 //     let dims = mat.dim().ok_or("dim attribute missing")?;

@@ -28,6 +28,9 @@ anyhow = "1.0.80"
 statrs = "0.18.0"
 burn-derive =  "0.18.0"
 chrono = "0.4.37"
+rayon = "1.9.4"
+rand_distr = "0.4"
+sprs = "0.11"
 
 # Serialization
 serde = "1"

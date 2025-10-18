@@ -43,5 +43,9 @@ process_learning_obj <- function(model_type, train, test, query, labels, feature
 #' @keywords internal
 process_learning_obj_nb <- function(train, test, query) .Call(wrap__process_learning_obj_nb, train, test, query)
 
+#'@export
+#'@keywords internal
+splat_bulk_reference_rust <- function(counts_matrix, universe, sizes, bandwidth, n_cells_per_bulk, replace_counts, seed, verbose) .Call(wrap__splat_bulk_reference_rust, counts_matrix, universe, sizes, bandwidth, n_cells_per_bulk, replace_counts, seed, verbose)
+
 
 # nolint end
