@@ -194,8 +194,7 @@ viewmastR <- function(query_cds,
       verbose = verbose,
       addbias = addbias,
       return_type = "list",
-      debug = debug,
-      ...
+      debug = debug
     )
 
     if (debug) {
@@ -411,8 +410,7 @@ setup_training <- function(query_cds = NULL,
                            verbose = TRUE,
                            addbias = FALSE,
                            return_type = c("list", "matrix", "S4obj"),
-                           debug = FALSE,
-                           ...) {
+                           debug = FALSE) {
   
   if (verbose) {
     message("Checking arguments and input")
