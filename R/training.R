@@ -75,7 +75,6 @@ optimize_backend <- function(){
 #'   \code{object} and \code{training_output}.
 #' @param debug Logical, whether to print debugging messages and dimension checks.
 #' @param train_only Logical, if \code{TRUE}, only the reference data is processed and no query data is included.
-#' @param addbias Logical, whether to add a bias term (a row of ones) to the data.
 #'
 #' @details 
 #' The function first calls \code{\link{setup_training}} to preprocess and split the data into training, testing, and 
@@ -191,7 +190,7 @@ viewmastR <- function(query_cds,
       scale = scale,
       LSImethod = LSImethod,
       verbose = verbose,
-      addbias = addbias,
+      addbias = F,
       return_type = "list",
       debug = debug
     )
@@ -239,7 +238,7 @@ viewmastR <- function(query_cds,
       scale = scale,
       LSImethod = LSImethod,
       verbose = verbose,
-      addbias = addbias,
+      addbias = F,
       return_type = "list",
       debug = debug
     )
