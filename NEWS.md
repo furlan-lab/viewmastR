@@ -1,6 +1,8 @@
-# viewmastR v0.4
+# viewmastR v0.4.1
 
-* new feature - deconvolution of bulk RNA seq type data
+* added support for bpcells, upgraded to Seurat5+ objects
+
+# viewmastR v0.4
 
 # viewmastR v0.3.1
 
