@@ -17,8 +17,7 @@ setup_training(
   verbose = TRUE,
   addbias = FALSE,
   return_type = c("list", "matrix", "S4obj"),
-  debug = FALSE,
-  ...
+  debug = FALSE
 )
 }
 \arguments{
@@ -52,8 +51,6 @@ TF-IDF takes precedence and scaling is ignored.}
 \item{return_type}{A character string specifying the return format. One of \code{"list"}, \code{"matrix"}, or \code{"S4obj"}.}
 
 \item{debug}{A logical indicating whether to print debugging messages.}
-
-\item{...}{Additional arguments passed to internal functions.}
 }
 \value{
 A list containing either matrices, lists of data items, or S4 objects, depending on \code{return_type}.

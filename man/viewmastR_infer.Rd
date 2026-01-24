@@ -13,11 +13,12 @@ viewmastR_infer(
   verbose = TRUE,
   return_probs = FALSE,
   return_type = c("object", "list"),
-  chunks = 1,
+  chunks = NULL,
   workers = 1,
   batch_size = NULL,
   show_progress = TRUE,
-  backend = c("auto", "wgpu", "nd", "candle")
+  backend = c("auto", "wgpu", "nd", "candle"),
+  chunk_size_cells = 5000
 )
 }
 \arguments{

@@ -196,6 +196,8 @@ fn process_learning_obj(
         .first()
         .unwrap()
         .to_bool();
+
+
     let lr = *learning_rate
         .as_real_vector()
         .unwrap()
@@ -329,7 +331,8 @@ fn infer_from_model(
     hidden2     : Nullable<Integers>,
     verbose     : Robj,
     batch_size  : Robj,
-    backend: Robj
+    backend: Robj,
+    num_threads: Robj
 ) -> List {
     // ── verbosity ---------------------------------------------------------
     let verbose = verbose
@@ -338,6 +341,13 @@ fn infer_from_model(
         .first()
         .unwrap()
         .to_bool();
+
+    let num_threads = num_threads
+        .as_integer()
+        .map(|x| x as usize)
+        .unwrap_or(1);
+    eprintln!("num_threads parsed as: {}", num_threads);
+    
     let backend = match backend.as_str_vector(){
       Some(string_vec) => string_vec.first().unwrap().to_string(),
       _ => panic!("Cound not find backend: '{:?}'", backend)
@@ -407,30 +417,52 @@ fn infer_from_model(
     if verbose { eprintln!("Using backend: {:?}", backend); }
 
     // Use the appropriate backend based on the `backend` parameter
-    let probs = match backend.as_str() {
-        "wgpu" => infer_wgpu(
+    let probs = if num_threads > 1 && backend == "nd" {
+        if verbose {
+            eprintln!("Using parallel nd backend with {} threads", num_threads);
+        }
+        infer_nd_parallel(
             &model_path,
             net,
             num_classes,
             num_features,
             query_raw,
-            Some(batch_size)),
-        "candle" => infer_candle(
-            &model_path,
-            net,
-            num_classes,
-            num_features,
-            query_raw,
-            Some(batch_size)),
-        "nd" => infer_nd(
-            &model_path,
-            net,
-            num_classes,
-            num_features,
-            query_raw,
-            Some(batch_size)),
-        _ => panic!("Unknown backend: {}", backend),
+            Some(batch_size),
+            num_threads,
+            verbose,
+        )
+    } else {
+        match backend.as_str() {
+            "wgpu" => infer_wgpu(&model_path, net, num_classes, num_features, query_raw, Some(batch_size)),
+            "candle" => infer_candle(&model_path, net, num_classes, num_features, query_raw, Some(batch_size)),
+            "nd" => infer_nd(&model_path, net, num_classes, num_features, query_raw, Some(batch_size)),
+            _ => panic!("Unknown backend: {}", backend),
+        }
     };
+    // let probs = match backend.as_str() {
+    //     "wgpu" => infer_wgpu(
+    //         &model_path,
+    //         net,
+    //         num_classes,
+    //         num_features,
+    //         query_raw,
+    //         Some(batch_size)),
+    //     "candle" => infer_candle(
+    //         &model_path,
+    //         net,
+    //         num_classes,
+    //         num_features,
+    //         query_raw,
+    //         Some(batch_size)),
+    //     "nd" => infer_nd(
+    //         &model_path,
+    //         net,
+    //         num_classes,
+    //         num_features,
+    //         query_raw,
+    //         Some(batch_size)),
+    //     _ => panic!("Unknown backend: {}", backend),
+    // };
 
     // ── return to R -------------------------------------------------------
     if verbose { eprintln!("Returning results"); }

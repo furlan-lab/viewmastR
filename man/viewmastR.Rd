@@ -83,10 +83,6 @@ If \code{"object"}, returns the updated \code{query_cds}. If \code{"list"}, retu
 \item{debug}{Logical, whether to print debugging messages and dimension checks.}
 
 \item{train_only}{Logical, if \code{TRUE}, only the reference data is processed and no query data is included.}
-
-\item{addbias}{Logical, whether to add a bias term (a row of ones) to the data.}
-
-\item{...}{Additional arguments passed to \code{\link{setup_training}}.}
 }
 \value{
 Depending on \code{return_type}, returns either:

@@ -13,7 +13,7 @@ use num_traits::ToPrimitive;
 
 
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum NetKind {
     Mlr,
     Ann  { hidden: usize },
@@ -165,6 +165,72 @@ where
             run_inference::<B, _>(move |x| model.forward(x), device, query, bs)
         }
     }
+}
+
+
+pub fn infer_nd_parallel(
+    model_path: &str,
+    net: NetKind,
+    num_classes: usize,
+    num_features: usize,
+    query: Vec<SCItemRaw>,
+    batch_size: Option<usize>,
+    num_threads: usize,
+    verbose: bool,
+) -> Vec<f32> {
+    use burn::backend::ndarray::{NdArray, NdArrayDevice};
+    use rayon::prelude::*;
+
+    type B = NdArray<f32, i32>;
+
+    let n_cells = query.len();
+    let chunk_size = (n_cells / num_threads).max(1000);
+    let bs = batch_size.unwrap_or(64);
+
+    if verbose {
+        eprintln!(
+            "Parallel inference: {} cells, {} threads, chunk_size {}",
+            n_cells, num_threads, chunk_size
+        );
+    }
+
+    // Split into chunks
+    let chunks: Vec<Vec<SCItemRaw>> = query
+        .chunks(chunk_size)
+        .map(|c| c.to_vec())
+        .collect();
+
+    let n_chunks = chunks.len();
+    if verbose {
+        eprintln!("Split into {} chunks", n_chunks);
+    }
+
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build()
+        .expect("Failed to build rayon thread pool");
+
+    pool.install(|| {
+        chunks
+            .into_par_iter()
+            .enumerate()
+            .flat_map(|(i, chunk)| {
+                if verbose {
+                    eprintln!("Processing chunk {}/{}", i + 1, n_chunks);
+                }
+                let device = NdArrayDevice::default();
+                infer::<B>(
+                    model_path,
+                    net.clone(),
+                    num_classes,
+                    num_features,
+                    chunk,
+                    Some(bs),
+                    device,
+                )
+            })
+            .collect()
+    })
 }
 
 

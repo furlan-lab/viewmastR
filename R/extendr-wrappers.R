@@ -28,7 +28,7 @@ fit_deconv <- function(sigs, bulk, gene_lengths, w_vec, backend, insert_size, in
 #'@keywords internal
 fit_deconvolution_em <- function(sigs, bulk, gene_lengths, gene_weights, max_iter, tolerance, l1_lambda, verbose) .Call(wrap__fit_deconvolution_em, sigs, bulk, gene_lengths, gene_weights, max_iter, tolerance, l1_lambda, verbose)
 
-infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend)
+infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend, num_threads) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend, num_threads)
 
 #' A *single* entry-point that covers MLR and ANN/ANN-2L.
 #'
