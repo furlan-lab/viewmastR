@@ -559,6 +559,9 @@ print_metrics_summary <- function(result) {
 #' plot(tumor_program$mean_residual, 
 #'      main = "Tumor-Specific Expression Profile",
 #'      xlab = "Gene Index", ylab = "Mean Residual")
+#' @keywords internal
+#' 
+
 extract_tumor_program <- function(deconv_result, 
                                   signatures, 
                                   bulk_counts,
@@ -670,6 +673,8 @@ extract_tumor_program <- function(deconv_result,
 #' @param tumor_program Output from extract_tumor_program()
 #' @param bulk_counts Original bulk expression matrix
 #' @param main_title Main title for plots
+#' @keywords internal
+
 visualize_tumor_program <- function(tumor_program, 
                                     bulk_counts = NULL,
                                     main_title = "Tumor-Specific Program Analysis") {
@@ -746,6 +751,8 @@ visualize_tumor_program <- function(tumor_program,
 #' @param consistency_threshold Genes with CV < this are "consistent" (default: 0.5)
 #'
 #' @return List with consistent and variable tumor genes
+#' @keywords internal
+
 compare_tumor_consistency <- function(tumor_program, 
                                       consistency_threshold = 0.5) {
   
@@ -790,6 +797,8 @@ compare_tumor_consistency <- function(tumor_program,
 #'
 #' @param tumor_program Output from extract_tumor_program()
 #' @param output_prefix File prefix for output files
+#' @keywords internal
+
 export_tumor_genes <- function(tumor_program, output_prefix = "tumor_genes") {
   
   # Write upregulated genes

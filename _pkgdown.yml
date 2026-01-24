@@ -69,7 +69,7 @@ reference:
   - sparseRowVariances
   - writeMMgz
   - plot_deconvolution
-  - viewmastR-package
+  - matches("viewmastR-package")
 articles:
 - title: Get Started
   navbar: Get Started
