@@ -1,5 +1,15 @@
 #this code in process
 
+################################################################################
+# FILE: R/signature.R
+# STATUS: Missing documentation and exports (Work in Progress?)
+# ------------------------------------------------------------------------------
+# Functions:
+# [ ] plot_signature            (Not Exported - No Roxygen)
+# [ ] plot_sc_signature         (Not Exported - No Roxygen)
+################################################################################
+
+
 # #BiocManager::install("karyoploteR")
 # #BiocManager::install("ballgown")
 # library(karyoploteR)

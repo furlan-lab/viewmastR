@@ -21,11 +21,17 @@ mod nb;
 mod signal;
 mod em;
 mod splat;
+mod sparse;
+mod train_sparse;
+
 
 use std::path::Path;
 use std::time::Instant;
 use crate::common::*;
-use crate::inference::*;
+use crate::sparse::infer_sparse_parallel;
+use crate::sparse::calculate_size_factors;
+use crate::sparse::CscMatrix;
+// use crate::inference::*;
 use burn::prelude::Backend;
 // use burn::tensor::Tensor;
 // use burn::backend::{ndarray::{NdArray}, candle::Candle, Autodiff};
@@ -85,53 +91,51 @@ fn computeSparseRowVariances(j: Robj, val: Robj, rm: Robj, n: Robj)-> Vec<f64>{
 }
 
 
-/// Process Robj learning objects for MLR
-/// @export
-/// @keywords internal
-#[extendr]
-fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
-  let backend = match backend.as_str_vector(){
-    Some(string_vec) => string_vec.first().unwrap().to_string(),
-    _ => panic!("Cound not find backend: '{:?}'", backend)
-  };
-  if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
-    panic!("Cound not find backend: '{:?}'", backend)
-  }
-  let start = Instant::now();
-  let verbose: bool = verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
-  let learning_rate = *learning_rate.as_real_vector().unwrap().first().unwrap_or(&0.2) as f64;
-  let num_epochs = *num_epochs.as_real_vector().unwrap().first().unwrap_or(&10.0) as usize;
-  let artifact_dir = match directory.as_str_vector() {
-    Some(string_vec) => string_vec.first().unwrap().to_string(),
-    _ => panic!("Cound not find folder: '{:?}'", directory)
-  };
-  if !Path::new(&artifact_dir).exists(){
-    panic!("Could not find folder: '{:?}'", artifact_dir)
-  }
-  let labelvec = labels.as_str_vector().unwrap();
+// /// Process Robj learning objects for MLR #depracated
+// #[extendr]
+// fn process_learning_obj_mlr(train: Robj, test: Robj, query: Robj, labels: Robj, learning_rate: Robj, num_epochs: Robj, directory: Robj, verbose: Robj, backend: Robj)-> List {
+//   let backend = match backend.as_str_vector(){
+//     Some(string_vec) => string_vec.first().unwrap().to_string(),
+//     _ => panic!("Cound not find backend: '{:?}'", backend)
+//   };
+//   if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
+//     panic!("Cound not find backend: '{:?}'", backend)
+//   }
+//   let start = Instant::now();
+//   let verbose: bool = verbose.as_logical_vector().unwrap().first().unwrap().to_bool();
+//   let learning_rate = *learning_rate.as_real_vector().unwrap().first().unwrap_or(&0.2) as f64;
+//   let num_epochs = *num_epochs.as_real_vector().unwrap().first().unwrap_or(&10.0) as usize;
+//   let artifact_dir = match directory.as_str_vector() {
+//     Some(string_vec) => string_vec.first().unwrap().to_string(),
+//     _ => panic!("Cound not find folder: '{:?}'", directory)
+//   };
+//   if !Path::new(&artifact_dir).exists(){
+//     panic!("Could not find folder: '{:?}'", artifact_dir)
+//   }
+//   let labelvec = labels.as_str_vector().unwrap();
 
-  let test_raw = extract_scitemraw(&test, None);   // No default target, extract from list
-  let train_raw = extract_scitemraw(&train, None); // No default target, extract from list
-  let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
+//   let test_raw = extract_scitemraw(&test, None);   // No default target, extract from list
+//   let train_raw = extract_scitemraw(&train, None); // No default target, extract from list
+//   let query_raw = extract_scitemraw(&query, Some(0)); // Default target is 0 for query
 
-  let model_export: RExport;
-  if backend == "candle"{
-    model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  } 
-  else if backend == "wpgu"{
-    model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  } 
-  else {
-    model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
-  }
+//   let model_export: RExport;
+//   if backend == "candle"{
+//     model_export = scrna_mlr::run_custom_candle(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+//   } 
+//   else if backend == "wpgu"{
+//     model_export = scrna_mlr::run_custom_wgpu(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+//   } 
+//   else {
+//     model_export = scrna_mlr::run_custom_nd(train_raw, test_raw, Some(query_raw), labelvec.len(), learning_rate, num_epochs, Some(artifact_dir), verbose);
+//   }
 
-  let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
-  let probs = list!(model_export.probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>());
-  let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
-  let duration = start.elapsed();
-  let duration: List = list!(total_duration = duration.as_secs_f64(), training_duration = model_export.training_duration);
-  return list!(params = params, probs = probs, history = history, duration = duration)
-}
+//   let params = list!(lr = model_export.lr, epochs = model_export.num_epochs, batch_size = model_export.batch_size, workers = model_export.num_workers, seed = model_export.seed);
+//   let probs = list!(model_export.probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>());
+//   let history: List = list!(train_acc = model_export.train_history.acc, test_acc = model_export.test_history.acc, train_loss = model_export.train_history.loss, test_loss = model_export.test_history.loss);
+//   let duration = start.elapsed();
+//   let duration: List = list!(total_duration = duration.as_secs_f64(), training_duration = model_export.training_duration);
+//   return list!(params = params, probs = probs, history = history, duration = duration)
+// }
 
 
 
@@ -320,204 +324,619 @@ fn process_learning_obj(
     list!(params = params, probs = probs, history = history, duration = duration)
 }
 
-#[extendr]          // @export
-fn infer_from_model(
-    model_path  : Robj,
-    query       : Robj,
-    num_classes : Robj,
-    num_features: Robj,
-    model_type  : Robj,
-    hidden1     : Nullable<Integers>,
-    hidden2     : Nullable<Integers>,
-    verbose     : Robj,
-    batch_size  : Robj,
+/// Sparse matrix training entry-point for MLR and ANN/ANN-2L.
+///
+/// Instead of receiving lists of cells from R, receives sparse matrices directly.
+/// Size factors should be pre-computed in R (or set to 1.0 if data is already normalized).
+///
+/// @export
+/// @keywords internal
+#[extendr]
+fn process_learning_obj_sparse(
+    model_type: Robj,
+    // Training data (sparse)
+    train_x: Robj,
+    train_i: Robj,
+    train_p: Robj,
+    train_dims: Robj,
+    train_labels: Robj,
+    train_size_factors: Robj,
+    // Test data (sparse)
+    test_x: Robj,
+    test_i: Robj,
+    test_p: Robj,
+    test_dims: Robj,
+    test_labels: Robj,
+    test_size_factors: Robj,
+    // Query data (sparse) - can be NULL
+    query_x: Robj,
+    query_i: Robj,
+    query_p: Robj,
+    query_dims: Robj,
+    query_size_factors: Robj,
+    // Metadata
+    labels: Robj,
+    feature_names: Robj,
+    // Model params
+    hidden_size: Nullable<Integers>,
+    learning_rate: Robj,
+    num_epochs: Robj,
+    directory: Robj,
+    verbose: Robj,
     backend: Robj,
-    num_threads: Robj
 ) -> List {
-    // ── verbosity ---------------------------------------------------------
-    let verbose = verbose
-        .as_logical_vector()
-        .unwrap()
-        .first()
-        .unwrap()
-        .to_bool();
-
-    let num_threads = num_threads
-        .as_integer()
-        .map(|x| x as usize)
-        .unwrap_or(1);
-    eprintln!("num_threads parsed as: {}", num_threads);
+    use crate::sparse::CscMatrix;
+    use crate::train_sparse;
+    use std::time::Instant;
     
-    let backend = match backend.as_str_vector(){
-      Some(string_vec) => string_vec.first().unwrap().to_string(),
-      _ => panic!("Cound not find backend: '{:?}'", backend)
-    };
-    if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
-      panic!("Cound not find backend: '{:?}'", backend)
-    }
-    // ── scalars -----------------------------------------------------------
-    let model_path = model_path
+    // -------------------------------------------------------------------
+    // Parse common parameters
+    // -------------------------------------------------------------------
+    let model = model_type
         .as_str_vector()
         .and_then(|v| v.first().cloned())
-        .expect("`model_path` must be a string");
-    if !Path::new(&model_path).exists() {
-        panic!("Checkpoint not found: {model_path}");
-    }
-
-    let model_kind_str = model_type
-        .as_str_vector()
-        .and_then(|v| v.first().cloned())
-        .unwrap_or_else(|| "mlr")
-        .to_lowercase();
-
-    let num_classes = num_classes
-        .as_integer_vector()
+        .expect("Must supply model_type (\"mlr\" | \"ann\" | \"ann2\")");
+    
+    let be = parse_backend(&backend);
+    let artifact_dir = parse_directory(&directory);
+    
+    let verbose: bool = verbose
+        .as_logical_vector()
+        .and_then(|v| v.first().map(|b| b.to_bool()))
+        .unwrap_or(true);
+    
+    let lr = learning_rate
+        .as_real_vector()
         .and_then(|v| v.first().copied())
-        .expect("`num_classes` must be an integer") as usize;
-
-    let num_features = num_features
-        .as_integer_vector()
+        .unwrap_or(0.2);
+    
+    let epochs = num_epochs
+        .as_real_vector()
         .and_then(|v| v.first().copied())
-        .expect("`num_features` must be an integer") as usize;
-
-    // ── optional hidden sizes --------------------------------------------
-    let h1 = usize_from_nullable(hidden1);
-    let h2 = usize_from_nullable(hidden2);
-
-    let batch_size = batch_size
-        .as_real()
         .map(|x| x as usize)
-        .or_else(|| batch_size.as_integer().map(|x| x as usize))
-        .unwrap_or_else(|| panic!("`batch_size` must be numeric"));
-
-    // ── query to Vec<SCItemRaw> ------------------------------------------
-    if verbose { eprintln!("Preparing query data"); }
-    let query_raw = extract_scitemraw(&query, Some(0));
-
-    // ── decide which NetKind to run --------------------------------------
-    let net = match model_kind_str.as_str() {
-        "mlr" => NetKind::Mlr,
-
-        "ann1" | "ann" => {
-            let size1 = h1.expect("`hidden1` must be supplied for ANN1 models");
-            NetKind::Ann { hidden: size1 }
-        }
-
-        "ann2" => {
-            let size1 = h1.expect("`hidden1` must be supplied for ANN2 models");
-            let size2 = h2.expect("`hidden2` must be supplied for ANN2 models");
-            NetKind::Ann2 { hidden1: size1, hidden2: size2 }
-        }
-
-        other => panic!("Unknown `model_type`: {other}  (use \"mlr\", \"ann1\", or \"ann2\")"),
+        .unwrap_or(10);
+    
+    let start = Instant::now();
+    
+    let labelvec = labels.as_string_vector().expect("labels must be character vector");
+    let feature_names_vec = feature_names.as_string_vector().expect("feature_names must be character vector");
+    let num_classes = labelvec.len();
+    
+    // -------------------------------------------------------------------
+    // Helper to parse dimensions
+    // -------------------------------------------------------------------
+    let parse_dims = |dims: &Robj| -> (usize, usize) {
+        let d = dims.as_integer_vector().expect("dims must be integer vector");
+        (d[0] as usize, d[1] as usize)
     };
-
-    // ── run the generic inference ----------------------------------------
-    if verbose { eprintln!("Running inference using a {:?} model", net); }
-    if verbose { eprintln!("Using backend: {:?}", backend); }
-
-    // Use the appropriate backend based on the `backend` parameter
-    let probs = if num_threads > 1 && backend == "nd" {
-        if verbose {
-            eprintln!("Using parallel nd backend with {} threads", num_threads);
+    
+    // -------------------------------------------------------------------
+    // Parse training sparse matrix
+    // -------------------------------------------------------------------
+    let (train_nrow, train_ncol) = parse_dims(&train_dims);
+    let train_mat = CscMatrix::from_r_parts(
+        train_nrow,
+        train_ncol,
+        train_x.as_real_vector().expect("train_x must be numeric"),
+        train_i.as_integer_vector().expect("train_i must be integer"),
+        train_p.as_integer_vector().expect("train_p must be integer"),
+    );
+    let train_labels_vec: Vec<usize> = train_labels
+        .as_integer_vector()
+        .expect("train_labels must be integer")
+        .iter()
+        .map(|&x| x as usize)
+        .collect();
+    let train_sf: Vec<f64> = train_size_factors
+        .as_real_vector()
+        .expect("train_size_factors must be numeric");
+    
+    // -------------------------------------------------------------------
+    // Parse test sparse matrix
+    // -------------------------------------------------------------------
+    let (test_nrow, test_ncol) = parse_dims(&test_dims);
+    let test_mat = CscMatrix::from_r_parts(
+        test_nrow,
+        test_ncol,
+        test_x.as_real_vector().expect("test_x must be numeric"),
+        test_i.as_integer_vector().expect("test_i must be integer"),
+        test_p.as_integer_vector().expect("test_p must be integer"),
+    );
+    let test_labels_vec: Vec<usize> = test_labels
+        .as_integer_vector()
+        .expect("test_labels must be integer")
+        .iter()
+        .map(|&x| x as usize)
+        .collect();
+    let test_sf: Vec<f64> = test_size_factors
+        .as_real_vector()
+        .expect("test_size_factors must be numeric");
+    
+    // -------------------------------------------------------------------
+    // Parse query sparse matrix (optional - check if NULL)
+    // -------------------------------------------------------------------
+    let query_data: Option<(CscMatrix, Vec<f64>)> = if query_x.is_null() {
+        None
+    } else {
+        let (qnrow, qncol) = parse_dims(&query_dims);
+        let qmat = CscMatrix::from_r_parts(
+            qnrow,
+            qncol,
+            query_x.as_real_vector().expect("query_x must be numeric"),
+            query_i.as_integer_vector().expect("query_i must be integer"),
+            query_p.as_integer_vector().expect("query_p must be integer"),
+        );
+        let qsf: Vec<f64> = query_size_factors
+            .as_real_vector()
+            .expect("query_size_factors must be numeric");
+        Some((qmat, qsf))
+    };
+    
+    if verbose {
+        eprintln!(
+            "Sparse training: train={}x{}, test={}x{}, query={}, classes={}",
+            train_nrow, train_ncol,
+            test_nrow, test_ncol,
+            query_data.as_ref().map(|(m, _)| format!("{}x{}", m.nrow, m.ncol)).unwrap_or_else(|| "None".to_string()),
+            num_classes
+        );
+    }
+    
+    // -------------------------------------------------------------------
+    // Parse hidden_size for ANN models
+    // -------------------------------------------------------------------
+    let hidden_size_vec: Option<Vec<i32>> = match hidden_size {
+        Nullable::NotNull(hs) => Some(hs.iter().map(|x| x.inner()).collect()),
+        Nullable::Null => None,
+    };
+    
+    // -------------------------------------------------------------------
+    // Dispatch per-model and backend
+    // -------------------------------------------------------------------
+    let export = match model {
+        "mlr" => match be.as_str() {
+            "candle" => train_sparse::run_mlr_sparse_candle(
+                &train_mat, &train_labels_vec, &train_sf,
+                &test_mat, &test_labels_vec, &test_sf,
+                query_data.as_ref(),
+                num_classes, lr, epochs,
+                Some(artifact_dir.clone()), verbose
+            ),
+            "wgpu" => train_sparse::run_mlr_sparse_wgpu(
+                &train_mat, &train_labels_vec, &train_sf,
+                &test_mat, &test_labels_vec, &test_sf,
+                query_data.as_ref(),
+                num_classes, lr, epochs,
+                Some(artifact_dir.clone()), verbose
+            ),
+            _ => train_sparse::run_mlr_sparse_nd(
+                &train_mat, &train_labels_vec, &train_sf,
+                &test_mat, &test_labels_vec, &test_sf,
+                query_data.as_ref(),
+                num_classes, lr, epochs,
+                Some(artifact_dir.clone()), verbose
+            ),
+        },
+        
+        "ann" => {
+            let hs = hidden_size_vec.as_ref().expect("ann requires hidden_size");
+            let hidden1 = hs[0] as usize;
+            
+            match be.as_str() {
+                "candle" => train_sparse::run_ann_sparse_candle(
+                    &train_mat, &train_labels_vec, &train_sf,
+                    &test_mat, &test_labels_vec, &test_sf,
+                    query_data.as_ref(),
+                    num_classes, hidden1, lr, epochs,
+                    Some(artifact_dir.clone()), verbose
+                ),
+                "wgpu" => train_sparse::run_ann_sparse_wgpu(
+                    &train_mat, &train_labels_vec, &train_sf,
+                    &test_mat, &test_labels_vec, &test_sf,
+                    query_data.as_ref(),
+                    num_classes, hidden1, lr, epochs,
+                    Some(artifact_dir.clone()), verbose
+                ),
+                _ => train_sparse::run_ann_sparse_nd(
+                    &train_mat, &train_labels_vec, &train_sf,
+                    &test_mat, &test_labels_vec, &test_sf,
+                    query_data.as_ref(),
+                    num_classes, hidden1, lr, epochs,
+                    Some(artifact_dir.clone()), verbose
+                ),
+            }
         }
-        infer_nd_parallel(
-            &model_path,
-            net,
-            num_classes,
-            num_features,
-            query_raw,
-            Some(batch_size),
-            num_threads,
-            verbose,
+        
+        "ann2" => {
+            let hs = hidden_size_vec.as_ref().expect("ann2 requires hidden_size");
+            assert!(hs.len() >= 2, "ann2 expects two hidden sizes");
+            let (h1, h2) = (hs[0] as usize, hs[1] as usize);
+            
+            match be.as_str() {
+                "candle" => train_sparse::run_ann2_sparse_candle(
+                    &train_mat, &train_labels_vec, &train_sf,
+                    &test_mat, &test_labels_vec, &test_sf,
+                    query_data.as_ref(),
+                    num_classes, h1, h2, lr, epochs,
+                    Some(artifact_dir.clone()), verbose
+                ),
+                "wgpu" => train_sparse::run_ann2_sparse_wgpu(
+                    &train_mat, &train_labels_vec, &train_sf,
+                    &test_mat, &test_labels_vec, &test_sf,
+                    query_data.as_ref(),
+                    num_classes, h1, h2, lr, epochs,
+                    Some(artifact_dir.clone()), verbose
+                ),
+                _ => train_sparse::run_ann2_sparse_nd(
+                    &train_mat, &train_labels_vec, &train_sf,
+                    &test_mat, &test_labels_vec, &test_sf,
+                    query_data.as_ref(),
+                    num_classes, h1, h2, lr, epochs,
+                    Some(artifact_dir.clone()), verbose
+                ),
+            }
+        }
+        
+        _ => panic!("Unsupported model_type \"{model}\""),
+    };
+    
+    // -------------------------------------------------------------------
+    // Assemble return value
+    // -------------------------------------------------------------------
+    let params = if model == "mlr" {
+        list!(
+            lr = export.lr,
+            epochs = export.num_epochs,
+            batch_size = export.batch_size,
+            workers = export.num_workers,
+            seed = export.seed
         )
     } else {
-        match backend.as_str() {
-            "wgpu" => infer_wgpu(&model_path, net, num_classes, num_features, query_raw, Some(batch_size)),
-            "candle" => infer_candle(&model_path, net, num_classes, num_features, query_raw, Some(batch_size)),
-            "nd" => infer_nd(&model_path, net, num_classes, num_features, query_raw, Some(batch_size)),
-            _ => panic!("Unknown backend: {}", backend),
-        }
+        list!(
+            lr = export.lr,
+            hidden_size = export.hidden_size,
+            epochs = export.num_epochs,
+            batch_size = export.batch_size,
+            workers = export.num_workers,
+            seed = export.seed
+        )
     };
-    // let probs = match backend.as_str() {
-    //     "wgpu" => infer_wgpu(
-    //         &model_path,
-    //         net,
-    //         num_classes,
-    //         num_features,
-    //         query_raw,
-    //         Some(batch_size)),
-    //     "candle" => infer_candle(
-    //         &model_path,
-    //         net,
-    //         num_classes,
-    //         num_features,
-    //         query_raw,
-    //         Some(batch_size)),
-    //     "nd" => infer_nd(
-    //         &model_path,
-    //         net,
-    //         num_classes,
-    //         num_features,
-    //         query_raw,
-    //         Some(batch_size)),
-    //     _ => panic!("Unknown backend: {}", backend),
-    // };
+    
+    let probs: Vec<Robj> = export.probs.iter().map(|x| r!(x.clone())).collect();
+    let probs_list = List::from_values(probs);
+    
+    let history = list!(
+        train_acc = export.train_history.acc.clone(),
+        test_acc = export.test_history.acc.clone(),
+        train_loss = export.train_history.loss.clone(),
+        test_loss = export.test_history.loss.clone()
+    );
+    
+    let duration = list!(
+        total_duration = start.elapsed().as_secs_f64(),
+        training_duration = export.training_duration
+    );
+    
+    // Save metadata
+    save_artifacts(artifact_dir.as_str(), feature_names_vec, labelvec)
+        .expect("Could not save artifacts");
+    
+    list!(
+        params = params, 
+        probs = probs_list, 
+        history = history, 
+        duration = duration
+    )
+}
 
-    // ── return to R -------------------------------------------------------
-    if verbose { eprintln!("Returning results"); }
+// OLD FUNCTION NOT SPARSE
+// #[extendr]          // @export
+// fn infer_from_model(
+//     model_path  : Robj,
+//     query       : Robj,
+//     num_classes : Robj,
+//     num_features: Robj,
+//     model_type  : Robj,
+//     hidden1     : Nullable<Integers>,
+//     hidden2     : Nullable<Integers>,
+//     verbose     : Robj,
+//     batch_size  : Robj,
+//     backend: Robj,
+//     num_threads: Robj
+// ) -> List {
+//     // ── verbosity ---------------------------------------------------------
+//     let verbose = verbose
+//         .as_logical_vector()
+//         .unwrap()
+//         .first()
+//         .unwrap()
+//         .to_bool();
+
+//     let num_threads = num_threads
+//         .as_integer()
+//         .map(|x| x as usize)
+//         .unwrap_or(1);
+//     eprintln!("num_threads parsed as: {}", num_threads);
+    
+//     let backend = match backend.as_str_vector(){
+//       Some(string_vec) => string_vec.first().unwrap().to_string(),
+//       _ => panic!("Cound not find backend: '{:?}'", backend)
+//     };
+//     if ! ["wgpu", "candle", "nd"].contains(&backend.as_str()){
+//       panic!("Cound not find backend: '{:?}'", backend)
+//     }
+//     // ── scalars -----------------------------------------------------------
+//     let model_path = model_path
+//         .as_str_vector()
+//         .and_then(|v| v.first().cloned())
+//         .expect("`model_path` must be a string");
+//     if !Path::new(&model_path).exists() {
+//         panic!("Checkpoint not found: {model_path}");
+//     }
+
+//     let model_kind_str = model_type
+//         .as_str_vector()
+//         .and_then(|v| v.first().cloned())
+//         .unwrap_or_else(|| "mlr")
+//         .to_lowercase();
+
+//     let num_classes = num_classes
+//         .as_integer_vector()
+//         .and_then(|v| v.first().copied())
+//         .expect("`num_classes` must be an integer") as usize;
+
+//     let num_features = num_features
+//         .as_integer_vector()
+//         .and_then(|v| v.first().copied())
+//         .expect("`num_features` must be an integer") as usize;
+
+//     // ── optional hidden sizes --------------------------------------------
+//     let h1 = usize_from_nullable(hidden1);
+//     let h2 = usize_from_nullable(hidden2);
+
+//     let batch_size = batch_size
+//         .as_real()
+//         .map(|x| x as usize)
+//         .or_else(|| batch_size.as_integer().map(|x| x as usize))
+//         .unwrap_or_else(|| panic!("`batch_size` must be numeric"));
+
+//     // ── query to Vec<SCItemRaw> ------------------------------------------
+//     if verbose { eprintln!("Preparing query data"); }
+//     let query_raw = extract_scitemraw(&query, Some(0));
+
+//     // ── decide which NetKind to run --------------------------------------
+//     let net = match model_kind_str.as_str() {
+//         "mlr" => NetKind::Mlr,
+
+//         "ann1" | "ann" => {
+//             let size1 = h1.expect("`hidden1` must be supplied for ANN1 models");
+//             NetKind::Ann { hidden: size1 }
+//         }
+
+//         "ann2" => {
+//             let size1 = h1.expect("`hidden1` must be supplied for ANN2 models");
+//             let size2 = h2.expect("`hidden2` must be supplied for ANN2 models");
+//             NetKind::Ann2 { hidden1: size1, hidden2: size2 }
+//         }
+
+//         other => panic!("Unknown `model_type`: {other}  (use \"mlr\", \"ann1\", or \"ann2\")"),
+//     };
+
+//     // ── run the generic inference ----------------------------------------
+//     if verbose { eprintln!("Running inference using a {:?} model", net); }
+//     if verbose { eprintln!("Using backend: {:?}", backend); }
+
+//     // Use the appropriate backend based on the `backend` parameter
+//     let probs = if num_threads > 1 && backend == "nd" {
+//         if verbose {
+//             eprintln!("Using parallel nd backend with {} threads", num_threads);
+//         }
+//         infer_nd_parallel(
+//             &model_path,
+//             net,
+//             num_classes,
+//             num_features,
+//             query_raw,
+//             Some(batch_size),
+//             num_threads,
+//             verbose,
+//         )
+//     } else {
+//         match backend.as_str() {
+//             "wgpu" => infer_wgpu(&model_path, net, num_classes, num_features, query_raw, Some(batch_size)),
+//             "candle" => infer_candle(&model_path, net, num_classes, num_features, query_raw, Some(batch_size)),
+//             "nd" => infer_nd(&model_path, net, num_classes, num_features, query_raw, Some(batch_size)),
+//             _ => panic!("Unknown backend: {}", backend),
+//         }
+//     };
+//     // let probs = match backend.as_str() {
+//     //     "wgpu" => infer_wgpu(
+//     //         &model_path,
+//     //         net,
+//     //         num_classes,
+//     //         num_features,
+//     //         query_raw,
+//     //         Some(batch_size)),
+//     //     "candle" => infer_candle(
+//     //         &model_path,
+//     //         net,
+//     //         num_classes,
+//     //         num_features,
+//     //         query_raw,
+//     //         Some(batch_size)),
+//     //     "nd" => infer_nd(
+//     //         &model_path,
+//     //         net,
+//     //         num_classes,
+//     //         num_features,
+//     //         query_raw,
+//     //         Some(batch_size)),
+//     //     _ => panic!("Unknown backend: {}", backend),
+//     // };
+
+//     // ── return to R -------------------------------------------------------
+//     if verbose { eprintln!("Returning results"); }
+//     list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
+// }
+
+
+// // ---------- util -------------------------------------------------------------
+// // fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
+// //     match n {
+// //         Nullable::Null => None,
+
+// //         Nullable::NotNull(robj) => {
+// //             // Parse again as Nullable<Option<i32>>
+// //             let parsed: Nullable<Option<i32>> = robj.try_into().ok()?;
+
+// //             match parsed {
+// //                 Nullable::Null          => None,          // shouldn’t occur
+// //                 Nullable::NotNull(None) => None,          // NA
+// //                 Nullable::NotNull(Some(x)) => Some(x as usize),
+// //             }
+// //         }
+// //     }
+// // }
+
+// // fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
+// //     match n {
+// //         Nullable::Null => None,
+// //         Nullable::NotNull(x) => {
+// //             if x.is_number() {
+// //                 let vec = x.into_robj().as_integer_vector().unwrap();
+// //                 let int = vec.first().unwrap();
+// //                 Some(*int as usize)
+// //             } else {
+// //                 None
+// //             }
+// //         }
+// //     }
+// // }
+
+
+/// @export
+/// @keywords internal
+#[extendr]
+pub fn infer_sparse(
+    x: Robj,
+    i: Robj,
+    p: Robj,
+    dims: Robj,
+    size_factors: Robj,
+    model_path: Robj,
+    model_type: Robj,
+    num_classes: Robj,
+    hidden1: Nullable<Integers>,
+    hidden2: Nullable<Integers>,
+    batch_size: Robj,
+    num_threads: Robj,
+    verbose: Robj,
+) -> List {
+    // Parse verbose
+    let verbose = verbose
+        .as_logical_vector()
+        .and_then(|v| v.first().map(|b| b.to_bool()))
+        .unwrap_or(false);
+    
+    if verbose {
+        eprintln!("Parsing sparse matrix from R...");
+    }
+    
+    // Parse dimensions
+    let dims_vec = dims.as_integer_vector().expect("dims must be integer vector");
+    let nrow = dims_vec[0] as usize;
+    let ncol = dims_vec[1] as usize;
+    
+    // Parse sparse matrix components
+    let x_vec: Vec<f64> = x.as_real_vector().expect("x must be numeric vector");
+    let i_vec: Vec<i32> = i.as_integer_vector().expect("i must be integer vector");
+    let p_vec: Vec<i32> = p.as_integer_vector().expect("p must be integer vector");
+    
+    // Create CSC matrix
+    let mat = CscMatrix::from_r_parts(nrow, ncol, x_vec, i_vec, p_vec);
+    
+    if verbose {
+        eprintln!("Sparse matrix: {} rows × {} cols, {} non-zeros", 
+                  mat.nrow, mat.ncol, mat.x.len());
+    }
+    
+    // Parse or compute size factors
+    let sf: Vec<f64> = if size_factors.is_null() {
+        if verbose {
+            eprintln!("Computing size factors...");
+        }
+        calculate_size_factors(&mat)
+    } else {
+        size_factors.as_real_vector().expect("size_factors must be numeric vector")
+    };
+    
+    // Parse model parameters
+    let model_path_str = model_path
+        .as_str_vector()
+        .and_then(|v| v.first().cloned())
+        .expect("model_path must be a string");
+    
+    let model_type_str = model_type
+        .as_str_vector()
+        .and_then(|v| v.first().cloned())
+        .expect("model_type must be a string");
+    
+    let num_classes_val = num_classes
+        .as_integer_vector()
+        .and_then(|v| v.first().copied())
+        .expect("num_classes must be integer") as usize;
+    
+    let hidden1_val = parse_nullable_int(hidden1);
+    let hidden2_val = parse_nullable_int(hidden2);
+    
+    let batch_size_val = batch_size
+        .as_integer_vector()
+        .and_then(|v| v.first().copied())
+        .unwrap_or(1024) as usize;
+    
+    let num_threads_val = num_threads
+        .as_integer_vector()
+        .and_then(|v| v.first().copied())
+        .unwrap_or(1) as usize;
+    
+    if verbose {
+        eprintln!("Model: {}, classes: {}, batch_size: {}, threads: {}",
+                  model_type_str, num_classes_val, batch_size_val, num_threads_val);
+    }
+    
+    // Run inference
+    let probs = infer_sparse_parallel(
+        &mat,
+        &sf,
+        &model_path_str,
+        &model_type_str,
+        num_classes_val,
+        hidden1_val,
+        hidden2_val,
+        batch_size_val,
+        num_threads_val,
+        verbose,
+    );
+    
+    if verbose {
+        eprintln!("Inference complete: {} probability values", probs.len());
+    }
+    
+    // Return as R list
     list!(probs = probs.iter().map(|x| r!(x)).collect::<Vec<Robj>>())
 }
 
-
-// ---------- util -------------------------------------------------------------
-// fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
-//     match n {
-//         Nullable::Null => None,
-
-//         Nullable::NotNull(robj) => {
-//             // Parse again as Nullable<Option<i32>>
-//             let parsed: Nullable<Option<i32>> = robj.try_into().ok()?;
-
-//             match parsed {
-//                 Nullable::Null          => None,          // shouldn’t occur
-//                 Nullable::NotNull(None) => None,          // NA
-//                 Nullable::NotNull(Some(x)) => Some(x as usize),
-//             }
-//         }
-//     }
-// }
-
-// fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
-//     match n {
-//         Nullable::Null => None,
-//         Nullable::NotNull(x) => {
-//             if x.is_number() {
-//                 let vec = x.into_robj().as_integer_vector().unwrap();
-//                 let int = vec.first().unwrap();
-//                 Some(*int as usize)
-//             } else {
-//                 None
-//             }
-//         }
-//     }
-// }
-
-fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
+/// Helper to parse Nullable<Integers> to Option<usize>
+fn parse_nullable_int(n: Nullable<Integers>) -> Option<usize> {
     match n {
         Nullable::Null => None,
         Nullable::NotNull(x) => {
-            if x.is_number() {
+            if x.len() > 0 {
                 let robj = x.into_robj();
-                
-                if let Some(vec) = robj.as_integer_vector() {
-                    if let Some(int) = vec.first() {
-                        if *int >= 0 {
-                            return Some(*int as usize);
-                        }
-                    }
-                }
-                None
+                robj.as_integer_vector()
+                    .and_then(|v| v.first().copied())
+                    .filter(|&i| i >= 0)
+                    .map(|i| i as usize)
             } else {
                 None
             }
@@ -526,140 +945,27 @@ fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
 }
 
 
-// /// @export
-// /// @keywords internal
-// #[extendr]
-// fn fit_deconv(
-//     sigs     : Robj,
-//     bulk     : Robj,
-//     mol2read : Robj,
-//     w_vec    : Robj,
-//     init_log_exp: Robj,
-//     lr          : Robj,
-//     l1_lambda   : Robj,
-//     l2_lambda   : Robj,
-//     epochs      : Robj
-// ) -> List {
-//     // ── convert inputs ─────────────────────────────────────────────────
-//     let device = Device::default();
 
-    
-    
-//     let s  = rmat_to_tensor(sigs, &device).expect("bad `sigs` matrix");
-//     let k  = rmat_to_tensor(bulk, &device).expect("bad `bulk` matrix");
-//     // After you have `s` and `k`:
-//     let g = s.dims()[0];
-//     let n = k.dims()[1];
-//     // let c  = rmat_to_tensor(mol2read, &device).expect("bad `mol2read` matrix");
-//     let v: Vec<f32> = mol2read                         // <-- now expect a vector
-//         .as_real_vector()
-//         .expect("`mol2read` must be numeric")
-//         .iter()
-//         .map(|x| *x as f32)
-//         .collect();
-    
-//     // assert_eq!(c_vec.len(), s.dims()[0], "`mol2read` must have length = nrow(sigs)");
-//     // let c = Tensor::<B, 1>::from_floats(c_vec.as_slice(), &device)
-//     //         .unsqueeze::<1>()           // axis = 1 (rank 1 → rank 2)
-//     //         .reshape([s.dims()[0], 1]);   // G × 1
-
-//     // let v: Vec<f32> = mol2read
-//     //     .as_real_vector().or_else(|| mol2read.as_integer_vector())
-//     //     .expect("`mol2read` must be numeric")
-//     //     .iter().map(|&x| x as f32).collect();
-//     assert_eq!(v.len(), g, "`mol2read` length ({}) must equal nrow(sigs) ({})", v.len(), g);
-//     let g1 = Tensor::<B,1>::from_floats(&*v, &device).unsqueeze::<1>().reshape([g, 1]);
-//     let c_mat = g1.repeat_dim(1, n);   // → (G, N)
-//     // Debug: print their dims
-//     let sd = s.dims();
-//     let kd = k.dims();
-//     let cd = c_mat.dims();
-//     eprintln!("DEBUG: sigs dims = {:?}", sd);
-//     eprintln!("DEBUG: bulk dims = {:?}", kd);
-//     eprintln!("DEBUG: mol2read dims = {:?}", cd);
-
-//     // ── 2) Early shape‐mismatch assertions ────────────────────────────────
-//     assert!(sd.len() == 2 && kd.len() == 2 && cd.len() == 2,
-//             "All inputs must be rank-2 matrices");
-//     assert!(sd[0] == kd[0] && sd[0] == cd[0],
-//             "Gene rows differ: sigs={}, bulk={}, mol2read={}", sd[0], kd[0], cd[0]);
-//     // assert!(cd[1] == 1, "`mol2read` must have one column (G×1 vector)");
-
-//     let init_log_exp = init_log_exp
-//         .as_real_vector()
-//         .and_then(|v| v.first().copied())
-//         .unwrap_or(-10.0);
-//     let lr = lr
-//         .as_real_vector()
-//         .and_then(|v| v.first().copied())
-//         .unwrap_or(0.001);
-//     let l1_lambda = l1_lambda
-//         .as_real_vector()
-//         .and_then(|v| v.first().copied())
-//         .unwrap_or(0.01);
-//     let l2_lambda = l2_lambda
-//         .as_real_vector()
-//         .and_then(|v| v.first().copied())
-//         .unwrap_or(0.01);
-//     let epochs = epochs
-//         .as_real_vector()
-//         .and_then(|v| v.first().copied())
-//         .unwrap_or(500.0) as usize;
-//     assert!(epochs>0,"epochs must be ≥1");
-//     let w: Vec<f32> = w_vec
-//         .as_real_vector()
-//         .expect("`w_vec` must be numeric")
-//         .iter()
-//         .map(|x| *x as f32)
-//         .collect();
-//     if w.len() != s.dims()[0] {
-//         panic!("length(w_vec) must equal nrow(sigs)");
+// fn usize_from_nullable(n: Nullable<Integers>) -> Option<usize> {
+//     match n {
+//         Nullable::Null => None,
+//         Nullable::NotNull(x) => {
+//             if x.is_number() {
+//                 let robj = x.into_robj();
+                
+//                 if let Some(vec) = robj.as_integer_vector() {
+//                     if let Some(int) = vec.first() {
+//                         if *int >= 0 {
+//                             return Some(*int as usize);
+//                         }
+//                     }
+//                 }
+//                 None
+//             } else {
+//                 None
+//             }
+//         }
 //     }
-//     let w_t = Tensor::<B, 1>::from_floats(w.as_slice(), &device)
-//                         .unsqueeze::<2>() // bump to rank-2: [n_genes] -> [n_genes, 1]
-//                         .reshape([s.dims()[0], 1]); // reshape to [n_genes, 1]
-//     eprintln!("DEBUG: w_vec dims = {:?}", w_t.dims());
-//     // lgamma(k+1) once up-front
-//     let lg = lgamma_plus_one(&k, &device);
-
-//     // ── constants & params ─────────────────────────────────────────────
-//     let consts = Consts::<B> {
-//         sp       : Tensor::<B, 2>::cat(vec![s.clone(),
-//                     Tensor::<B,2>::ones([s.dims()[0], 1], &device) / (s.dims()[0] as f32)], 1),
-//         c        : c_mat,
-//         k        : k,
-//         w        : w_t,
-//         lg_kp1   : lg,
-//     };
-//     let params = Params {
-//         // n_genes      : consts.sp.dims()[0],
-//         n_types      : consts.sp.dims()[1] - 1,
-//         n_samps      : consts.k.dims()[1],
-//         init_log_exp : init_log_exp as f32,
-//         lr           : lr as f64,
-//         epochs       : epochs as usize,
-//         l1           : l1_lambda as f32,
-//         l2           : l2_lambda as f32,
-//     };
-//     // ── train ──────────────────────────────────────────────────────────
-//     let (mdl, loss) = train(consts, params);
-
-//     // exposures matrix back to R  (cell_types+Intercept) × samples
-//     let exp: Vec<f32> = mdl.exposures()
-//                        .to_data()
-//                        .convert::<f32>()
-//                        .to_vec()
-//                        .expect("failed to convert exposures tensor to f32 vector");
-//     let dims = mdl.exposures().dims();
-//     // 1. wrap the data in an R numeric vector
-//     let robj_exp = Robj::from(exp);
-
-//     // 2. build the integer dim attribute and attach it
-//     let dim_attr = Robj::from(vec![dims[0] as i32, dims[1] as i32]);
-//     let _ = robj_exp.set_attrib("dim", dim_attr);    
-
-//     list!(exposures = robj_exp,
-//           loss      = loss.into_iter().map(|x| x as f64).collect::<Vec<f64>>())
 // }
 
 ///@export
@@ -756,10 +1062,12 @@ extendr_module! {
   fn fit_deconvolution_em;
   // fn process_learning_obj_ann;
   // fn process_learning_obj_mlr;
-  fn infer_from_model;
+//   fn infer_from_model;
   fn process_learning_obj;
   fn process_learning_obj_nb;
+  fn process_learning_obj_sparse;
   fn splat_bulk_reference_rust;
   // fn run_nb_test;
+  fn infer_sparse;
 
 }

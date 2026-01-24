@@ -1,3 +1,20 @@
+################################################################################
+# FILE: R/deconvolute.R
+# STATUS: Missing export on visualize_tumor_program
+# ------------------------------------------------------------------------------
+# Functions:
+# [x] deconvolve_bulk           (Exported)
+# [x] calculate_fit_metrics     (Exported - Internal)
+# [x] plot_deconvolution        (Exported)
+# [x] print_metrics_summary     (Exported - Internal)
+# [X] extract_tumor_program     (Exported)
+# [x] visualize_tumor_program   (In Progress)
+# [ ] compare_tumor_consistency (In Progress)
+# [ ] export_tumor_genes        (In Progress)
+################################################################################
+
+
+
 #' Deconvolve bulk RNA-seq data using single-cell signatures
 #'
 #' @param signatures Matrix of cellular signatures (genes × cell_types). 
@@ -527,333 +544,335 @@ print_metrics_summary <- function(result) {
   # }
 }
 
-#' Extract Tumor-Specific Transcriptional Program from Deconvolution
-#'
-#' This function analyzes the intercept term from deconvolution to identify
-#' genes that comprise the tumor-specific program - i.e., genes whose expression
-#' cannot be explained by normal hematopoietic cell types.
-#'
-#' @param deconv_result List returned from fit_deconv_em() containing 'exposures' and 'pred_counts'
-#' @param signatures Matrix of cell type signatures used in deconvolution %\[%\genes x cell_types%\[%\
-#' @param bulk_counts Matrix of observed bulk expression %\[%\genes x samples%\[%\
-#' @param gene_names Optional vector of gene names (default: rownames of signatures)
-#' @param top_n Number of top genes to return (default: 500)
-#' @param return_all If TRUE, return all genes ranked; if FALSE, return top_n (default: FALSE)
-#'
-#' @return A list containing:
-#'   - tumor_upregulated: Genes overexpressed in tumor vs normal hematopoiesis
-#'   - tumor_downregulated: Genes underexpressed in tumor vs normal hematopoiesis
-#'   - intercept_values: Per-sample intercept (noise) levels
-#'   - residuals: Full residual matrix %\[%\genes x samples%\[%\
-#'   - mean_residual: Mean residual per gene across samples
-#'   - intercept_fraction: Fraction of total signal from intercept per sample
-#'
-#' @examples
-#' result <- fit_deconv_em(sigs, bulk, gene_lengths, w_vec, max_iter, tol, l1, verbose)
-#' tumor_program <- extract_tumor_program(result, sigs, bulk)
-#' 
-#' # Top tumor-upregulated genes
-#' head(tumor_program$tumor_upregulated)
-#' 
-#' # Visualize
-#' plot(tumor_program$mean_residual, 
-#'      main = "Tumor-Specific Expression Profile",
-#'      xlab = "Gene Index", ylab = "Mean Residual")
-extract_tumor_program <- function(deconv_result, 
-                                  signatures, 
-                                  bulk_counts,
-                                  gene_names = NULL,
-                                  top_n = 500,
-                                  return_all = FALSE) {
-  
-  # Extract components
-  exposures <- deconv_result$exposures
-  n_celltypes <- nrow(exposures) - 1
-  n_samples <- ncol(exposures)
-  n_genes <- nrow(signatures)
-  
-  # Get gene names
-  if (is.null(gene_names)) {
-    gene_names <- rownames(signatures)
-    if (is.null(gene_names)) {
-      gene_names <- paste0("Gene_", 1:n_genes)
-    }
-  }
-  
-  # Separate normal cell type exposures from intercept
-  normal_exposures <- exposures[1:n_celltypes, , drop = FALSE]
-  intercept_row <- exposures[nrow(exposures), , drop = FALSE]
-  
-  # Compute predicted counts from NORMAL cell types only
-  normal_predicted <- signatures %*% normal_exposures
-  
-  # Compute RESIDUAL = Observed - Normal Predicted
-  # This is what the intercept is capturing (tumor-specific signal)
-  residual <- bulk_counts - normal_predicted
-  
-  # Mean residual per gene across samples
-  mean_residual <- rowMeans(residual)
-  names(mean_residual) <- gene_names
-  
-  # Standard deviation of residual (consistency across samples)
-  sd_residual <- apply(residual, 1, sd)
-  names(sd_residual) <- gene_names
-  
-  # Rank genes by residual
-  ranked_indices <- order(mean_residual, decreasing = TRUE)
-  
-  # Identify tumor-upregulated genes (positive residual)
-  tumor_up_indices <- ranked_indices[mean_residual[ranked_indices] > 0]
-  tumor_up_genes <- if (return_all || length(tumor_up_indices) <= top_n) {
-    tumor_up_indices
-  } else {
-    tumor_up_indices[1:min(top_n, length(tumor_up_indices))]
-  }
-  
-  # Identify tumor-downregulated genes (negative residual)
-  tumor_down_indices <- ranked_indices[mean_residual[ranked_indices] < 0]
-  tumor_down_indices <- rev(tumor_down_indices)  # Most negative first
-  tumor_down_genes <- if (return_all || length(tumor_down_indices) <= top_n) {
-    tumor_down_indices
-  } else {
-    tumor_down_indices[1:min(top_n, length(tumor_down_indices))]
-  }
-  
-  # Compute intercept statistics
-  intercept_mean <- mean(intercept_row)
-  intercept_per_sample <- as.vector(intercept_row)
-  
-  # Total signal per sample (from normal cells)
-  total_normal_signal <- colSums(normal_exposures)
-  
-  # Fraction of signal from intercept (noise/tumor)
-  intercept_fraction <- intercept_per_sample / (total_normal_signal + intercept_per_sample)
-  
-  # Create output data frames
-  tumor_upregulated_df <- data.frame(
-    gene_index = tumor_up_genes,
-    gene_name = gene_names[tumor_up_genes],
-    mean_residual = mean_residual[tumor_up_genes],
-    sd_residual = sd_residual[tumor_up_genes],
-    rank = 1:length(tumor_up_genes),
-    stringsAsFactors = FALSE
-  )
-  
-  tumor_downregulated_df <- data.frame(
-    gene_index = tumor_down_genes,
-    gene_name = gene_names[tumor_down_genes],
-    mean_residual = mean_residual[tumor_down_genes],
-    sd_residual = sd_residual[tumor_down_genes],
-    rank = 1:length(tumor_down_genes),
-    stringsAsFactors = FALSE
-  )
-  
-  # Return results
-  list(
-    tumor_upregulated = tumor_upregulated_df,
-    tumor_downregulated = tumor_downregulated_df,
-    intercept_values = intercept_per_sample,
-    intercept_mean = intercept_mean,
-    intercept_fraction = intercept_fraction,
-    residuals = residual,
-    mean_residual = mean_residual,
-    sd_residual = sd_residual,
-    normal_predicted = normal_predicted
-  )
-}
 
 
-#' Visualize Tumor Program
-#'
-#' Create diagnostic plots for tumor-specific program analysis
-#'
-#' @param tumor_program Output from extract_tumor_program()
-#' @param bulk_counts Original bulk expression matrix
-#' @param main_title Main title for plots
-visualize_tumor_program <- function(tumor_program, 
-                                    bulk_counts = NULL,
-                                    main_title = "Tumor-Specific Program Analysis") {
+# #' Extract Tumor-Specific Transcriptional Program from Deconvolution
+# #'
+# #' This function analyzes the intercept term from deconvolution to identify
+# #' genes that comprise the tumor-specific program - i.e., genes whose expression
+# #' cannot be explained by normal hematopoietic cell types.
+# #'
+# #' @param deconv_result List returned from fit_deconv_em() containing 'exposures' and 'pred_counts'
+# #' @param signatures Matrix of cell type signatures used in deconvolution %\[%\genes x cell_types%\[%\
+# #' @param bulk_counts Matrix of observed bulk expression %\[%\genes x samples%\[%\
+# #' @param gene_names Optional vector of gene names (default: rownames of signatures)
+# #' @param top_n Number of top genes to return (default: 500)
+# #' @param return_all If TRUE, return all genes ranked; if FALSE, return top_n (default: FALSE)
+# #'
+# #' @return A list containing:
+# #'   - tumor_upregulated: Genes overexpressed in tumor vs normal hematopoiesis
+# #'   - tumor_downregulated: Genes underexpressed in tumor vs normal hematopoiesis
+# #'   - intercept_values: Per-sample intercept (noise) levels
+# #'   - residuals: Full residual matrix %\[%\genes x samples%\[%\
+# #'   - mean_residual: Mean residual per gene across samples
+# #'   - intercept_fraction: Fraction of total signal from intercept per sample
+# #'
+# #' @examples
+# #' result <- fit_deconv_em(sigs, bulk, gene_lengths, w_vec, max_iter, tol, l1, verbose)
+# #' tumor_program <- extract_tumor_program(result, sigs, bulk)
+# #' 
+# #' # Top tumor-upregulated genes
+# #' head(tumor_program$tumor_upregulated)
+# #' 
+# #' # Visualize
+# #' plot(tumor_program$mean_residual, 
+# #'      main = "Tumor-Specific Expression Profile",
+# #'      xlab = "Gene Index", ylab = "Mean Residual")
+# extract_tumor_program <- function(deconv_result, 
+#                                   signatures, 
+#                                   bulk_counts,
+#                                   gene_names = NULL,
+#                                   top_n = 500,
+#                                   return_all = FALSE) {
   
-  par(mfrow = c(2, 2))
+#   # Extract components
+#   exposures <- deconv_result$exposures
+#   n_celltypes <- nrow(exposures) - 1
+#   n_samples <- ncol(exposures)
+#   n_genes <- nrow(signatures)
   
-  # 1. Distribution of residuals
-  hist(tumor_program$mean_residual, 
-       breaks = 50,
-       main = "Distribution of Gene Residuals",
-       xlab = "Mean Residual (Tumor - Normal)",
-       col = "lightblue",
-       border = "darkblue")
-  abline(v = 0, col = "red", lwd = 2, lty = 2)
+#   # Get gene names
+#   if (is.null(gene_names)) {
+#     gene_names <- rownames(signatures)
+#     if (is.null(gene_names)) {
+#       gene_names <- paste0("Gene_", 1:n_genes)
+#     }
+#   }
   
-  # 2. Intercept fraction per sample
-  plot(tumor_program$intercept_fraction, 
-       type = "b",
-       main = "Intercept Contribution per Sample",
-       xlab = "Sample Index",
-       ylab = "Fraction of Signal from Intercept",
-       pch = 19,
-       col = "darkred")
-  abline(h = mean(tumor_program$intercept_fraction), 
-         col = "blue", lwd = 2, lty = 2)
+#   # Separate normal cell type exposures from intercept
+#   normal_exposures <- exposures[1:n_celltypes, , drop = FALSE]
+#   intercept_row <- exposures[nrow(exposures), , drop = FALSE]
   
-  # 3. Top tumor genes - mean vs SD
-  top_genes <- rbind(
-    head(tumor_program$tumor_upregulated, 100),
-    head(tumor_program$tumor_downregulated, 100)
-  )
+#   # Compute predicted counts from NORMAL cell types only
+#   normal_predicted <- signatures %*% normal_exposures
   
-  plot(top_genes$mean_residual,
-       top_genes$sd_residual,
-       pch = 19,
-       col = ifelse(top_genes$mean_residual > 0, "red", "blue"),
-       main = "Tumor Gene Consistency",
-       xlab = "Mean Residual",
-       ylab = "SD Residual")
-  legend("topright", 
-         legend = c("Upregulated", "Downregulated"),
-         col = c("red", "blue"),
-         pch = 19)
+#   # Compute RESIDUAL = Observed - Normal Predicted
+#   # This is what the intercept is capturing (tumor-specific signal)
+#   residual <- bulk_counts - normal_predicted
   
-  # 4. Residual heatmap preview (if bulk counts provided)
-  if (!is.null(bulk_counts)) {
-    top_up <- head(tumor_program$tumor_upregulated$gene_index, 25)
-    top_down <- head(tumor_program$tumor_downregulated$gene_index, 25)
-    top_50 <- c(top_up, top_down)
+#   # Mean residual per gene across samples
+#   mean_residual <- rowMeans(residual)
+#   names(mean_residual) <- gene_names
+  
+#   # Standard deviation of residual (consistency across samples)
+#   sd_residual <- apply(residual, 1, sd)
+#   names(sd_residual) <- gene_names
+  
+#   # Rank genes by residual
+#   ranked_indices <- order(mean_residual, decreasing = TRUE)
+  
+#   # Identify tumor-upregulated genes (positive residual)
+#   tumor_up_indices <- ranked_indices[mean_residual[ranked_indices] > 0]
+#   tumor_up_genes <- if (return_all || length(tumor_up_indices) <= top_n) {
+#     tumor_up_indices
+#   } else {
+#     tumor_up_indices[1:min(top_n, length(tumor_up_indices))]
+#   }
+  
+#   # Identify tumor-downregulated genes (negative residual)
+#   tumor_down_indices <- ranked_indices[mean_residual[ranked_indices] < 0]
+#   tumor_down_indices <- rev(tumor_down_indices)  # Most negative first
+#   tumor_down_genes <- if (return_all || length(tumor_down_indices) <= top_n) {
+#     tumor_down_indices
+#   } else {
+#     tumor_down_indices[1:min(top_n, length(tumor_down_indices))]
+#   }
+  
+#   # Compute intercept statistics
+#   intercept_mean <- mean(intercept_row)
+#   intercept_per_sample <- as.vector(intercept_row)
+  
+#   # Total signal per sample (from normal cells)
+#   total_normal_signal <- colSums(normal_exposures)
+  
+#   # Fraction of signal from intercept (noise/tumor)
+#   intercept_fraction <- intercept_per_sample / (total_normal_signal + intercept_per_sample)
+  
+#   # Create output data frames
+#   tumor_upregulated_df <- data.frame(
+#     gene_index = tumor_up_genes,
+#     gene_name = gene_names[tumor_up_genes],
+#     mean_residual = mean_residual[tumor_up_genes],
+#     sd_residual = sd_residual[tumor_up_genes],
+#     rank = 1:length(tumor_up_genes),
+#     stringsAsFactors = FALSE
+#   )
+  
+#   tumor_downregulated_df <- data.frame(
+#     gene_index = tumor_down_genes,
+#     gene_name = gene_names[tumor_down_genes],
+#     mean_residual = mean_residual[tumor_down_genes],
+#     sd_residual = sd_residual[tumor_down_genes],
+#     rank = 1:length(tumor_down_genes),
+#     stringsAsFactors = FALSE
+#   )
+  
+#   # Return results
+#   list(
+#     tumor_upregulated = tumor_upregulated_df,
+#     tumor_downregulated = tumor_downregulated_df,
+#     intercept_values = intercept_per_sample,
+#     intercept_mean = intercept_mean,
+#     intercept_fraction = intercept_fraction,
+#     residuals = residual,
+#     mean_residual = mean_residual,
+#     sd_residual = sd_residual,
+#     normal_predicted = normal_predicted
+#   )
+# }
+
+
+# #' Visualize Tumor Program
+# #'
+# #' Create diagnostic plots for tumor-specific program analysis
+# #'
+# #' @param tumor_program Output from extract_tumor_program()
+# #' @param bulk_counts Original bulk expression matrix
+# #' @param main_title Main title for plots
+# visualize_tumor_program <- function(tumor_program, 
+#                                     bulk_counts = NULL,
+#                                     main_title = "Tumor-Specific Program Analysis") {
+  
+#   par(mfrow = c(2, 2))
+  
+#   # 1. Distribution of residuals
+#   hist(tumor_program$mean_residual, 
+#        breaks = 50,
+#        main = "Distribution of Gene Residuals",
+#        xlab = "Mean Residual (Tumor - Normal)",
+#        col = "lightblue",
+#        border = "darkblue")
+#   abline(v = 0, col = "red", lwd = 2, lty = 2)
+  
+#   # 2. Intercept fraction per sample
+#   plot(tumor_program$intercept_fraction, 
+#        type = "b",
+#        main = "Intercept Contribution per Sample",
+#        xlab = "Sample Index",
+#        ylab = "Fraction of Signal from Intercept",
+#        pch = 19,
+#        col = "darkred")
+#   abline(h = mean(tumor_program$intercept_fraction), 
+#          col = "blue", lwd = 2, lty = 2)
+  
+#   # 3. Top tumor genes - mean vs SD
+#   top_genes <- rbind(
+#     head(tumor_program$tumor_upregulated, 100),
+#     head(tumor_program$tumor_downregulated, 100)
+#   )
+  
+#   plot(top_genes$mean_residual,
+#        top_genes$sd_residual,
+#        pch = 19,
+#        col = ifelse(top_genes$mean_residual > 0, "red", "blue"),
+#        main = "Tumor Gene Consistency",
+#        xlab = "Mean Residual",
+#        ylab = "SD Residual")
+#   legend("topright", 
+#          legend = c("Upregulated", "Downregulated"),
+#          col = c("red", "blue"),
+#          pch = 19)
+  
+#   # 4. Residual heatmap preview (if bulk counts provided)
+#   if (!is.null(bulk_counts)) {
+#     top_up <- head(tumor_program$tumor_upregulated$gene_index, 25)
+#     top_down <- head(tumor_program$tumor_downregulated$gene_index, 25)
+#     top_50 <- c(top_up, top_down)
     
-    residual_subset <- tumor_program$residuals[top_50, ]
+#     residual_subset <- tumor_program$residuals[top_50, ]
     
-    # Simple heatmap
-    image(t(residual_subset),
-          main = "Top 50 Tumor Genes (Residuals)",
-          xlab = "Sample",
-          ylab = "Gene",
-          col = colorRampPalette(c("blue", "white", "red"))(50),
-          axes = FALSE)
-    axis(1, at = seq(0, 1, length.out = ncol(residual_subset)), 
-         labels = 1:ncol(residual_subset))
-  }
+#     # Simple heatmap
+#     image(t(residual_subset),
+#           main = "Top 50 Tumor Genes (Residuals)",
+#           xlab = "Sample",
+#           ylab = "Gene",
+#           col = colorRampPalette(c("blue", "white", "red"))(50),
+#           axes = FALSE)
+#     axis(1, at = seq(0, 1, length.out = ncol(residual_subset)), 
+#          labels = 1:ncol(residual_subset))
+#   }
   
-  par(mfrow = c(1, 1))
-}
+#   par(mfrow = c(1, 1))
+# }
 
 
-#' Compare Tumor Program Across Samples
-#'
-#' Identify genes that are consistently tumor-specific across all samples
-#' vs those that vary between samples
-#'
-#' @param tumor_program Output from extract_tumor_program()
-#' @param consistency_threshold Genes with CV < this are "consistent" (default: 0.5)
-#'
-#' @return List with consistent and variable tumor genes
-compare_tumor_consistency <- function(tumor_program, 
-                                      consistency_threshold = 0.5) {
+# #' Compare Tumor Program Across Samples
+# #'
+# #' Identify genes that are consistently tumor-specific across all samples
+# #' vs those that vary between samples
+# #'
+# #' @param tumor_program Output from extract_tumor_program()
+# #' @param consistency_threshold Genes with CV < this are "consistent" (default: 0.5)
+# #'
+# #' @return List with consistent and variable tumor genes
+# compare_tumor_consistency <- function(tumor_program, 
+#                                       consistency_threshold = 0.5) {
   
-  residuals <- tumor_program$residuals
-  mean_res <- tumor_program$mean_residual
-  sd_res <- tumor_program$sd_residual
+#   residuals <- tumor_program$residuals
+#   mean_res <- tumor_program$mean_residual
+#   sd_res <- tumor_program$sd_residual
   
-  # Coefficient of variation
-  cv <- abs(sd_res / (mean_res + 1e-10))
+#   # Coefficient of variation
+#   cv <- abs(sd_res / (mean_res + 1e-10))
   
-  # Consistent genes (low CV)
-  consistent_up <- tumor_program$tumor_upregulated$gene_index[
-    cv[tumor_program$tumor_upregulated$gene_index] < consistency_threshold
-  ]
+#   # Consistent genes (low CV)
+#   consistent_up <- tumor_program$tumor_upregulated$gene_index[
+#     cv[tumor_program$tumor_upregulated$gene_index] < consistency_threshold
+#   ]
   
-  consistent_down <- tumor_program$tumor_downregulated$gene_index[
-    cv[tumor_program$tumor_downregulated$gene_index] < consistency_threshold
-  ]
+#   consistent_down <- tumor_program$tumor_downregulated$gene_index[
+#     cv[tumor_program$tumor_downregulated$gene_index] < consistency_threshold
+#   ]
   
-  # Variable genes (high CV)
-  variable_up <- tumor_program$tumor_upregulated$gene_index[
-    cv[tumor_program$tumor_upregulated$gene_index] >= consistency_threshold
-  ]
+#   # Variable genes (high CV)
+#   variable_up <- tumor_program$tumor_upregulated$gene_index[
+#     cv[tumor_program$tumor_upregulated$gene_index] >= consistency_threshold
+#   ]
   
-  variable_down <- tumor_program$tumor_downregulated$gene_index[
-    cv[tumor_program$tumor_downregulated$gene_index] >= consistency_threshold
-  ]
+#   variable_down <- tumor_program$tumor_downregulated$gene_index[
+#     cv[tumor_program$tumor_downregulated$gene_index] >= consistency_threshold
+#   ]
   
-  list(
-    consistent_upregulated = consistent_up,
-    consistent_downregulated = consistent_down,
-    variable_upregulated = variable_up,
-    variable_downregulated = variable_down,
-    cv = cv
-  )
-}
+#   list(
+#     consistent_upregulated = consistent_up,
+#     consistent_downregulated = consistent_down,
+#     variable_upregulated = variable_up,
+#     variable_downregulated = variable_down,
+#     cv = cv
+#   )
+# }
 
 
-#' Export Tumor Gene Lists
-#'
-#' Export tumor gene lists for downstream analysis (e.g., pathway enrichment)
-#'
-#' @param tumor_program Output from extract_tumor_program()
-#' @param output_prefix File prefix for output files
-export_tumor_genes <- function(tumor_program, output_prefix = "tumor_genes") {
+# #' Export Tumor Gene Lists
+# #'
+# #' Export tumor gene lists for downstream analysis (e.g., pathway enrichment)
+# #'
+# #' @param tumor_program Output from extract_tumor_program()
+# #' @param output_prefix File prefix for output files
+# export_tumor_genes <- function(tumor_program, output_prefix = "tumor_genes") {
   
-  # Write upregulated genes
-  write.table(tumor_program$tumor_upregulated,
-              file = paste0(output_prefix, "_upregulated.txt"),
-              sep = "\t",
-              quote = FALSE,
-              row.names = FALSE)
+#   # Write upregulated genes
+#   write.table(tumor_program$tumor_upregulated,
+#               file = paste0(output_prefix, "_upregulated.txt"),
+#               sep = "\t",
+#               quote = FALSE,
+#               row.names = FALSE)
   
-  # Write downregulated genes
-  write.table(tumor_program$tumor_downregulated,
-              file = paste0(output_prefix, "_downregulated.txt"),
-              sep = "\t",
-              quote = FALSE,
-              row.names = FALSE)
+#   # Write downregulated genes
+#   write.table(tumor_program$tumor_downregulated,
+#               file = paste0(output_prefix, "_downregulated.txt"),
+#               sep = "\t",
+#               quote = FALSE,
+#               row.names = FALSE)
   
-  # Write summary statistics
-  summary_stats <- data.frame(
-    metric = c("Mean_Intercept", 
-               "Mean_Intercept_Fraction",
-               "N_Upregulated", 
-               "N_Downregulated"),
-    value = c(tumor_program$intercept_mean,
-              mean(tumor_program$intercept_fraction),
-              nrow(tumor_program$tumor_upregulated),
-              nrow(tumor_program$tumor_downregulated))
-  )
+#   # Write summary statistics
+#   summary_stats <- data.frame(
+#     metric = c("Mean_Intercept", 
+#                "Mean_Intercept_Fraction",
+#                "N_Upregulated", 
+#                "N_Downregulated"),
+#     value = c(tumor_program$intercept_mean,
+#               mean(tumor_program$intercept_fraction),
+#               nrow(tumor_program$tumor_upregulated),
+#               nrow(tumor_program$tumor_downregulated))
+#   )
   
-  write.table(summary_stats,
-              file = paste0(output_prefix, "_summary.txt"),
-              sep = "\t",
-              quote = FALSE,
-              row.names = FALSE)
+#   write.table(summary_stats,
+#               file = paste0(output_prefix, "_summary.txt"),
+#               sep = "\t",
+#               quote = FALSE,
+#               row.names = FALSE)
   
-  message("Exported tumor gene lists to:")
-  message("  - ", paste0(output_prefix, "_upregulated.txt"))
-  message("  - ", paste0(output_prefix, "_downregulated.txt"))
-  message("  - ", paste0(output_prefix, "_summary.txt"))
-}
+#   message("Exported tumor gene lists to:")
+#   message("  - ", paste0(output_prefix, "_upregulated.txt"))
+#   message("  - ", paste0(output_prefix, "_downregulated.txt"))
+#   message("  - ", paste0(output_prefix, "_summary.txt"))
+# }
 
 
-# Example usage:
-# --------------
-# 
-# # Run deconvolution
-# result <- fit_deconv_em(sigs, bulk, gene_lengths, w_vec, 
-#                         max_iter = 1000, tolerance = 1e-6, 
-#                         l1_lambda = 0.0, verbose = TRUE)
-# 
-# # Extract tumor program
-# tumor_prog <- extract_tumor_program(result, sigs, bulk, 
-#                                      gene_names = rownames(sigs),
-#                                      top_n = 500)
-# 
-# # View top tumor genes
-# head(tumor_prog$tumor_upregulated, 20)
-# head(tumor_prog$tumor_downregulated, 20)
-# 
-# # Visualize
-# visualize_tumor_program(tumor_prog, bulk)
-# 
-# # Check consistency
-# consistency <- compare_tumor_consistency(tumor_prog)
-# length(consistency$consistent_upregulated)  # Core tumor program
-# 
-# # Export for pathway analysis
-# export_tumor_genes(tumor_prog, "AML_tumor_program")
+# # Example usage:
+# # --------------
+# # 
+# # # Run deconvolution
+# # result <- fit_deconv_em(sigs, bulk, gene_lengths, w_vec, 
+# #                         max_iter = 1000, tolerance = 1e-6, 
+# #                         l1_lambda = 0.0, verbose = TRUE)
+# # 
+# # # Extract tumor program
+# # tumor_prog <- extract_tumor_program(result, sigs, bulk, 
+# #                                      gene_names = rownames(sigs),
+# #                                      top_n = 500)
+# # 
+# # # View top tumor genes
+# # head(tumor_prog$tumor_upregulated, 20)
+# # head(tumor_prog$tumor_downregulated, 20)
+# # 
+# # # Visualize
+# # visualize_tumor_program(tumor_prog, bulk)
+# # 
+# # # Check consistency
+# # consistency <- compare_tumor_consistency(tumor_prog)
+# # length(consistency$consistent_upregulated)  # Core tumor program
+# # 
+# # # Export for pathway analysis
+# # export_tumor_genes(tumor_prog, "AML_tumor_program")

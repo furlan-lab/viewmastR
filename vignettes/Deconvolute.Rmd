@@ -213,26 +213,27 @@ cor(df$MuSiC, df$GD)
 ```
 
 
-```{r}
+```{r, include = F, eval = F}
+# in progress
 
-# # Extract tumor program
-tumor_prog <- extract_tumor_program(result_em, signatures, bulk_counts,
-                                     gene_names = rownames(signatures),
-                                     top_n = 500)
-# 
-# # View top tumor genes
-head(tumor_prog$tumor_upregulated, 20)
-head(tumor_prog$tumor_downregulated, 20)
-# 
-# # Visualize
-visualize_tumor_program(tumor_prog, bulk)
-# 
-# # Check consistency
- consistency <- compare_tumor_consistency(tumor_prog)
- length(consistency$consistent_upregulated)  # Core tumor program
-# 
-# # Export for pathway analysis
-export_tumor_genes(tumor_prog, "AML_tumor_program")
+# # # Extract tumor program
+# tumor_prog <- extract_tumor_program(result_em, signatures, bulk_counts,
+#                                      gene_names = rownames(signatures),
+#                                      top_n = 500)
+# # 
+# # # View top tumor genes
+# head(tumor_prog$tumor_upregulated, 20)
+# head(tumor_prog$tumor_downregulated, 20)
+# # 
+# # # Visualize
+# visualize_tumor_program(tumor_prog, bulk)
+# # 
+# # # Check consistency
+#  consistency <- compare_tumor_consistency(tumor_prog)
+#  length(consistency$consistent_upregulated)  # Core tumor program
+# # 
+# # # Export for pathway analysis
+# export_tumor_genes(tumor_prog, "AML_tumor_program")
 
 ```
 

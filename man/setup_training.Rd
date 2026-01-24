@@ -16,7 +16,7 @@ setup_training(
   LSImethod = 1,
   verbose = TRUE,
   addbias = FALSE,
-  return_type = c("list", "matrix", "S4obj"),
+  return_type = c("sparse_mat", "list", "matrix", "S4obj"),
   debug = FALSE
 )
 }
@@ -48,7 +48,8 @@ TF-IDF takes precedence and scaling is ignored.}
 
 \item{addbias}{A logical indicating whether to add a bias row (ones) to the data matrices.}
 
-\item{return_type}{A character string specifying the return format. One of \code{"list"}, \code{"matrix"}, or \code{"S4obj"}.}
+\item{return_type}{A character string specifying the return format. One of \code{"sparse_mat"}, \code{"list"},
+\code{"matrix"}, or \code{"S4obj"}.}
 
 \item{debug}{A logical indicating whether to print debugging messages.}
 }
@@ -74,9 +75,12 @@ testing splits from \code{ref_cds}.
 
 The returned object depends on \code{return_type}:
 \itemize{
-\item \code{"matrix"}: A list of matrices containing \code{Xtrain_data}, \code{Xtest_data}, \code{Ytrain_label}, \code{Ytest_label},
-optionally \code{query}, as well as \code{label_text} and \code{features}.
-\item \code{"list"}: A list of lists, where each cell is represented as a \code{list} with \code{data} and \code{target} elements.
+\item \code{"sparse_mat"}: A list containing sparse matrices (\code{dgCMatrix}) for train/test/query,
+labels (0-indexed integers), size factors, and metadata.
+\item \code{"matrix"}: A list of matrices containing \code{Xtrain_data}, \code{Xtest_data}, \code{Ytrain_label},
+\code{Ytest_label}, optionally \code{query}, as well as \code{label_text} and \code{features}.
+\item \code{"list"}: A list of lists, where each cell is represented as a \code{list} with \code{data} and
+\code{target} elements.
 \item \code{"S4obj"}: A list of S4 objects \code{training_set}, \code{test_set}, and optionally \code{query_set},
 each containing training items and metadata.
 }
@@ -92,7 +96,7 @@ result <- setup_training(
   train_frac = 0.8,
   tf_idf = TRUE,
   scale = FALSE,
-  return_type = "list"
+  return_type = "sparse_mat"
 )
 
 # Example with reference only:

@@ -2,7 +2,7 @@
 % Please edit documentation in R/select_features.R
 \name{select_features}
 \alias{select_features}
-\title{Select genes in a cell_data_set for dimensionality reduction}
+\title{Select features in a cell_data_set for dimensionality reduction}
 \usage{
 select_features(
   cds,

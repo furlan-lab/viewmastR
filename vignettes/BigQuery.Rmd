@@ -44,8 +44,8 @@ library(ggplot2)
 })
 
 #query dataset
-seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
-# seu <- qs2::qs_read("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab_2025 - General/experiments/AML_MRD/DL2_SF/cds/260113_Filtered_Processed_vmAnnotated_scrublet.qs")
+#seu <- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))
+seu <- qs2::qs_read("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab_2025 - General/experiments/AML_MRD/DL2_SF/cds/260113_Filtered_Processed_vmAnnotated_scrublet.qs")
 #reference dataset
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 vg <- get_selected_features(seu)
@@ -60,7 +60,7 @@ results <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_
 
 
 
-seu<-viewmastR_infer(seu[,1:100000], results[["model_dir"]], vg, labels = levels(factor(seur$SFClassification)), batch_size = 5024)
+seu<-viewmastR_infer(seu, results[["model_dir"]], vg, labels = levels(factor(seur$SFClassification)))
 
 
 DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
@@ -73,44 +73,27 @@ By using chunks and workers, you can infer from the model only chunks at a time 
 gc()
 
 
-seu<-viewmastR_infer(seu[,1:100000], results[["model_dir"]], query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 32, workers = 8, backend = "wgpu")
-
-seu<-viewmastR_infer(seu[,1:100000], results[["model_dir"]], query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 32, workers = 1, backend = "wgpu")
-
-
 system.time({
-  seu <- viewmastR_infer(seu[,1:100000], results[["model_dir"]], 
+  seu <- viewmastR_infer(seu, results[["model_dir"]], 
                          query_celldata_col = "test1", vg, 
                          labels = levels(factor(seur$SFClassification)), 
-                         workers = 1, backend = "nd")
+                         threads = 1)
 })
 
 # Parallel nd (8 threads)
 system.time({
-  seu <- viewmastR_infer(seu[,1:100000], results[["model_dir"]], 
+  seu <- viewmastR_infer(seu, results[["model_dir"]], 
                          query_celldata_col = "test2", vg, 
                          labels = levels(factor(seur$SFClassification)), 
-                         workers = 8, backend = "nd")
+                         threads = 8)
 })
 
-DimPlot(seu, group.by = "test1", cols = seur@misc$colors)
-DimPlot(seu, group.by = "test2", cols = seur@misc$colors)
+all(seu$test1==seu$test2)
 ```
 
 We see no difference if parallelization is used
 ```{r, dpi=300, fig.height=6, fig.width=10}
-confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_inferred_parallel), cols = seur@misc$colors)
+confusion_matrix(pred = factor(seu$test1), gt = factor(seu$test2), cols = seur@misc$colors)
 ```
 
-
-## Bigger dataset
-By optimising chunk size, workers and batch size, you can achieve faster results on big datasets. Here we are just inferring back on the larger reference set (because it is larger, but this is not advisable in normal practice)
-```{r}
-seur<-viewmastR_infer(seur, results[["model_dir"]], query_celldata_col = "viewmastR_inferred_parallel", vg, labels = levels(factor(seur$SFClassification)), chunks = 20, workers = 16, batch_size = 3000)
-DimPlot(seur, group.by = "viewmastR_inferred_parallel", cols = seur@misc$colors)
-```
-
-```{r, dpi=300, fig.height=6, fig.width=10}
-confusion_matrix(pred = factor(seur$SFClassification), gt = factor(seur$viewmastR_inferred_parallel), cols = seur@misc$colors)
-```
 
