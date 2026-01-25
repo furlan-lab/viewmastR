@@ -40,25 +40,17 @@ augment_data<-function(obj, column, norm_number=2000, assay="RNA", prune = F){
   to_synthesize<-balance[balance<0]*-1
   spmat<-get_counts_seurat(obj)
   universe<-rownames(spmat)
-  #type<-to_synthesize[2]
   tsl<-lapply(1:length(to_synthesize), function(n) setNames(as.numeric(to_synthesize[n]), names(to_synthesize[n])))
   message("Simulating cells")
   dl<-pbmclapply(tsl, function(type){
     N<-as.numeric(type)
     type<-names(type)
-    #namevec<-c(namevec, rep(type, N))
     rsums<-rowSums(spmat[,splitparam %in% type])
     sizes<-colSums(spmat[,splitparam %in% type])
-    # ggplot(data.frame(x=sizes), aes(x=x))+geom_histogram(aes(y = ..density..),
-    #                colour = 1, fill = "white")+geom_density()
     den<-density(sizes)
     newsizes <- sample(sizes, N, replace=TRUE) + rnorm(N*10, 0, den$bw)
-    # ggplot(data.frame(x=newsizes), aes(x=x))+geom_histogram(aes(y = ..density..),
-    #                colour = 1, fill = "white")+geom_density()
     trimmed_newdata<-round(newsizes[newsizes>min(sizes) & max(sizes)], 0)
     final_newsizes<-sample(trimmed_newdata, N)
-    # ggplot(data.frame(x=final_newsizes), aes(x=x))+geom_histogram(aes(y = ..density..),
-    #                colour = 1, fill = "white")+geom_density()
     splat <- names(rsums)[rep(seq_along(rsums), rsums)]
     dl<-lapply(final_newsizes, function(i){
       tab<-table(sample(splat, newsizes[1]))

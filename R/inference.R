@@ -50,17 +50,6 @@ viewmastR_infer <- function(query_cds,
   model_shapes <- extract_mpk_shapes(file.path(model_dir, "model.mpk"))
   num_classes_model <- as.integer(model_shapes$num_classes)
   
-  # # Get sparse counts matrix
-  # if(verbose) message("Extracting sparse matrix...")
-  # if (inherits(query_cds, "Seurat")) {
-  #   # Get counts and subset to selected features
-  #   full_counts <- get_counts_seurat(query_cds)
-  #   counts_mat <- full_counts[selected_features, , drop = FALSE]
-  # } else {
-  #   full_counts <- SingleCellExperiment::counts(query_cds)
-  #   counts_mat <- full_counts[selected_features, , drop = FALSE]
-  # }
-  
   norm_mat <- get_norm_counts(query_cds[selected_features, ], norm_method = "log")
   # Ensure it's a dgCMatrix
   if (!inherits(norm_mat, "dgCMatrix")) {

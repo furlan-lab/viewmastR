@@ -107,65 +107,36 @@ plot_feature_dispersion <- function(cds, size = 1, alpha = 0.4) {
   }
 }
 
+#' @export
+plot_gene_dispersion <- function(...) {
+  .Deprecated("plot_feature_dispersion")
+  plot_feature_dispersion(...)
+}
 
-## DEPRACATED
-# #' @export
-# plot_feature_dispersion<-function(cds, size=1, alpha=0.4){
-#   if(class(cds)=="cell_data_set"){
-#     if(is.null(cds@int_metadata$dispersion$disp_func)){
-#       prd<-cds@int_metadata$dispersion
-#       prd$selected_features<-prd$use_for_ordering
-#       g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
-#       if("use_for_ordering" %in% colnames(cds@int_metadata$dispersion)){
-#         g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_features), alpha=alpha, size=size)+
-#           scale_color_manual(values=c("lightgray", "firebrick1"))
-#       }else{
-#         g <- g + ggplot2::geom_point(data=prd, ggplot2::aes( x=log_mean, y=log_dispersion), color="grey", alpha=alpha, size=size)
-#       }
-#       g<-g+
-#         ggplot2::theme_bw() +
-#         ggplot2::geom_line() # + 
-#       #ggplot2::geom_smooth(data=prd, ggplot2::aes(ymin = lci, ymax = uci), stat = "identity")
-#       return(g)
-#     }else{
-#       prd<-cds@int_metadata$dispersion$disp_table
-#       prd$fit<-log(cds@int_metadata$dispersion$disp_func(prd$mu))
-#       prd$mu<-log(prd$mu)
-#       prd$disp<-log(prd$disp)
-#       colnames(prd)<-c("log_mean", "log_dispersion", "gene_id", "fit")
-#       g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
-#       if("use_for_ordering" %in% names(cds@int_metadata$dispersion)){
-#         prd$selected_features = cds@int_metadata$dispersion$use_for_ordering
-#         g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_features, alpha=alpha), size=size)
-#       }else{
-#         g <- g + ggplot2::geom_point(data=prd, ggplot2::aes( x=log_mean, y=log_dispersion, color="grey", alpha=alpha), size=size)
-#       }
-#       g<-g+
-#         ggplot2::theme_bw() +
-#         ggplot2::geom_line(data=prd, ggplot2::aes( x=log_mean, y=fit)) +
-#         ggplot2::geom_smooth(data=prd, formula = fit ~ log_mean, stat = "identity") + 
-#         xlab("log mean expression")+ylab("log dispersion")
-#       return(g)
-#     }
-#   }
-#   if(class(cds)=="Seurat"){
-#     prd<-cds@misc$dispersion
-#     prd$selected_features<-prd$use_for_ordering
-#     g<-ggplot2::ggplot(prd, ggplot2::aes(x = log_mean, y = fit)) 
-#     if("use_for_ordering" %in% colnames(cds@misc$dispersion)){
-#       g <- g + ggplot2::geom_point(data=prd, ggplot2::aes(x=log_mean, y=log_dispersion, color=selected_features), alpha=alpha, size=size)+
-#         scale_color_manual(values=c("lightgray", "firebrick1"))
-#     }else{
-#       g <- g + ggplot2::geom_point(data=prd, ggplot2::aes( x=log_mean, y=log_dispersion), color="grey", alpha=alpha, size=size)
-#     }
-#     g<-g+
-#       ggplot2::theme_bw() +
-#       ggplot2::geom_line() # + 
-#     #ggplot2::geom_smooth(data=prd, ggplot2::aes(ymin = lci, ymax = uci), stat = "identity")
-#     return(g)
-#   }
-  
-# }
+#' @export
+select_genes <- function(...) {
+  .Deprecated("select_features")
+  select_features(...)
+}
+
+#' @export
+calculate_gene_dispersion <- function(...) {
+  .Deprecated("calculate_feature_dispersion")
+  calculate_feature_dispersion(...)
+}
+
+#' @export
+get_selected_genes <- function(...) {
+  .Deprecated("get_selected_features")
+  get_selected_features(...)
+}
+
+#' @export
+set_selected_genes <- function(...) {
+  .Deprecated("set_selected_features")
+  set_selected_features(...)
+}
+
 
 #' Select features in a cell_data_set for dimensionality reduction
 #'

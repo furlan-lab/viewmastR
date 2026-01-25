@@ -33,6 +33,14 @@ The main features of viewmastR are:
   height="450px" 
   scrolling="auto"></iframe>
 
+Additional features include:
+
+* Classification of single-cell data using bulk reference datasets
+* Super efficient bulk RNAseq deconvolution with intercept value
+
+<p align="center"><img src="articles/Deconvolute_files/figure-html/unnamed-chunk-7-2.png" alt="" width="500"></a></p>
+
+
 ## Installation
 
 First you need to have an updated Rust installation. Go to this [site](https://www.rust-lang.org/tools/install) to learn how to install Rust.
