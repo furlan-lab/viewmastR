@@ -117,11 +117,11 @@ seuA<- FindNeighbors(seuA, dims = 1:40) %>% FindClusters(resolution = 2) %>% Run
     ## Modularity Optimizer version 1.3.0 by Ludo Waltman and Nees Jan van Eck
     ## 
     ## Number of nodes: 7000
-    ## Number of edges: 356330
+    ## Number of edges: 368306
     ## 
     ## Running Louvain algorithm...
-    ## Maximum modularity in 10 random starts: 0.8509
-    ## Number of communities: 17
+    ## Maximum modularity in 10 random starts: 0.8507
+    ## Number of communities: 16
     ## Elapsed time: 0 seconds
 
 ``` r

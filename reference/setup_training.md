@@ -32,16 +32,13 @@ setup_training(
 
 - query_cds:
 
-  A
-  [`Seurat`](https://satijalab.org/seurat/reference/Seurat-package.html)
-  or `cell_data_set` object representing the query dataset. If `NULL`,
-  no query data is processed.
+  A `Seurat` or `cell_data_set` object representing the query dataset.
+  If `NULL`, no query data is processed.
 
 - ref_cds:
 
-  A
-  [`Seurat`](https://satijalab.org/seurat/reference/Seurat-package.html)
-  or `cell_data_set` object representing the reference dataset.
+  A `Seurat` or `cell_data_set` object representing the reference
+  dataset.
 
 - ref_celldata_col:
 

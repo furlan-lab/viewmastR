@@ -106,7 +106,9 @@ print(disagree_df)
 ```
 
     ##                                  cell viewmastR_pred viewmastR_inferred
+    ## ACACCCTCAATGTTGC-1 ACACCCTCAATGTTGC-1      20_CD8.CM              21_NK
     ## CACACCTTCATAACCG-1 CACACCTTCATAACCG-1       18_CD4.M           17_CD4.N
+    ## CCACTACTCAGGTTCA-1 CCACTACTCAGGTTCA-1       18_CD4.M          20_CD8.CM
 
 ``` r
 
@@ -159,15 +161,27 @@ if (length(disagree_idx) > 0) {
     ## 
     ## Absolute probability differences (disagreeing cells):
     ##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
-    ## 1.324e-05 1.179e-04 2.310e-04 6.432e-03 6.525e-04 6.754e-02 
+    ## 1.432e-05 1.608e-04 3.702e-04 4.156e-03 1.118e-03 6.158e-02 
     ##                                  cell pred_direct pred_inferred prob_direct
-    ## CACACCTTCATAACCG-1 CACACCTTCATAACCG-1    18_CD4.M      17_CD4.N   0.5258426
+    ## ACACCCTCAATGTTGC-1 ACACCCTCAATGTTGC-1   20_CD8.CM         21_NK   0.4726100
+    ## CACACCTTCATAACCG-1 CACACCTTCATAACCG-1    18_CD4.M      17_CD4.N   0.5030500
+    ## CCACTACTCAGGTTCA-1 CCACTACTCAGGTTCA-1    18_CD4.M     20_CD8.CM   0.4590019
     ##                    prob_inferred max_prob_diff
-    ## CACACCTTCATAACCG-1      0.460326    0.06753648
+    ## ACACCCTCAATGTTGC-1     0.4631131    0.02817046
+    ## CACACCTTCATAACCG-1     0.4688376    0.06158412
+    ## CCACTACTCAGGTTCA-1     0.4358490    0.02434344
+    ## 
+    ## Cell ACACCCTCAATGTTGC-1:
+    ##   Direct:   20_CD8.CM = 0.472610, 21_NK = 0.467282
+    ##   Inferred: 20_CD8.CM = 0.444440, 21_NK = 0.463113
     ## 
     ## Cell CACACCTTCATAACCG-1:
-    ##   Direct:   18_CD4.M = 0.525843, 17_CD4.N = 0.442731
-    ##   Inferred: 18_CD4.M = 0.458306, 17_CD4.N = 0.460326
+    ##   Direct:   18_CD4.M = 0.503050, 17_CD4.N = 0.460623
+    ##   Inferred: 18_CD4.M = 0.441466, 17_CD4.N = 0.468838
+    ## 
+    ## Cell CCACTACTCAGGTTCA-1:
+    ##   Direct:   18_CD4.M = 0.459002, 20_CD8.CM = 0.448491
+    ##   Inferred: 18_CD4.M = 0.434658, 20_CD8.CM = 0.435849
 
 ## Appendix
 

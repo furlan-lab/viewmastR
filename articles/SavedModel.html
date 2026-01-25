@@ -170,7 +170,9 @@ ambiguity where either classification is reasonable.</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">disagree_df</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##                                  cell viewmastR_pred viewmastR_inferred</span></span>
-<span><span class="co">## CACACCTTCATAACCG-1 CACACCTTCATAACCG-1       18_CD4.M           17_CD4.N</span></span></code></pre>
+<span><span class="co">## ACACCCTCAATGTTGC-1 ACACCCTCAATGTTGC-1      20_CD8.CM              21_NK</span></span>
+<span><span class="co">## CACACCTTCATAACCG-1 CACACCTTCATAACCG-1       18_CD4.M           17_CD4.N</span></span>
+<span><span class="co">## CCACTACTCAGGTTCA-1 CCACTACTCAGGTTCA-1       18_CD4.M          20_CD8.CM</span></span></code></pre>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prob_cols</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">seu</span><span class="op">@</span><span class="va">meta.data</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grep</a></span><span class="op">(</span><span class="st">"prob"</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">seu</span><span class="op">@</span><span class="va">meta.data</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
 <span></span>
@@ -219,15 +221,27 @@ ambiguity where either classification is reasonable.</p>
 <pre><code><span><span class="co">## </span></span>
 <span><span class="co">## Absolute probability differences (disagreeing cells):</span></span>
 <span><span class="co">##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. </span></span>
-<span><span class="co">## 1.324e-05 1.179e-04 2.310e-04 6.432e-03 6.525e-04 6.754e-02 </span></span>
+<span><span class="co">## 1.432e-05 1.608e-04 3.702e-04 4.156e-03 1.118e-03 6.158e-02 </span></span>
 <span><span class="co">##                                  cell pred_direct pred_inferred prob_direct</span></span>
-<span><span class="co">## CACACCTTCATAACCG-1 CACACCTTCATAACCG-1    18_CD4.M      17_CD4.N   0.5258426</span></span>
+<span><span class="co">## ACACCCTCAATGTTGC-1 ACACCCTCAATGTTGC-1   20_CD8.CM         21_NK   0.4726100</span></span>
+<span><span class="co">## CACACCTTCATAACCG-1 CACACCTTCATAACCG-1    18_CD4.M      17_CD4.N   0.5030500</span></span>
+<span><span class="co">## CCACTACTCAGGTTCA-1 CCACTACTCAGGTTCA-1    18_CD4.M     20_CD8.CM   0.4590019</span></span>
 <span><span class="co">##                    prob_inferred max_prob_diff</span></span>
-<span><span class="co">## CACACCTTCATAACCG-1      0.460326    0.06753648</span></span>
+<span><span class="co">## ACACCCTCAATGTTGC-1     0.4631131    0.02817046</span></span>
+<span><span class="co">## CACACCTTCATAACCG-1     0.4688376    0.06158412</span></span>
+<span><span class="co">## CCACTACTCAGGTTCA-1     0.4358490    0.02434344</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Cell ACACCCTCAATGTTGC-1:</span></span>
+<span><span class="co">##   Direct:   20_CD8.CM = 0.472610, 21_NK = 0.467282</span></span>
+<span><span class="co">##   Inferred: 20_CD8.CM = 0.444440, 21_NK = 0.463113</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Cell CACACCTTCATAACCG-1:</span></span>
-<span><span class="co">##   Direct:   18_CD4.M = 0.525843, 17_CD4.N = 0.442731</span></span>
-<span><span class="co">##   Inferred: 18_CD4.M = 0.458306, 17_CD4.N = 0.460326</span></span></code></pre>
+<span><span class="co">##   Direct:   18_CD4.M = 0.503050, 17_CD4.N = 0.460623</span></span>
+<span><span class="co">##   Inferred: 18_CD4.M = 0.441466, 17_CD4.N = 0.468838</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Cell CCACTACTCAGGTTCA-1:</span></span>
+<span><span class="co">##   Direct:   18_CD4.M = 0.459002, 20_CD8.CM = 0.448491</span></span>
+<span><span class="co">##   Inferred: 18_CD4.M = 0.434658, 20_CD8.CM = 0.435849</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="appendix">Appendix<a class="anchor" aria-label="anchor" href="#appendix"></a>
