@@ -28,8 +28,6 @@ fit_deconv <- function(sigs, bulk, gene_lengths, w_vec, backend, insert_size, in
 #'@keywords internal
 fit_deconvolution_em <- function(sigs, bulk, gene_lengths, gene_weights, max_iter, tolerance, l1_lambda, verbose) .Call(wrap__fit_deconvolution_em, sigs, bulk, gene_lengths, gene_weights, max_iter, tolerance, l1_lambda, verbose)
 
-infer_from_model <- function(model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend, num_threads) .Call(wrap__infer_from_model, model_path, query, num_classes, num_features, model_type, hidden1, hidden2, verbose, batch_size, backend, num_threads)
-
 #' A *single* entry-point that covers MLR and ANN/ANN-2L.
 #'
 #' * `model_type` – `"mlr"`, `"ann"`, or `"ann2"` (you can choose any tokens you like)
@@ -43,9 +41,22 @@ process_learning_obj <- function(model_type, train, test, query, labels, feature
 #' @keywords internal
 process_learning_obj_nb <- function(train, test, query) .Call(wrap__process_learning_obj_nb, train, test, query)
 
+#' Sparse matrix training entry-point for MLR and ANN/ANN-2L.
+#'
+#' Instead of receiving lists of cells from R, receives sparse matrices directly.
+#' Size factors should be pre-computed in R (or set to 1.0 if data is already normalized).
+#'
+#' @export
+#' @keywords internal
+process_learning_obj_sparse <- function(model_type, train_x, train_i, train_p, train_dims, train_labels, train_size_factors, test_x, test_i, test_p, test_dims, test_labels, test_size_factors, query_x, query_i, query_p, query_dims, query_size_factors, labels, feature_names, hidden_size, learning_rate, num_epochs, directory, verbose, backend) .Call(wrap__process_learning_obj_sparse, model_type, train_x, train_i, train_p, train_dims, train_labels, train_size_factors, test_x, test_i, test_p, test_dims, test_labels, test_size_factors, query_x, query_i, query_p, query_dims, query_size_factors, labels, feature_names, hidden_size, learning_rate, num_epochs, directory, verbose, backend)
+
 #'@export
 #'@keywords internal
 splat_bulk_reference_rust <- function(counts_matrix, universe, sizes, bandwidth, n_cells_per_bulk, replace_counts, seed, verbose) .Call(wrap__splat_bulk_reference_rust, counts_matrix, universe, sizes, bandwidth, n_cells_per_bulk, replace_counts, seed, verbose)
+
+#' @export
+#' @keywords internal
+infer_sparse <- function(x, i, p, dims, size_factors, model_path, model_type, num_classes, hidden1, hidden2, batch_size, num_threads, verbose) .Call(wrap__infer_sparse, x, i, p, dims, size_factors, model_path, model_type, num_classes, hidden1, hidden2, batch_size, num_threads, verbose)
 
 
 # nolint end

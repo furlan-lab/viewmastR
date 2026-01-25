@@ -1,53 +1,20 @@
-#' @export
-#' @title Finds common features in a list of single cell objects
-#'
-#' @description Machine learning algorithms often require features to be the same across 
-#' datasets.  This function finds common features between a list of cell data set objects (monocle3) and 
-#' returns a list of cds's that have the same features.  Note that this function uses rownames 
-#' of the 'fData' DataFrame (monocle3) and the rownames of the seurat_object to find the intersect of features common to all objects
-#'
-#' @param cds_list Input  object.
-#' @export
-common_features <- function(cds_list){
-  len<-length(cds_list)
-  common_features=vector()
-  software<-NULL
-  for(i in 1:len){
-    if(i < 2){
-      if(class(cds_list[[i]])=="Seurat"){software<-"seurat"}
-      if(class(cds_list[[i]])=="cell_data_set"){software<-"monocle3"}
-      if(is.null(software)){stop("software not found for input object 1")}
-      if(software=="monocle3"){
-        common_features<-rownames(fData(cds_list[[i]]))
-      }
-      if(software=="seurat"){
-        common_features<-rownames(cds_list[[i]])
-      }
-    }else{
-      if(software=="monocle3"){
-        common_features<-unique(intersect(common_features, rownames(fData(cds_list[[i]]))))
-      }
-      if(software=="seurat"){
-        common_features<-unique(intersect(common_features, rownames(cds_list[[i]])))
-      }
-    }
-  }
-  if(software=="monocle3"){
-    for(i in 1:len){
-      cds_list[[i]]<-cds_list[[i]][match(common_features, rownames(cds_list[[i]])),]
-    }
-    return(cds_list)
-  }
-  if(software=="seurat"){
-    for(i in 1:len){
-      mat<-cds_list[[i]]@assays[[cds_list[[i]]@active.assay]]@counts
-      seutmp<- CreateSeuratObject(counts = mat[common_features, ]) # Create a new Seurat object with just the genes of interest
-      cds_list[[i]] <- AddMetaData(object = seutmp, metadata = cds_list[[i]]@meta.data) # Add the idents to the meta.data slot
-      rm(seutmp, mat)
-    }
-    return(cds_list)
-  }
-}
+################################################################################
+# FILE: R/extras.R
+# STATUS: Clean
+# ------------------------------------------------------------------------------
+# Functions:
+# [x] tf_idf_transform          (Exported - Internal)
+# [x] tf_idf_transform_v2       (Exported - Internal)
+# [x] svd_lsi                   (Exported)
+# [ ] Noisify                   (Not Exported)
+# [x] detect_genes              (Exported - Internal)
+# [x] writeMMgz                 (Exported)
+# [x] make3file                 (Exported)
+# [x] decode_param              (Exported - Internal)
+# [x] read_f16                  (Exported - Internal)
+# [x] read_bf16                 (Exported - Internal)
+# [x] get_weights               (Exported - Internal)
+################################################################################
 
 
 

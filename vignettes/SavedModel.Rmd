@@ -56,7 +56,7 @@ vg <- get_selected_features(seu)
 
 The model path is specified using the 'dir' argument
 ```{r, dpi=300, fig.height=4, fig.width = 6, warning=F, message=F}
-seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, dir = "/tmp/sc_local", max_epochs = 3)
+seu<-viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, model_dir =  "/tmp/sc_local", max_epochs = 3, return_probs = T)
 ```
 
 ## A look at the predictions
@@ -69,18 +69,79 @@ DimPlot(seu, group.by = "viewmastR_pred", cols = seur@misc$colors)
 We can use the function viewmastR_infer to run inference a saved model.  We will need to pass the same vector of variable features we used to initially create the model. We can use query_celldata_col to specify the name of the metadata column in the returned object.  An optional vector of labels can be provided.  Additionally, instead of returning the input object with predictions added, you may instead return the probabilities using the return_probs argument.
 ```{r}
 
-seu<-viewmastR_infer(seu, model_dir = "/tmp/sc_local", vg, labels = levels(factor(seur$SFClassification)))
-DimPlot(seu, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+seu_infer <- viewmastR_infer(seu, model_dir = "/tmp/sc_local", vg, 
+                              labels = levels(factor(seur$SFClassification)),
+                              return_probs = TRUE)
+
+DimPlot(seu_infer, group.by = "viewmastR_inferred", cols = seur@misc$colors)
+
 
 ```
 
 
-## A confusion matrix comparing the results using viewmastR to viewmastR_infer having saved the model to disc.
+## Comparing training-time vs saved-model inference
 
-Open question as to why a small number of cells are different :)
+When comparing predictions from viewmastR (training with simultaneous query inference) to viewmastR_infer (inference using a saved model), you may observe a small number of cells (~0.05%) with different classifications. These differences arise from minor numerical variations between the two computation paths.
+
+Importantly, the disagreements occur exclusively for cells at classification boundaries—cases where the model assigns similar probabilities to multiple cell types. As shown below, the disagreeing cells typically have two or more competing classes with probabilities within a few percentage points of each other, indicating genuine ambiguity where either classification is reasonable.
 
 ```{r, dpi=300, fig.height=6, fig.width=10}
-confusion_matrix(pred = factor(seu$viewmastR_inferred), gt = factor(seu$viewmastR_pred), cols = seur@misc$colors)
+
+confusion_matrix(pred = factor(seu_infer$viewmastR_inferred), gt = factor(seu$viewmastR_pred), cols = seur@misc$colors)
+
+disagree_idx <- which(seu$viewmastR_pred != seu_infer$viewmastR_inferred)
+# Show what changed
+disagree_df <- data.frame(
+  cell = colnames(seu)[disagree_idx],
+  viewmastR_pred = seu$viewmastR_pred[disagree_idx],
+  viewmastR_inferred = seu_infer$viewmastR_inferred[disagree_idx]
+)
+print(disagree_df)
+
+prob_cols <- colnames(seu@meta.data)[grep("prob", colnames(seu@meta.data))]
+
+
+# For disagreeing cells, compare probabilities
+if (length(disagree_idx) > 0) {
+  probs_direct <- as.matrix(seu@meta.data[disagree_idx, prob_cols, drop = FALSE])
+  probs_inferred <- as.matrix(seu_infer@meta.data[disagree_idx, prob_cols, drop = FALSE])
+  
+  # Calculate difference
+  prob_diff <- probs_direct - probs_inferred
+  
+  # Show summary of absolute differences
+  cat("\nAbsolute probability differences (disagreeing cells):\n")
+  print(summary(as.vector(abs(prob_diff))))
+  
+  # For each disagreeing cell, show the two predictions and their probs
+  disagree_df <- data.frame(
+    cell = colnames(seu)[disagree_idx],
+    pred_direct = seu$viewmastR_pred[disagree_idx],
+    pred_inferred = seu_infer$viewmastR_inferred[disagree_idx],
+    prob_direct = apply(probs_direct, 1, max),
+    prob_inferred = apply(probs_inferred, 1, max),
+    max_prob_diff = apply(abs(prob_diff), 1, max)
+  )
+  print(disagree_df)
+  
+  # Show the actual probabilities for the two competing classes
+  for (i in seq_len(nrow(disagree_df))) {
+    cell_idx <- disagree_idx[i]
+    class_direct <- as.character(disagree_df$pred_direct[i])
+    class_inferred <- as.character(disagree_df$pred_inferred[i])
+    
+    col_direct <- paste0("prob_", class_direct)
+    col_inferred <- paste0("prob_", class_inferred)
+    
+    cat(sprintf("\nCell %s:\n", disagree_df$cell[i]))
+    cat(sprintf("  Direct:   %s = %.6f, %s = %.6f\n", 
+                class_direct, seu@meta.data[cell_idx, col_direct],
+                class_inferred, seu@meta.data[cell_idx, col_inferred]))
+    cat(sprintf("  Inferred: %s = %.6f, %s = %.6f\n", 
+                class_direct, seu_infer@meta.data[cell_idx, col_direct],
+                class_inferred, seu_infer@meta.data[cell_idx, col_inferred]))
+  }
+}
 ```
 
 ## Appendix

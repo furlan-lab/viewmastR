@@ -74,16 +74,16 @@ The performance of viewmastR is enhanced when the features (genes) are consisten
 ```{r}
 # Calculate and plot gene dispersion in query dataset
 seu <- calculate_feature_dispersion(seu)
-plot_gene_dispersion(seu)
+plot_feature_dispersion(seu)
 seu <- select_features(seu, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-plot_gene_dispersion(seu)
+plot_feature_dispersion(seu)
 vgq <- get_selected_features(seu)
 
 # Repeat the process for the reference dataset
 seur <- calculate_feature_dispersion(seur)
-plot_gene_dispersion(seur)
+plot_feature_dispersion(seur)
 seur <- select_features(seur, top_n = 10000, logmean_ul = -1, logmean_ll = -8)
-plot_gene_dispersion(seur)
+plot_feature_dispersion(seur)
 vgr <- get_selected_features(seur)
 
 # Find common genes
@@ -148,7 +148,7 @@ plt
 Finally, we can also look at prediction probabilities using the return_probs argument.  Doing so will add meta-data columns to the object prefixed with the string "probs_" for each class of prediction.  The values are transformed log-odds from the model prediction transformed using the `plogis` function in R.
 
 ```{r}
-seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, backend = "candle", max_epochs = 4, return_probs = T)
+seu <- viewmastR(seu, seur, ref_celldata_col = "SFClassification", selected_features = vg, max_epochs = 4, return_probs = T)
 FeaturePlot_scCustom(seu, features = "prob_14_B")
 FeaturePlot_scCustom(seu, features = "prob_16_CD8.N")
 ```

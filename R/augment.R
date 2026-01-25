@@ -1,3 +1,12 @@
+################################################################################
+# FILE: R/augment.R
+# STATUS: Clean
+# ------------------------------------------------------------------------------
+# Functions:
+# [x] augment_data              (Exported)
+################################################################################
+
+
 #' Augment data
 #' @description This function takes a seurat object and finds cells that are not sufficiently abundant when grouped by the
 #' column parameter, then simulates data to augment cell number to a level of the parameter - norm_number
@@ -76,81 +85,3 @@ augment_data<-function(obj, column, norm_number=2000, assay="RNA", prune = F){
   colnames(new_counts)<-rownames(meta)
   CreateSeuratObject(counts = new_counts, meta.data = meta)
 }
-
-# 
-# 
-# 
-# #get densities for a given scrna experiment
-# if(grepl("^gizmo", strsplit(Sys.info()[4], "\\.")[[1]])){
-#   f<-"/fh/fast/furlan_s/grp/data/ddata/BM_data/"
-# }else{
-#   f<-"~/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchinsonCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf"
-# }
-# hm<-readRDS(file.path(f, "230329_rnaAugmented_seurat.RDS"))
-# sizes_sc <- colSums(hm@assays$RNA@counts)
-# den_sc <- density(sizes_sc)
-# 
-# table(seu$subtype)
-# 
-# 
-# newdata<-pbmcapply::pbmclapply(1:(dim(obj)[2]), function(n){
-#   newsizes <- sample(sizes_sc, N, replace = TRUE) + rnorm(N * 10, 0, den_sc$bw)
-#   trimmed_newdata <- round(newsizes[newsizes > min(sizes_sc) & 
-#                                       max(sizes_sc)], 0)
-#   final_newsizes <- sample(trimmed_newdata, N)
-#   # newdata<-pbmcapply::pbmclapply(1:3, function(n){
-#   rsums <- seu@assays$RNA$counts[,n]
-#   if(is.null(names(rsums))){
-#     names(rsums)<-rownames(seu@assays$RNA$counts)
-#   }
-#   splat <- names(rsums)[rep(seq_along(rsums), rsums)]
-#   dl <- lapply(final_newsizes, function(i) {
-#     tab <- table(sample(splat, i))
-#     nf <- universe[!universe %in% names(tab)]
-#     all <- c(tab, setNames(rep(0, length(nf)), nf))
-#     all[match(universe, names(all))]
-#   })
-#   return(as.sparse(do.call(cbind, dl)))
-# }, mc.cores = parallel::detectCores())
-# 
-# output<-lapply(newdata, function(x) class(x)[1])
-# good_ind<-lapply(output, function(x) x=="dgCMatrix")
-# good_ind<-which(unlist(good_ind))
-# 
-# 
-# metai<-lapply(good_ind, function(n) rep(n, N)) %>% do.call("c", .)
-# newmeta<-meta[metai,]
-# gooddata<-newdata[good_ind]
-# tmpdata<-Reduce(cbind, gooddata[-1], gooddata[[1]])
-# dim(tmpdata)
-# dim(newmeta)
-# rownames(newmeta)<-make.unique(as.character(metai))
-# colnames(tmpdata)<-rownames(newmeta)
-# 
-# seuF<-CreateSeuratObject(tmpdata, meta.data = as.data.frame(newmeta))
-# rm(den_sc, ds, fig, gooddata, mat, meta, newdata, newmeta, obj, output, plot.data, tmpdata)
-# gc()
-# 
-# seuF<-merge(seuF, hm)
-# rm(hm)
-# gc()
-# seuF <- FindVariableFeatures(seuF, selection.method = "vst", nfeatures = 2000)
-# seuF <- ScaleData(seuF) %>% RunPCA(features = VariableFeatures(object = seuF), npcs = 50)
-# ElbowPlot(seuF, 50) 
-# seuF<- FindNeighbors(seuF, dims = 1:40)
-# seuF <- FindClusters(seuF, resolution = 0.5)
-# seuF <- RunUMAP(seuF, dims = 1:40)
-# 
-# seuF$celltype<-seuF$category1
-# seuF$celltype[match(colnames(hm), colnames(seuF))]<-hm$SFClassification
-# cvg<-common_variant_genes(seuF, sc, top_n = 10000)
-# 
-# seuF$celltype[is.na(seuF$celltype)]<-"NotFound"
-# 
-# DimPlot(seuF, group.by = "celltype")
-# DimPlot(seuF, group.by = "category0")
-# DimPlot(seuF, group.by = "category1")+NoLegend()
-# DimPlot(seuF, group.by = "category2")
-# 
-# sc<-viewmastR2::viewmastR(sc, seuF, ref_celldata_col = "celltype", query_celldata_col = "learned_label", selected_features = cvg, verbose = T, FUNC = "softmax_regression", sparse=T) 
-

@@ -222,7 +222,7 @@ undebug(splat_bulk_reference)
 splat_bulk_reference(query = seu_h, ref = se,  N=10, assay = "RNA")
 ```
 
-```{r}
+```{r,eval=F, include=F}
 splat_bulk_reference<-function(query=NULL, 
                                ref, N = 2, assay="RNA", 
                                bulk_feature_row = "gene_short_name", 

@@ -2,7 +2,7 @@
 % Please edit documentation in R/inference.R
 \name{viewmastR_infer}
 \alias{viewmastR_infer}
-\title{Function to infer cell labels using a trained model}
+\title{ViewmastR inference}
 \usage{
 viewmastR_infer(
   query_cds,
@@ -13,73 +13,35 @@ viewmastR_infer(
   verbose = TRUE,
   return_probs = FALSE,
   return_type = c("object", "list"),
-  chunks = NULL,
-  workers = 1,
   batch_size = NULL,
-  show_progress = TRUE,
-  backend = c("auto", "wgpu", "nd", "candle"),
-  chunk_size_cells = 5000
+  threads = 1
 )
 }
 \arguments{
-\item{query_cds}{Seurat or cell_data_set object - The dataset for which cell labels are to be inferred.}
+\item{query_cds}{Seurat or cell_data_set object}
 
-\item{model_dir}{character path to the trained model file.}
+\item{model_dir}{Path to the trained model directory}
 
-\item{selected_features}{character vector - Features used for inference (must be the same used during model creation).}
+\item{selected_features}{Character vector of feature names}
 
-\item{query_celldata_col}{character vector - names of the column to store inferred cell labels in the query dataset. Default is "viewmastR_inferred".}
+\item{query_celldata_col}{Name of column to store results (default: "viewmastR_inferred")}
 
-\item{labels}{character vector - optional labels corresponding to the class indices. Default is NULL.}
+\item{labels}{Optional character vector of class labels}
 
-\item{verbose}{bool - show messaging}
+\item{verbose}{Print progress messages}
 
-\item{return_probs}{logical If TRUE, returns the class probabilities. Default is FALSE.}
+\item{return_probs}{If TRUE, add probability columns to metadata}
 
-\item{return_type}{A character string, either \code{"object"} or \code{"list"}. If
-\code{"object"}, the updated \code{query_cds} is returned. If \code{"list"}, a
-list containing the updated object and the raw inference results is returned.
-Default is \code{"object"}.}
+\item{return_type}{"object" returns the modified object, "list" returns object and probs}
 
-\item{chunks}{An integer indicating the number of chunks to split the data into for
-parallelization. Default is 1 (no chunking).}
+\item{batch_size}{Cells per inference batch (default: auto)}
 
-\item{workers}{An integer specifying the number of parallel workers to use. Default
-is 1 (no parallelization).}
-
-\item{batch_size}{An integer specifying the batch size used during inference. If
-\code{NULL}, a heuristic is used to determine a suitable batch size based on the
-data and number of chunks.}
-
-\item{show_progress}{A logical indicating whether to show a progress bar with total
-elapsed time. Default is \code{TRUE}.}
+\item{threads}{Number of parallel threads (default: 1)}
 }
 \value{
-Depending on \code{return_type}:
-\itemize{
-\item \code{"object"}: Returns the updated \code{query_cds} with inferred labels
-in \code{query_celldata_col} and optionally probabilities in the metadata.
-\item \code{"list"}: Returns a list containing:
-\item{\code{object}}{The updated \code{query_cds}.}
-\item{\code{training_output}}{The raw inference results including probabilities.}
-}
+Modified query_cds with inferred labels
 }
 \description{
-This function infers cell labels using a trained model and updates the input dataset with the inferred labels.
-}
-\details{
-The function first checks that all variable features specified in \code{selected_features}
-are present in \code{query_cds}, extracts normalized counts, and determines whether
-to run sequentially or in parallel. When parallelization is enabled (\code{workers > 1}),
-the dataset is split into chunks, and each chunk is processed and run through the
-model inference in parallel. A progress bar is displayed showing the number of
-completed chunks and total elapsed time.
-
-The underlying model is loaded from the specified \code{model_path}, and class
-probabilities (log-odds) are computed for each cell. The function then assigns the
-most likely label to each cell. Optionally, the probabilities are added to the
-object's metadata.
-}
-\seealso{
-\code{\link[Seurat]{Seurat}}, \code{\link[monocle3]{cell_data_set}}
+This function performs cell type inference using a trained model,
+passing sparse matrices directly to Rust for maximum performance.
 }

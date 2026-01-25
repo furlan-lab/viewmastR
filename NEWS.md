@@ -1,8 +1,13 @@
-# viewmastR v0.4.1
+# viewmastR v0.5.0
 
-* added support for bpcells, upgraded to Seurat5+ objects
+* enhancement - added support for bpcells, better handling of seurat v3, v4, v5 objects
+* performance - eliminated R-side dense matrix conversion and list creation overhead by passing sparse matrix pointers directly to Rust
+* bug fix - fixed probability extraction from Rust that caused query inference to fail
+* bug fix - fixed viewmastR_infer to apply same normalization as training (log-normalization) for consistent results
 
 # viewmastR v0.4
+
+* new feature - added new bulk deconvolution suite of tools, see vignette
 
 # viewmastR v0.3.1
 

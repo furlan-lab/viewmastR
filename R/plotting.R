@@ -1,3 +1,13 @@
+################################################################################
+# FILE: R/plotting.R
+# STATUS: Clean
+# ------------------------------------------------------------------------------
+# Functions:
+# [x] confusion_matrix          (Exported)
+# [x] plot_training_data        (Exported)
+################################################################################
+
+
 #' Confusion matrix
 #' @description This function will generate a confusion matrix between two factors; pred (short for prediction) and gt (short for ground truth).  One 
 #' may optionally supply a named vector of colors to annotate the row and column legends.
@@ -117,38 +127,4 @@ fig2 <- plot_ly(x = loss$epoch, y =loss$metric, split = loss$label, type = 'scat
 
 fig <- subplot(fig1, fig2, nrows = 2)
 fig
-
-
-# highcharter::hw_grid(ncol = 1,rowheight = 280,
-#                      hchart(
-#                        tibble::tibble(accuracy),
-#                        "line",
-#                        hcaes(x = epoch , y = metric, group = label),
-#                        color = c(pals::glasbey(2))
-#                      ) |> 
-#                        hc_chart(
-#                          backgroundColor = list(
-#                            linearGradient = c(0, 0, 500, 500),
-#                            stops = list(
-#                              list(0, 'rgb(255, 255, 255)'),
-#                              list(1, 'rgb(170, 230, 255)')
-#                            )
-#                          )
-#                        ),
-#                      hchart(
-#                        tibble::tibble(loss),
-#                        "line",
-#                        hcaes(x = epoch , y = metric, group = label),
-#                        color = c(pals::glasbey(2))
-#                      ) |> 
-#                        hc_chart(
-#                          backgroundColor = list(
-#                            linearGradient = c(0, 0, 500, 500),
-#                            stops = list(
-#                              list(0, 'rgb(255, 255, 255)'),
-#                              list(1, 'rgb(170, 230, 255)')
-#                            )
-#                          )
-#                        )
-# ) %>% htmltools::browsable()
 }

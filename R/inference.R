@@ -1,85 +1,43 @@
+################################################################################
+# FILE: R/inference.R
+# STATUS: Clean
+# ------------------------------------------------------------------------------
+# Functions:
+# [x] viewmastR_infer           (Exported)
+# [x] extract_mpk_shapes        (Exported - Internal)
+# [x] check_genes_in_object     (Exported)
+################################################################################
 
-#' 
-#' @keywords internal
-infer_prep<-function(object, variable_features, software){
-  qcounts<-t(as.matrix(get_norm_counts(object)[variable_features,]))
-  query = lapply(1:dim(qcounts)[1], function(idx){
-    list(data = as.numeric(qcounts[idx,]))
-  })
-}
 
-
-#' Function to infer cell labels using a trained model
+#' ViewmastR inference
 #' 
-#' This function infers cell labels using a trained model and updates the input dataset with the inferred labels.
+#' This function performs cell type inference using a trained model,
+#' passing sparse matrices directly to Rust for maximum performance.
 #' 
-#' @param query_cds Seurat or cell_data_set object - The dataset for which cell labels are to be inferred.
-#' @param model_dir character path to the trained model file.
-#' @param selected_features character vector - Features used for inference (must be the same used during model creation).
-#' @param query_celldata_col character vector - names of the column to store inferred cell labels in the query dataset. Default is "viewmastR_inferred".
-#' @param labels character vector - optional labels corresponding to the class indices. Default is NULL.
-#' @param verbose bool - show messaging
-#' @param return_type A character string, either \code{"object"} or \code{"list"}. If 
-#'   \code{"object"}, the updated \code{query_cds} is returned. If \code{"list"}, a 
-#'   list containing the updated object and the raw inference results is returned. 
-#'   Default is \code{"object"}.
-#' @param return_probs logical If TRUE, returns the class probabilities. Default is FALSE.
-#' @param chunks An integer indicating the number of chunks to split the data into for 
-#'   parallelization. Default is 1 (no chunking).
-#' @param workers An integer specifying the number of parallel workers to use. Default 
-#'   is 1 (no parallelization).
-#' @param batch_size An integer specifying the batch size used during inference. If 
-#'   \code{NULL}, a heuristic is used to determine a suitable batch size based on the 
-#'   data and number of chunks.
-#' @param show_progress A logical indicating whether to show a progress bar with total 
-#'   elapsed time. Default is \code{TRUE}.
-#' @details The function first checks that all variable features specified in \code{selected_features} 
-#' are present in \code{query_cds}, extracts normalized counts, and determines whether 
-#' to run sequentially or in parallel. When parallelization is enabled (\code{workers > 1}), 
-#' the dataset is split into chunks, and each chunk is processed and run through the 
-#' model inference in parallel. A progress bar is displayed showing the number of 
-#' completed chunks and total elapsed time.
-#'
-#' The underlying model is loaded from the specified \code{model_path}, and class 
-#' probabilities (log-odds) are computed for each cell. The function then assigns the 
-#' most likely label to each cell. Optionally, the probabilities are added to the 
-#' object's metadata.
-#'
-#' @return Depending on \code{return_type}:
-#' \itemize{
-#' \item \code{"object"}: Returns the updated \code{query_cds} with inferred labels 
-#' in \code{query_celldata_col} and optionally probabilities in the metadata.
-#' \item \code{"list"}: Returns a list containing:
-#'   \item{\code{object}}{The updated \code{query_cds}.}
-#'   \item{\code{training_output}}{The raw inference results including probabilities.}
-#' }
-#'
-#' @seealso \code{\link[Seurat]{Seurat}}, \code{\link[monocle3]{cell_data_set}}
-#'
-#'
-#' @importFrom pbmcapply pbmclapply
-#' @importFrom future plan multisession multicore
-#' @importFrom future.apply future_lapply
-#' @importFrom progressr handlers handler_progress progressor with_progress
-#' @importFrom Matrix t
+#' @param query_cds Seurat or cell_data_set object
+#' @param model_dir Path to the trained model directory
+#' @param selected_features Character vector of feature names
+#' @param query_celldata_col Name of column to store results (default: "viewmastR_inferred")
+#' @param labels Optional character vector of class labels
+#' @param verbose Print progress messages
+#' @param return_probs If TRUE, add probability columns to metadata
+#' @param return_type "object" returns the modified object, "list" returns object and probs
+#' @param batch_size Cells per inference batch (default: auto)
+#' @param threads Number of parallel threads (default: 1)
+#' 
+#' @return Modified query_cds with inferred labels
 #' @export
-#'
-#' 
 viewmastR_infer <- function(query_cds,
-                            model_dir,
-                            selected_features,
-                            query_celldata_col = "viewmastR_inferred",
-                            labels = NULL,
-                            verbose = TRUE,
-                            return_probs = FALSE,
-                            return_type = c("object", "list"),
-                            batch_size = NULL,
-                            backend = c("auto", "nd", "wgpu", "candle"),
-                            workers = 1  # Now passed to Rust
-) {
+                                  model_dir,
+                                  selected_features,
+                                  query_celldata_col = "viewmastR_inferred",
+                                  labels = NULL,
+                                  verbose = TRUE,
+                                  return_probs = FALSE,
+                                  return_type = c("object", "list"),
+                                  batch_size = NULL,
+                                  threads = 1) {
   
-  backend <- match.arg(backend)
-  if(backend == "auto") backend <- "nd"  # Default to nd for parallel support
   return_type <- match.arg(return_type)
   
   # Validation
@@ -88,68 +46,69 @@ viewmastR_infer <- function(query_cds,
     stop("At least one feature in variable_features is not found in the object.")
   }
   
+  # Get model info
   model_shapes <- extract_mpk_shapes(file.path(model_dir, "model.mpk"))
   num_classes_model <- as.integer(model_shapes$num_classes)
   
-  # Size factors
-  if(verbose) message("Calculating size factors...")
-  if (inherits(query_cds, "Seurat")) {
-    sf <- Matrix::colSums(Seurat::GetAssayData(query_cds, slot="counts"))
-  } else {
-    sf <- tryCatch(monocle3::size_factors(query_cds), error=function(e) NULL)
-    if(is.null(sf)) sf <- Matrix::colSums(SingleCellExperiment::counts(query_cds))
-  }
-  sf <- sf / mean(sf)
+  # # Get sparse counts matrix
+  # if(verbose) message("Extracting sparse matrix...")
+  # if (inherits(query_cds, "Seurat")) {
+  #   # Get counts and subset to selected features
+  #   full_counts <- get_counts_seurat(query_cds)
+  #   counts_mat <- full_counts[selected_features, , drop = FALSE]
+  # } else {
+  #   full_counts <- SingleCellExperiment::counts(query_cds)
+  #   counts_mat <- full_counts[selected_features, , drop = FALSE]
+  # }
   
-  n_cells <- ncol(query_cds)
+  norm_mat <- get_norm_counts(query_cds[selected_features, ], norm_method = "log")
+  # Ensure it's a dgCMatrix
+  if (!inherits(norm_mat, "dgCMatrix")) {
+    norm_mat <- as(norm_mat, "dgCMatrix")
+  }
+  
+  n_cells <- ncol(norm_mat)
+  n_features <- nrow(norm_mat)
+  
+  if(verbose) message(sprintf("Matrix: %d features × %d cells, %d non-zeros (%.1f%% sparse)",
+                               n_features, n_cells, length(norm_mat@x),
+                               100 * (1 - length(norm_mat@x) / (n_features * n_cells))))
+  
+  # Set batch size
   if (is.null(batch_size)) {
-    batch_size <- min(ceiling(n_cells/20), 1024)
-    if (verbose) message(paste0("Inference batch size: ", batch_size))
+    batch_size <- min(ceiling(n_cells / 20), 1024L)
+    if (verbose) message(paste0("Batch size: ", batch_size))
   }
   
-  # Extract and normalize ALL data at once
-  if(verbose) message("Preparing data...")
-  if (inherits(query_cds, "Seurat")) {
-    raw_mat <- Seurat::GetAssayData(query_cds, slot = "counts")[selected_features, , drop=FALSE]
-  } else {
-    raw_mat <- SingleCellExperiment::counts(query_cds)[selected_features, , drop=FALSE]
-  }
+  if (verbose) message(sprintf("Running inference with %d workers (threads)...", threads
+  ))
   
-  norm_mat <- Matrix::t(Matrix::t(raw_mat) / sf)
-  input_mat <- as.matrix(Matrix::t(norm_mat))  # cells x genes
-  
-  # Format for Rust
-  if(verbose) message(sprintf("Formatting %d cells for inference...", n_cells))
-  chunk_query <- vector("list", n_cells)
-  for (i in seq_len(n_cells)) {
-    chunk_query[[i]] <- list(data = input_mat[i, ])
-  }
-  
-  # Single call to Rust - let Rust handle parallelization
-  if(verbose) message(sprintf("Running inference with %d workers...", workers))
-  
-  res <- viewmastR:::infer_from_model(
+  # Call Rust with sparse matrix components directly
+  res <- viewmastR:::infer_sparse(
+    x = norm_mat@x,
+    i = norm_mat@i,
+    p = norm_mat@p,
+    dims = c(nrow(norm_mat), ncol(norm_mat)),
+    size_factors = NULL,  # Let Rust compute from the matrix
     model_path = file.path(model_dir, "model.mpk"),
-    query = chunk_query,
-    num_classes = num_classes_model,
-    num_features = as.integer(length(selected_features)),
     model_type = model_shapes$model_type,
+    num_classes = num_classes_model,
     hidden1 = as.integer(model_shapes$hidden_layer1),
     hidden2 = as.integer(model_shapes$hidden_layer2),
-    verbose = verbose,
-    batch_size = batch_size,
-    backend = backend,
-    num_threads = as.integer(workers)
+    batch_size = as.integer(batch_size),
+    num_threads = as.integer(threads),
+    verbose = verbose
   )
   
+  # Process results
   log_odds <- unlist(res$probs)
   
-  # Format results
   if(is.null(labels)) labels <- 1:num_classes_model
   
   log_odds_mat <- matrix(log_odds, ncol = num_classes_model, byrow = TRUE)
   colnames(log_odds_mat) <- paste0("prob_", labels)
   
+  # Softmax
   softmax_rows <- function(mat) {
     shifted <- mat - apply(mat, 1, max)
     exp_shifted <- exp(shifted)
@@ -158,7 +117,7 @@ viewmastR_infer <- function(query_cds,
   
   prob_mat <- softmax_rows(log_odds_mat)
   
-  # Return
+  # Add results to object
   query_cds[[query_celldata_col]] <- labels[apply(prob_mat, 1, which.max)]
   
   if(return_probs){
@@ -169,407 +128,13 @@ viewmastR_infer <- function(query_cds,
     }
   }
   
-  if (return_type=="object") {
+  if (return_type == "object") {
     return(query_cds)
   } else {
-    return(list(object=query_cds, training_output = list(probs = prob_mat)))
+    return(list(object = query_cds, training_output = list(probs = prob_mat)))
   }
 }
 
-# viewmastR_infer <- function(query_cds,
-#                                    model_dir,
-#                                    selected_features,
-#                                    query_celldata_col = "viewmastR_inferred",
-#                                    labels = NULL,
-#                                    verbose = TRUE,
-#                                    return_probs = FALSE,
-#                                    return_type = c("object", "list"),
-#                                    chunks = NULL, 
-#                                    workers = 1,
-#                                    batch_size = NULL,
-#                                    show_progress = TRUE,
-#                                    backend = c("auto", "wgpu", "nd", "candle"),
-#                                    chunk_size_cells = 5000 
-# ) {
-  
-#   # 1. Environment & Backend Setup
-#   old_rayon <- Sys.getenv("RAYON_NUM_THREADS", unset = NA)
-#   old_omp   <- Sys.getenv("OMP_NUM_THREADS",   unset = NA)
-#   old_mkl   <- Sys.getenv("MKL_NUM_THREADS",   unset = NA)
-  
-#   on.exit({
-#     if (is.na(old_rayon)) Sys.unsetenv("RAYON_NUM_THREADS") else Sys.setenv(RAYON_NUM_THREADS = old_rayon)
-#     if (is.na(old_omp))   Sys.unsetenv("OMP_NUM_THREADS")   else Sys.setenv(OMP_NUM_THREADS = old_omp)
-#     if (is.na(old_mkl))   Sys.unsetenv("MKL_NUM_THREADS")   else Sys.setenv(MKL_NUM_THREADS = old_mkl)
-#   }, add = TRUE)
-  
-#   Sys.setenv(RAYON_NUM_THREADS = "1")
-#   Sys.setenv(OMP_NUM_THREADS   = "1")
-#   Sys.setenv(MKL_NUM_THREADS   = "1")
-  
-#   backend <- match.arg(backend)
-#   if(backend == "auto") backend <- viewmastR:::optimize_backend()
-#   return_type <- match.arg(return_type)
-  
-#   # 2. Validation & Metadata
-#   checked_genes <- check_genes_in_object(query_cds, selected_features, model_dir)
-#   if (length(checked_genes$genes_missing) > 0) {
-#     stop("At least one feature in variable_features is not found in the object.")
-#   }
-  
-#   model_shapes <- extract_mpk_shapes(file.path(model_dir, "model.mpk"))
-#   num_classes_model <- as.integer(model_shapes$num_classes)
-  
-#   # 3. Handle Size Factors Globaly
-#   if(verbose) message("Calculating size factors...")
-#   if (inherits(query_cds, "Seurat")) {
-#     # Efficient colSums for sparse matrices
-#     sf <- Matrix::colSums(Seurat::GetAssayData(query_cds, slot="counts"))
-#   } else {
-#     sf <- tryCatch(monocle3::size_factors(query_cds), error=function(e) NULL)
-#     if(is.null(sf)) sf <- Matrix::colSums(SingleCellExperiment::counts(query_cds))
-#   }
-#   sf <- sf / mean(sf)
-  
-#   # 4. Chunking Strategy
-#   n_cells <- ncol(query_cds)
-#   if (is.null(batch_size)) {
-#     batch_size <- min(round(ceiling(n_cells/20), digits = 0), 1024)
-#     if (verbose) message(paste0("Inference Batch size: ", batch_size))
-#   }
-  
-#   if(!is.null(chunks) && chunks > 1) {
-#     cell_groups <- split(seq_len(n_cells), ceiling(seq_len(n_cells) / (n_cells/chunks)))
-#   } else {
-#     cell_groups <- split(seq_len(n_cells), ceiling(seq_len(n_cells) / chunk_size_cells))
-#   }
-  
-#   if(verbose) message(sprintf("Processing %d cells in %d chunks...", n_cells, length(cell_groups)))
-
-#   # --- ARCHITECTURAL FIX START: Pre-Slice Data ---
-#   # Instead of sending indices, we extract the sparse data NOW.
-#   # This creates a list of small objects. The big 'query_cds' is NEVER sent to workers.
-  
-#   # if(verbose) message("Preparing data chunks for workers...")
-  
-#   # Define slice function based on object type
-#   get_slice <- if (inherits(query_cds, "Seurat")) {
-#     function(idx) Seurat::GetAssayData(query_cds, slot = "counts")[selected_features, idx, drop=FALSE]
-#   } else {
-#     function(idx) SingleCellExperiment::counts(query_cds)[selected_features, idx, drop=FALSE]
-#   }
-
-#   # Create the input list. Each element contains ONLY what the worker needs.
-#   # Note: This list of sparse matrices is memory efficient (much smaller than duplicating the full object).
-#   chunked_inputs <- lapply(cell_groups, function(idx) {
-#     list(
-#       counts = get_slice(idx),
-#       sf = sf[idx]
-#     )
-#   })
-  
-#   # Clean up the big object pointer if possible (optional safety)
-#   rm(get_slice) 
-#   # --- ARCHITECTURAL FIX END ---
-
-#   # 5. Define Worker Function (PURE FUNCTION)
-#   # This function takes 'input_data' as an argument. It does NOT capture 'query_cds'.
-#   worker_fun <- function(input_data) {
-#     # Unpack clean inputs
-#     raw_mat <- input_data$counts
-#     local_sf <- input_data$sf
-    
-#     # Normalize
-#     norm_mat <- Matrix::t(Matrix::t(raw_mat) / local_sf)
-#     input_mat <- as.matrix(Matrix::t(norm_mat))
-    
-#     # Format for C++
-#     nrows <- nrow(input_mat)
-#     chunk_query <- vector("list", nrows)
-#     for (i in seq_len(nrows)) {
-#       chunk_query[[i]] <- list(data = input_mat[i, ])
-#     }
-    
-#     # Infer
-#     res <- viewmastR:::infer_from_model(
-#       model_path = file.path(model_dir, "model.mpk"),
-#       query = chunk_query,
-#       num_classes = as.integer(model_shapes$num_classes),
-#       num_features = as.integer(length(selected_features)),
-#       model_type = model_shapes$model_type,
-#       hidden1 = as.integer(model_shapes$hidden_layer1),
-#       hidden2 = as.integer(model_shapes$hidden_layer2),
-#       verbose = FALSE,
-#       batch_size = batch_size,
-#       backend = backend,
-#       num_threads = workers  # Pass workers to Rust
-#     )
-#     return(res$probs)
-#   }
-
-#   # 6. Execution
-#   if (show_progress) {
-#     progressr::handlers(progressr::handler_progress(
-#       format = "[:bar] :percent | Chunk :current/:total | :elapsed",
-#       clear = FALSE
-#     ))
-#   }
-  
-#   if (workers > 1) {
-#     if (verbose) message(paste("Running parallel inference with", workers, "workers"))
-    
-#     # Ensure plan is valid
-#     # options(future.globals.maxSize = +Inf) # Still good practice, but less critical now
-#     future::plan(future::multisession, workers = workers)
-    
-#     chunk_results <- progressr::with_progress({
-#       p <- progressr::progressor(steps = length(chunked_inputs))
-      
-#       # Pass the DATA list, not the indices
-#       future.apply::future_lapply(chunked_inputs, function(dat) {
-#         Sys.setenv(RAYON_NUM_THREADS = "1")
-#         Sys.setenv(OMP_NUM_THREADS = "1")
-#         Sys.setenv(MKL_NUM_THREADS = "1")
-        
-#         out <- worker_fun(dat)
-#         p()
-#         out
-#       }, future.seed = TRUE)
-#     })
-    
-#   } else {
-#     if (verbose) message("Running sequential inference")
-#     chunk_results <- progressr::with_progress({
-#       p <- progressr::progressor(steps = length(chunked_inputs))
-#       lapply(chunked_inputs, function(dat) {
-#         out <- worker_fun(dat)
-#         p()
-#         out
-#       })
-#     })
-#   }
-
-#   # 7. Aggregate & Format Results
-#   log_odds <- unlist(chunk_results)
-#   expected_len <- n_cells * num_classes_model
-  
-#   if(length(log_odds) != expected_len){
-#     stop(sprintf("Dimension mismatch: Expected %d elements, got %d.", expected_len, length(log_odds)))
-#   }
-  
-#   log_odds_mat <- matrix(log_odds, ncol = num_classes_model, byrow = TRUE)
-  
-#   if(is.null(labels)) labels <- 1:num_classes_model
-#   colnames(log_odds_mat) <- paste0("prob_", labels)
-  
-#   softmax_rows <- function(mat) {
-#     shifted <- mat - apply(mat, 1, max)
-#     exp_shifted <- exp(shifted)
-#     exp_shifted / rowSums(exp_shifted)
-#   }
-  
-#   prob_mat <- softmax_rows(log_odds_mat)
-  
-#   # 8. Return
-#   query_cds[[query_celldata_col]] <- labels[apply(prob_mat, 1, which.max)]
-  
-#   if(return_probs){
-#     if(inherits(query_cds, "Seurat")) {
-#       query_cds <- Seurat::AddMetaData(query_cds, as.data.frame(prob_mat))
-#     } else {
-#       Biobase::pData(query_cds) <- cbind(Biobase::pData(query_cds), prob_mat)
-#     }
-#   }
-  
-#   if (return_type=="object") {
-#     return(query_cds)
-#   } else {
-#     return(list(object=query_cds, training_output = list(probs = prob_mat)))
-#   }
-# }
-
-#### v0.4.0 version below
-# viewmastR_infer <- function(query_cds,
-#                             model_dir,
-#                             selected_features,
-#                             query_celldata_col = "viewmastR_inferred",
-#                             labels = NULL,
-#                             verbose = TRUE,
-#                             return_probs = FALSE,
-#                             return_type = c("object", "list"),
-#                             chunks = 1,
-#                             workers = 1,
-#                             batch_size = NULL,
-#                             show_progress = TRUE,
-#                             backend = c("auto", "wgpu", "nd", "candle")
-#                             ) {
-#   backend <- match.arg(backend)
-#   if(backend=="auto"){
-#     backend <- optimize_backend()
-#   }
-#   return_type <- match.arg(arg = NULL, return_type)
-#   # Determine the software type
-#   if (inherits(query_cds, "Seurat")) {
-#     software <- "seurat"
-#   } else if (inherits(query_cds, "cell_data_set")) {
-#     software <- "monocle3"
-#   } else {
-#     stop("Only seurat and monocle3 objects supported")
-#   }
-
-#   # Check that all variable_features are present in query
-#   checked_genes <- check_genes_in_object(query_cds, selected_features, model_dir)
-  
-#   if (length(checked_genes$genes_missing) > 0) {
-#     stop("At least one feature in variable_features is not found in the object.")
-#   }
-
-#   # Extract normalized counts
-#   norm_counts <- get_norm_counts(query_cds)[selected_features, ]
-
-
-#   # If workers <= 1, run sequentially
-#   if (workers <= 1) {
-#     if (verbose) message("Single worker mode: preparing and running inference sequentially")
-#     qcounts <- Matrix::t(as.matrix(norm_counts))
-#     nrows <- nrow(qcounts)
-#     query_list <- vector("list", nrows)
-#     for (i in seq_len(nrows)) {
-#       query_list[[i]] <- list(data = qcounts[i, ])
-#     }
-
-#     # Load model
-#     model_shapes <- extract_mpk_shapes(file.path(model_dir, "model.mpk"))
-
-#     # Set batch size if null
-#     if (is.null(batch_size)) {
-#       batch_size <- round(ceiling(ncol(query_cds)/20), digits = 0)
-#       if (verbose) message(paste0("Batch size: ", batch_size))
-#     }
-
-#     # Run inference once
-#     export_list <- infer_from_model(
-#       model_path = file.path(model_dir, "model.mpk"),
-#       query = query_list,
-#       num_classes = as.integer(model_shapes$num_classes),
-#       num_features = as.integer(length(selected_features)),
-#       model_type = model_shapes$model_type,
-#       hidden1 = as.integer(model_shapes$hidden_layer1),
-#       hidden2 = as.integer(model_shapes$hidden_layer2),
-#       verbose = verbose,
-#       batch_size = batch_size,
-#       backend = backend
-#     )
-#     log_odds <- unlist(export_list$probs)
-
-#   } else {
-#     if (verbose) message("Parallel mode: preparing and running inference in parallel")
-
-#     # On Windows use multisession, on UNIX use multicore
-#     if (tolower(Sys.info()[['sysname']]) == "windows") {
-#       plan(multisession, workers = workers)
-#     } else {
-#       plan(multicore, workers = workers)
-#     }
-
-#     # Pre-transpose for efficient chunk indexing
-#     tnorm_counts <- Matrix::t(norm_counts)
-#     n_cells <- nrow(tnorm_counts)
-#     chunk_size <- ceiling(n_cells / chunks)
-#     cell_chunks <- split(seq_len(n_cells), ceiling(seq_len(n_cells) / chunk_size))
-
-#     # Load model
-#     model_shapes <- extract_mpk_shapes(file.path(model_dir, "model.mpk"))
-
-#     # Set batch size if null
-#     if (is.null(batch_size)) {
-#       if (chunks == 1) {
-#         batch_size <- round(max(ncol(query_cds)/50, 128), digits =  0)
-#       } else {
-#         batch_size <- round(ncol(query_cds)/50, digits = 0)
-#       }
-#       if (verbose) message(paste0("Batch size: ", batch_size))
-#     }
-
-#     # Setup progress
-# if (show_progress) {
-#       progressr::handlers(
-#         progressr::handler_progress(
-#           format = "[:bar] :percent Elapsed: :elapsed ETA: :eta",
-#           clear = FALSE,
-#           show_after = 0
-#         )
-#       )
-#     } else {
-#       progressr::handlers("null")
-#     }
-
-#     # Run inference on each chunk in parallel
-#     chunk_results <- with_progress({
-#       p <- progressor(steps = length(cell_chunks))
-#       future_lapply(cell_chunks, function(cells) {
-#         # Convert this chunk to a query list
-#         mat <- as.matrix(tnorm_counts[cells, , drop = FALSE])
-#         nrows <- nrow(mat)
-#         chunk_query <- vector("list", nrows)
-#         for (i in seq_len(nrows)) {
-#           chunk_query[[i]] <- list(data = mat[i, ])
-#         }
-
-#         # Run inference on this chunk
-#         res <- infer_from_model(
-#           model_path = file.path(model_dir, "model.mpk"),
-#           query = chunk_query,
-#           num_classes = as.integer(model_shapes$num_classes),
-#           num_features = as.integer(length(selected_features)),
-#           model_type = model_shapes$model_type,
-#           hidden1 = as.integer(model_shapes$hidden_layer1),
-#           hidden2 = as.integer(model_shapes$hidden_layer2),
-#           verbose = verbose,
-#           batch_size = batch_size,
-#           backend = backend
-#         )
-#         p() # Progress update per chunk
-#         res
-#       }, future.seed = TRUE)
-#     })
-
-#     # Combine the probabilities from all chunks
-#     probs_list <- lapply(chunk_results, `[[`, "probs")
-#     log_odds <- unlist(probs_list)
-#     #export_list <- list(probs = log_odds)
-#   }
-  
-#   # Check if log_odds has the expected dimensions
-#   if(length(log_odds) == dim(query_cds)[2] * model_shapes$num_classes){
-#     log_odds = matrix(log_odds, ncol = dim(query_cds)[2])
-#     log_odds = t(log_odds)
-#     if(is.null(labels)){
-#       labels <- 1:num_classes
-#     }
-#     colnames(log_odds) <- paste0("prob_", labels)
-#   } else {
-#     stop("Error in log odds dimensions of function output")
-#   }
-  
-#   softmax_rows <- function(mat) {
-#     shifted <- mat - apply(mat, 1, max)  # stability
-#     exp_shifted <- exp(shifted)
-#     exp_shifted / rowSums(exp_shifted)
-#   }
-  
-#   prob_mat  <- softmax_rows(log_odds)
-#   query_cds[[query_celldata_col]]<-labels[apply(prob_mat, 1, which.max)]
-#   if(return_probs){
-#     query_cds@meta.data <- cbind(query_cds@meta.data, prob_mat)
-#   }
-#   if (return_type=="object") {
-#     return(query_cds)
-#   } else {
-#     return(list(object=query_cds, training_output = list(probs = prob_mat)))
-#   }
-
-# }
 
 #' Extract the Shape of Every Tensor in a *burn* `.mpk` Checkpoint
 #'
@@ -655,19 +220,7 @@ check_genes_in_object <- function(object, genes, model_dir, assay = "RNA", verbo
     stop(paste("Assay", assay, "not found in the Seurat object."))
   }
 
-  # Detect Seurat version
-  seurat_version <- as.numeric(substr(packageVersion("Seurat"), 1, 1))
-
-  if (seurat_version >= 5) {
-    # Seurat v5 and above: Use the 'layer' argument
-    counts <- Seurat::GetAssayData(object, assay = assay, layer = "counts")
-    if (verbose) message("Seurat v5+ detected: using 'layer' argument.")
-  } else {
-      # Seurat v4 and below: Use the 'slot' argument
-    counts <- Seurat::GetAssayData(object, assay = assay, slot = "counts")
-    if (verbose) message("Seurat v4 or below detected: using 'slot' argument.")
-  }
-
+  counts <- get_counts_seurat(object)
   # Get available genes
   available_genes <- rownames(counts)
   object_type <- "Seurat"

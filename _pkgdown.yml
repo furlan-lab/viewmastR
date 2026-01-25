@@ -65,11 +65,13 @@ reference:
   - calculate_feature_dispersion
   - select_features
   - common_features
-  - common_variant_genes
+  - get_selected_features
+  - plot_feature_dispersion
+  - set_selected_features
   - sparseRowVariances
   - writeMMgz
   - plot_deconvolution
-  - viewmastR-package
+  - matches("viewmastR-package")
 articles:
 - title: Get Started
   navbar: Get Started
