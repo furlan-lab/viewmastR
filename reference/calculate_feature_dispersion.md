@@ -1,0 +1,60 @@
+# Calculate feature dispersion in a cell_data_set object
+
+Monocle3 aims to learn how cells transition through a biological program
+of gene expression changes in an experiment. Each cell can be viewed as
+a point in a high-dimensional space, where each dimension describes the
+expression of a different gene. Identifying the program of gene
+expression changes is equivalent to learning a *trajectory* that the
+cells follow through this space. However, the more dimensions there are
+in the analysis, the harder the trajectory is to learn. Fortunately,
+many genes typically co-vary with one another, and so the dimensionality
+of the data can be reduced with a wide variety of different algorithms.
+Monocle3 provides two different algorithms for dimensionality reduction
+via `reduce_dimensions` (UMAP and tSNE). The function
+`calculate_dispersion` is an optional step in the trajectory building
+process before `preprocess_cds`. After calculating dispersion for a
+cell_data_set using the `calculate_feature_dispersion` function, the
+`select_features` function allows the user to identify a set of genes
+that will be used in downstream dimensionality reduction methods. These
+genes and their disperion and mean expression can be plotted using the
+`plot_gene_dispersion` function.
+
+## Usage
+
+``` r
+calculate_feature_dispersion(
+  cds,
+  q = 3,
+  id_tag = "id",
+  symbol_tag = "gene_short_name",
+  method = "monocle3",
+  removeOutliers = TRUE,
+  chunk_size = 10000,
+  verbose = TRUE
+)
+```
+
+## Arguments
+
+- cds:
+
+  the cell_data_set upon which to perform this operation.
+
+- q:
+
+  the polynomial degree; default = 3.
+
+- id_tag:
+
+  the name of the feature data column corresponding to the unique id -
+  typically ENSEMBL id; default = "id".
+
+- symbol_tag:
+
+  the name of the feature data column corresponding to the gene symbol;
+  default = "gene_short_name".
+
+## Value
+
+an updated cell_data_set object with dispersion and mean expression
+saved

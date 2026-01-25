@@ -1,0 +1,133 @@
+------------------------------------------------------------------------
+
+![](reference/figures/viewmaster.png)
+
+------------------------------------------------------------------------
+
+[![Project Status: Active – The project has reached a stable, usable
+state and is being
+activelydeveloped.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![Lifecycle:stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html)
+
+viewmastR is a **[R](https://cran.r-project.org/)** framework for
+genomic cell type classification using the
+**[Burn](https://github.com/tracel-ai/burn)** machine learning library
+and its modules. viewmastR is a very flexible and customizable platform
+for labelling cell types in your data
+
+The main features of viewmastR are:
+
+- Use a blazingly fast machine learning approach to cell classification
+  according to a reference dataset
+- Augment data for rare cell types
+- Classify single cell profiles according to a reference of bulk data
+
+## Installation
+
+First you need to have an updated Rust installation. Go to this
+[site](https://www.rust-lang.org/tools/install) to learn how to install
+Rust.
+
+To install development version of viewmastR:
+
+``` r
+
+remotes::install_github("furlan-lab/viewmastR")
+```
+
+## How to start
+
+We have a few vignettes for
+
+- [`vignette("HowTo")`](https://furlan-lab.github.io/viewmastR/articles/HowTo.md)
+  to explore the basics of the package.
+- [`vignette("Augment")`](https://furlan-lab.github.io/viewmastR/articles/Augment.md)
+  to explore data augmentation
+- `vignette("BulkClassify")` to see how to use a bulk dataset to
+  classify single-cell profiles
+- [`vignette("Deconvolute")`](https://furlan-lab.github.io/viewmastR/articles/Deconvolute.md)
+  to see how to deconvolute a bulk dataset using single-cell profiles
+
+## License
+
+viewmastR has a dependency on Burn, an open source Rust machine learning
+library. viewmastR itself is written with an MIT license.
+
+## Acknowledgements
+
+Written by Scott Furlan.
+
+![](reference/figures/furlan_lab_logo.png)
+
+------------------------------------------------------------------------
+
+# Package index
+
+## viewmastR functions
+
+Main functions used in wiewmastR
+
+- [`viewmastR()`](https://furlan-lab.github.io/viewmastR/reference/viewmastR.md)
+  : Integrate and Train Models on Reference Dataset and (Optionally)
+  Infer on Query Datasets
+- [`viewmastR_infer()`](https://furlan-lab.github.io/viewmastR/reference/viewmastR_infer.md)
+  : ViewmastR inference
+- [`augment_data()`](https://furlan-lab.github.io/viewmastR/reference/augment_data.md)
+  : Augment data
+- [`splat_bulk_reference()`](https://furlan-lab.github.io/viewmastR/reference/splat_bulk_reference.md)
+  : Bulk reference
+- [`confusion_matrix()`](https://furlan-lab.github.io/viewmastR/reference/confusion_matrix.md)
+  : Confusion matrix
+- [`plot_training_data()`](https://furlan-lab.github.io/viewmastR/reference/plot_training_data.md)
+  : Training data plot
+- [`make3file()`](https://furlan-lab.github.io/viewmastR/reference/make3file.md)
+  : Export a Seurat Object to 10X-Style Files
+- [`deconvolve_bulk()`](https://furlan-lab.github.io/viewmastR/reference/deconvolve_bulk.md)
+  : Deconvolve bulk RNA-seq data using single-cell signatures
+
+## Additional functions
+
+Helper functions to add or modify elements
+
+- [`calculate_feature_dispersion()`](https://furlan-lab.github.io/viewmastR/reference/calculate_feature_dispersion.md)
+  : Calculate feature dispersion in a cell_data_set object
+- [`select_features()`](https://furlan-lab.github.io/viewmastR/reference/select_features.md)
+  : Select features in a cell_data_set for dimensionality reduction
+- [`common_features()`](https://furlan-lab.github.io/viewmastR/reference/common_features.md)
+  : Finds common features in a list of single cell objects
+- [`get_selected_features()`](https://furlan-lab.github.io/viewmastR/reference/get_selected_features.md)
+  : Get Selected Features for Ordering
+- [`plot_feature_dispersion()`](https://furlan-lab.github.io/viewmastR/reference/plot_feature_dispersion.md)
+  : Plot Feature Dispersion
+- [`set_selected_features()`](https://furlan-lab.github.io/viewmastR/reference/set_selected_features.md)
+  : Set Selected Features for Ordering
+- [`sparseRowVariances()`](https://furlan-lab.github.io/viewmastR/reference/sparseRowVariances.md)
+  : Helper function for summing sparse matrix groups
+- [`writeMMgz()`](https://furlan-lab.github.io/viewmastR/reference/writeMMgz.md)
+  : Write a compressed MatrixMarket file
+- [`plot_deconvolution()`](https://furlan-lab.github.io/viewmastR/reference/plot_deconvolution.md)
+  : Plot deconvolution results
+
+# Articles
+
+### Get Started
+
+- [How to use
+  viewmastR](https://furlan-lab.github.io/viewmastR/articles/HowTo.md):
+
+### Advanced
+
+- [A deeper look at
+  viewmastR](https://furlan-lab.github.io/viewmastR/articles/InDepth.md):
+- [How to use a bulk dataset as a reference for
+  viewmastR](https://furlan-lab.github.io/viewmastR/articles/BulkReference.md):
+- [How to augment data using
+  viewmastR](https://furlan-lab.github.io/viewmastR/articles/Augment.md):
+- [How to use viewmastR with saved
+  models](https://furlan-lab.github.io/viewmastR/articles/SavedModel.md):
+- [Extra
+  functions](https://furlan-lab.github.io/viewmastR/articles/Extras.md):
+- [How to use viewmastR with large query
+  objects](https://furlan-lab.github.io/viewmastR/articles/BigQuery.md):
+- [How to deconvolute bulk
+  RNAseq](https://furlan-lab.github.io/viewmastR/articles/Deconvolute.md):

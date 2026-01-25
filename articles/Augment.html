@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">viewmastR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -118,25 +118,25 @@ install Rust.</p>
 but don’t have the correct label. Let’s fix that.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/DimPlot_scCustom.html" class="external-link">DimPlot_scCustom</a></span><span class="op">(</span><span class="va">seu</span>, group.by <span class="op">=</span> <span class="st">"celltype"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-4-1.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="100%"></p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Idents.html" class="external-link">Idents</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span><span class="op">&lt;-</span><span class="va">seu</span><span class="op">$</span><span class="va">celltype</span></span>
 <span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/Cluster_Highlight_Plot.html" class="external-link">Cluster_Highlight_Plot</a></span><span class="op">(</span><span class="va">seu</span>, cluster_name <span class="op">=</span> <span class="st">"Treg"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-4-2.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-4-2.png" class="r-plt" alt="" width="100%"></p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/DimPlot_scCustom.html" class="external-link">DimPlot_scCustom</a></span><span class="op">(</span><span class="va">seu</span>, group.by <span class="op">=</span> <span class="st">"seurat_clusters"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-4-3.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-4-3.png" class="r-plt" alt="" width="100%"></p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/FeaturePlot_scCustom.html" class="external-link">FeaturePlot_scCustom</a></span><span class="op">(</span><span class="va">seu</span>, features <span class="op">=</span> <span class="st">"FOXP3"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-4-4.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-4-4.png" class="r-plt" alt="" width="100%"></p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">seu</span><span class="op">$</span><span class="va">celltype</span><span class="op">[</span><span class="va">seu</span><span class="op">$</span><span class="va">seurat_clusters</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="st">"9"</span><span class="op">]</span><span class="op">&lt;-</span><span class="st">"Treg"</span></span>
 <span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/DimPlot_scCustom.html" class="external-link">DimPlot_scCustom</a></span><span class="op">(</span><span class="va">seu</span>, group.by <span class="op">=</span> <span class="st">"celltype"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-5-1.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="100%"></p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Idents.html" class="external-link">Idents</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span><span class="op">&lt;-</span><span class="va">seu</span><span class="op">$</span><span class="va">celltype</span></span>
 <span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/Cluster_Highlight_Plot.html" class="external-link">Cluster_Highlight_Plot</a></span><span class="op">(</span><span class="va">seu</span>, cluster_name <span class="op">=</span> <span class="st">"Treg"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-5-2.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-5-2.png" class="r-plt" alt="" width="100%"></p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">celltype</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## </span></span>
@@ -158,24 +158,24 @@ any celltypes present above the norm_number down to that number.<a class="anchor
 <span><span class="va">seuA</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/FindVariableFeatures.html" class="external-link">FindVariableFeatures</a></span><span class="op">(</span><span class="va">seuA</span>, selection.method <span class="op">=</span> <span class="st">"vst"</span>, nfeatures <span class="op">=</span> <span class="fl">3000</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://satijalab.org/seurat/reference/NormalizeData.html" class="external-link">NormalizeData</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://satijalab.org/seurat/reference/ScaleData.html" class="external-link">ScaleData</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">seuA</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/RunPCA.html" class="external-link">RunPCA</a></span><span class="op">(</span><span class="va">seuA</span>, features <span class="op">=</span> <span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/VariableFeatures.html" class="external-link">VariableFeatures</a></span><span class="op">(</span>object <span class="op">=</span> <span class="va">seuA</span><span class="op">)</span>, npcs <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://satijalab.org/seurat/reference/ElbowPlot.html" class="external-link">ElbowPlot</a></span><span class="op">(</span><span class="va">seuA</span>, <span class="fl">50</span><span class="op">)</span> </span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-6-1.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="" width="100%"></p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">seuA</span><span class="op">&lt;-</span> <span class="fu"><a href="https://satijalab.org/seurat/reference/FindNeighbors.html" class="external-link">FindNeighbors</a></span><span class="op">(</span><span class="va">seuA</span>, dims <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">40</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://satijalab.org/seurat/reference/FindClusters.html" class="external-link">FindClusters</a></span><span class="op">(</span>resolution <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op"><a href="https://magrittr.tidyverse.org/reference/pipe.html" class="external-link">%&gt;%</a></span> <span class="fu"><a href="https://satijalab.org/seurat/reference/RunUMAP.html" class="external-link">RunUMAP</a></span><span class="op">(</span>dims <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">40</span>, n.components <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Modularity Optimizer version 1.3.0 by Ludo Waltman and Nees Jan van Eck</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Number of nodes: 7000</span></span>
-<span><span class="co">## Number of edges: 363862</span></span>
+<span><span class="co">## Number of edges: 356330</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Running Louvain algorithm...</span></span>
-<span><span class="co">## Maximum modularity in 10 random starts: 0.8526</span></span>
-<span><span class="co">## Number of communities: 18</span></span>
+<span><span class="co">## Maximum modularity in 10 random starts: 0.8509</span></span>
+<span><span class="co">## Number of communities: 17</span></span>
 <span><span class="co">## Elapsed time: 0 seconds</span></span></code></pre>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/DimPlot_scCustom.html" class="external-link">DimPlot_scCustom</a></span><span class="op">(</span><span class="va">seuA</span>, group.by <span class="op">=</span> <span class="st">"celltype"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-6-2.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-6-2.png" class="r-plt" alt="" width="100%"></p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/FeaturePlot_scCustom.html" class="external-link">FeaturePlot_scCustom</a></span><span class="op">(</span><span class="va">seuA</span>, features <span class="op">=</span> <span class="st">"FOXP3"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-6-3.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-6-3.png" class="r-plt" alt="" width="100%"></p>
 </div>
 <div class="section level2">
 <h2 id="now-we-train-another-pbmc-dataset-with-labels-for-tregs-that-are-questionable-and-see-if-we-can-find-them">Now we train another PBMC dataset with labels for tregs that are
@@ -184,51 +184,55 @@ questionable and see if we can find them<a class="anchor" aria-label="anchor" hr
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">ROOT_DIR3</span>, <span class="st">"240919_5p_seu.RDS"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/calculate_feature_dispersion.html">calculate_feature_dispersion</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span>
-<span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/select_features.html">select_features</a></span><span class="op">(</span><span class="va">seu</span>, top_n <span class="op">=</span> <span class="fl">10000</span>, logmean_ul <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, logmean_ll <span class="op">=</span> <span class="op">-</span><span class="fl">8</span><span class="op">)</span></span>
-<span><span class="va">vgq</span><span class="op">&lt;-</span><span class="fu">get_selected_features</span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span>
+<span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/calculate_feature_dispersion.html">calculate_feature_dispersion</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##   |                                                                              |                                                                      |   0%  |                                                                              |===================================                                   |  50%  |                                                                              |======================================================================| 100%</span></span></code></pre>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/select_features.html">select_features</a></span><span class="op">(</span><span class="va">seu</span>, top_n <span class="op">=</span> <span class="fl">10000</span>, logmean_ul <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, logmean_ll <span class="op">=</span> <span class="op">-</span><span class="fl">8</span><span class="op">)</span></span>
+<span><span class="va">vgq</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/get_selected_features.html">get_selected_features</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">seuA</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/calculate_feature_dispersion.html">calculate_feature_dispersion</a></span><span class="op">(</span><span class="va">seuA</span><span class="op">)</span></span>
-<span><span class="va">seuA</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/select_features.html">select_features</a></span><span class="op">(</span><span class="va">seuA</span>, top_n <span class="op">=</span> <span class="fl">10000</span>, logmean_ul <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, logmean_ll <span class="op">=</span> <span class="op">-</span><span class="fl">8</span><span class="op">)</span></span>
-<span><span class="va">vgr</span><span class="op">&lt;-</span><span class="fu">get_selected_features</span><span class="op">(</span><span class="va">seuA</span><span class="op">)</span></span>
+<span><span class="va">seuA</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/calculate_feature_dispersion.html">calculate_feature_dispersion</a></span><span class="op">(</span><span class="va">seuA</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##   |                                                                              |                                                                      |   0%  |                                                                              |======================================================================| 100%</span></span></code></pre>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">seuA</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/select_features.html">select_features</a></span><span class="op">(</span><span class="va">seuA</span>, top_n <span class="op">=</span> <span class="fl">10000</span>, logmean_ul <span class="op">=</span> <span class="op">-</span><span class="fl">1</span>, logmean_ll <span class="op">=</span> <span class="op">-</span><span class="fl">8</span><span class="op">)</span></span>
+<span><span class="va">vgr</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/get_selected_features.html">get_selected_features</a></span><span class="op">(</span><span class="va">seuA</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">vg</span><span class="op">&lt;-</span><span class="fu"><a href="https://generics.r-lib.org/reference/setops.html" class="external-link">intersect</a></span><span class="op">(</span><span class="va">vgq</span>, <span class="va">vgr</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/viewmastR.html">viewmastR</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">seuA</span>, ref_celldata_col <span class="op">=</span> <span class="st">"celltype"</span>, selected_features <span class="op">=</span> <span class="va">vg</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/DimPlot_scCustom.html" class="external-link">DimPlot_scCustom</a></span><span class="op">(</span><span class="va">seu</span>, group.by <span class="op">=</span> <span class="st">"mCelltype"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-7-1.png" width="100%"></p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<p><img src="Augment_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="100%"></p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#need to fix spelling error</span></span>
 <span><span class="co">#seu$mCelltype[seu$mCelltype=="Jeutrophils"]&lt;-"Neutrophils"</span></span>
 <span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/DimPlot_scCustom.html" class="external-link">DimPlot_scCustom</a></span><span class="op">(</span><span class="va">seu</span>, group.by <span class="op">=</span> <span class="st">"viewmastR_pred"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-7-2.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-7-2.png" class="r-plt" alt="" width="100%"></p>
 </div>
 <div class="section level2">
 <h2 id="a-confusion-matrix-showing-prediction-vs-ground-truth">A confusion matrix showing prediction vs ground truth<a class="anchor" aria-label="anchor" href="#a-confusion-matrix-showing-prediction-vs-ground-truth"></a>
 </h2>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">co</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu">pals</span><span class="fu">::</span><span class="fu"><a href="https://kwstat.github.io/pals/reference/discrete.html" class="external-link">polychrome</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">mCelltype</span>, <span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_pred</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">co</span><span class="op">)</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">mCelltype</span>, <span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_pred</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/confusion_matrix.html">confusion_matrix</a></span><span class="op">(</span>pred <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_pred</span><span class="op">)</span>, gt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">mCelltype</span><span class="op">)</span>, cols <span class="op">=</span> <span class="va">co</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-8-1.png" width="100%"></p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<p><img src="Augment_files/figure-html/unnamed-chunk-8-1.png" class="r-plt" alt="" width="100%"></p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Idents.html" class="external-link">Idents</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span><span class="op">&lt;-</span><span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_pred</span></span>
 <span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/VlnPlot_scCustom.html" class="external-link">VlnPlot_scCustom</a></span><span class="op">(</span><span class="va">seu</span>, features <span class="op">=</span> <span class="st">"FOXP3"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-8-2.png" width="100%"></p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<p><img src="Augment_files/figure-html/unnamed-chunk-8-2.png" class="r-plt" alt="" width="100%"></p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.github.io/seurat-object/reference/Idents.html" class="external-link">Idents</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span><span class="op">&lt;-</span><span class="va">seu</span><span class="op">$</span><span class="va">mCelltype</span></span>
 <span><span class="fu"><a href="https://samuel-marsh.github.io/scCustomize/reference/VlnPlot_scCustom.html" class="external-link">VlnPlot_scCustom</a></span><span class="op">(</span><span class="va">seu</span>, features <span class="op">=</span> <span class="st">"FOXP3"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Augment_files/figure-html/unnamed-chunk-8-3.png" width="100%"></p>
+<p><img src="Augment_files/figure-html/unnamed-chunk-8-3.png" class="r-plt" alt="" width="100%"></p>
 </div>
 <div class="section level2">
 <h2 id="appendix">Appendix<a class="anchor" aria-label="anchor" href="#appendix"></a>
 </h2>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## R version 4.4.3 (2025-02-28)</span></span>
 <span><span class="co">## Platform: aarch64-apple-darwin20</span></span>
-<span><span class="co">## Running under: macOS Sequoia 15.4.1</span></span>
+<span><span class="co">## Running under: macOS Sequoia 15.7.3</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Matrix products: default</span></span>
 <span><span class="co">## BLAS:   /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRblas.0.dylib </span></span>
@@ -244,112 +248,113 @@ questionable and see if we can find them<a class="anchor" aria-label="anchor" hr
 <span><span class="co">## [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## other attached packages:</span></span>
-<span><span class="co">## [1] future_1.58.0      magrittr_2.0.3     scCustomize_3.0.1  ggplot2_3.5.2     </span></span>
-<span><span class="co">## [5] Seurat_5.3.0       SeuratObject_5.1.0 sp_2.2-0           viewmastR_0.4.0   </span></span>
+<span><span class="co">## [1] future_1.69.0      magrittr_2.0.4     scCustomize_3.2.4  ggplot2_4.0.1     </span></span>
+<span><span class="co">## [5] Seurat_5.4.0       SeuratObject_5.3.0 sp_2.2-0           viewmastR_0.5.0   </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## loaded via a namespace (and not attached):</span></span>
 <span><span class="co">##   [1] fs_1.6.6                    matrixStats_1.5.0          </span></span>
 <span><span class="co">##   [3] spatstat.sparse_3.1-0       RcppMsgPack_0.2.4          </span></span>
 <span><span class="co">##   [5] lubridate_1.9.4             httr_1.4.7                 </span></span>
 <span><span class="co">##   [7] RColorBrewer_1.1-3          doParallel_1.0.17          </span></span>
-<span><span class="co">##   [9] tools_4.4.3                 sctransform_0.4.2          </span></span>
+<span><span class="co">##   [9] tools_4.4.3                 sctransform_0.4.3          </span></span>
 <span><span class="co">##  [11] backports_1.5.0             R6_2.6.1                   </span></span>
-<span><span class="co">##  [13] lazyeval_0.2.2              uwot_0.2.3                 </span></span>
+<span><span class="co">##  [13] lazyeval_0.2.2              uwot_0.2.4                 </span></span>
 <span><span class="co">##  [15] GetoptLong_1.0.5            withr_3.0.2                </span></span>
-<span><span class="co">##  [17] gridExtra_2.3               progressr_0.15.1           </span></span>
+<span><span class="co">##  [17] gridExtra_2.3               progressr_0.18.0           </span></span>
 <span><span class="co">##  [19] cli_3.6.5                   Biobase_2.66.0             </span></span>
-<span><span class="co">##  [21] textshaping_1.0.0           Cairo_1.6-2                </span></span>
-<span><span class="co">##  [23] spatstat.explore_3.4-3      fastDummies_1.7.5          </span></span>
+<span><span class="co">##  [21] textshaping_1.0.4           Cairo_1.7-0                </span></span>
+<span><span class="co">##  [23] spatstat.explore_3.7-0      fastDummies_1.7.5          </span></span>
 <span><span class="co">##  [25] labeling_0.4.3              prismatic_1.1.2            </span></span>
-<span><span class="co">##  [27] sass_0.4.10                 spatstat.data_3.1-6        </span></span>
-<span><span class="co">##  [29] proxy_0.4-27                ggridges_0.5.6             </span></span>
-<span><span class="co">##  [31] pbapply_1.7-2               pkgdown_2.1.1              </span></span>
-<span><span class="co">##  [33] systemfonts_1.2.2           foreign_0.8-90             </span></span>
-<span><span class="co">##  [35] R.utils_2.13.0              dichromat_2.0-0.1          </span></span>
-<span><span class="co">##  [37] parallelly_1.45.0           maps_3.4.2.1               </span></span>
-<span><span class="co">##  [39] pals_1.10                   rstudioapi_0.17.1          </span></span>
-<span><span class="co">##  [41] generics_0.1.4              shape_1.4.6.1              </span></span>
-<span><span class="co">##  [43] ica_1.0-3                   spatstat.random_3.4-1      </span></span>
-<span><span class="co">##  [45] dplyr_1.1.4                 Matrix_1.7-3               </span></span>
-<span><span class="co">##  [47] ggbeeswarm_0.7.2            S4Vectors_0.44.0           </span></span>
-<span><span class="co">##  [49] abind_1.4-8                 R.methodsS3_1.8.2          </span></span>
-<span><span class="co">##  [51] lifecycle_1.0.4             yaml_2.3.10                </span></span>
-<span><span class="co">##  [53] snakecase_0.11.1            SummarizedExperiment_1.36.0</span></span>
-<span><span class="co">##  [55] recipes_1.2.1               SparseArray_1.6.2          </span></span>
-<span><span class="co">##  [57] Rtsne_0.17                  paletteer_1.6.0            </span></span>
-<span><span class="co">##  [59] grid_4.4.3                  promises_1.3.3             </span></span>
-<span><span class="co">##  [61] crayon_1.5.3                miniUI_0.1.2               </span></span>
-<span><span class="co">##  [63] lattice_0.22-7              cowplot_1.1.3              </span></span>
-<span><span class="co">##  [65] mapproj_1.2.11              magick_2.9.0               </span></span>
-<span><span class="co">##  [67] pillar_1.10.2               knitr_1.50                 </span></span>
-<span><span class="co">##  [69] ComplexHeatmap_2.22.0       GenomicRanges_1.58.0       </span></span>
-<span><span class="co">##  [71] rjson_0.2.23                boot_1.3-31                </span></span>
-<span><span class="co">##  [73] future.apply_1.20.0         codetools_0.2-20           </span></span>
-<span><span class="co">##  [75] glue_1.8.0                  spatstat.univar_3.1-3      </span></span>
-<span><span class="co">##  [77] data.table_1.17.6           vctrs_0.6.5                </span></span>
-<span><span class="co">##  [79] png_0.1-8                   spam_2.11-1                </span></span>
-<span><span class="co">##  [81] Rdpack_2.6.4                gtable_0.3.6               </span></span>
-<span><span class="co">##  [83] rematch2_2.1.2              assertthat_0.2.1           </span></span>
-<span><span class="co">##  [85] cachem_1.1.0                gower_1.0.2                </span></span>
-<span><span class="co">##  [87] xfun_0.52                   rbibutils_2.3              </span></span>
-<span><span class="co">##  [89] S4Arrays_1.6.0              mime_0.13                  </span></span>
-<span><span class="co">##  [91] prodlim_2025.04.28          reformulas_0.4.0           </span></span>
-<span><span class="co">##  [93] survival_3.8-3              timeDate_4041.110          </span></span>
-<span><span class="co">##  [95] SingleCellExperiment_1.28.1 iterators_1.0.14           </span></span>
-<span><span class="co">##  [97] pbmcapply_1.5.1             hardhat_1.4.1              </span></span>
-<span><span class="co">##  [99] lava_1.8.1                  fitdistrplus_1.2-2         </span></span>
-<span><span class="co">## [101] ROCR_1.0-11                 ipred_0.9-15               </span></span>
-<span><span class="co">## [103] nlme_3.1-168                RcppAnnoy_0.0.22           </span></span>
-<span><span class="co">## [105] GenomeInfoDb_1.42.3         bslib_0.9.0                </span></span>
-<span><span class="co">## [107] irlba_2.3.5.1               vipor_0.4.7                </span></span>
-<span><span class="co">## [109] KernSmooth_2.23-26          rpart_4.1.24               </span></span>
-<span><span class="co">## [111] colorspace_2.1-1            BiocGenerics_0.52.0        </span></span>
-<span><span class="co">## [113] Hmisc_5.2-3                 nnet_7.3-20                </span></span>
-<span><span class="co">## [115] ggrastr_1.0.2               tidyselect_1.2.1           </span></span>
-<span><span class="co">## [117] compiler_4.4.3              htmlTable_2.4.3            </span></span>
-<span><span class="co">## [119] desc_1.4.3                  DelayedArray_0.32.0        </span></span>
-<span><span class="co">## [121] plotly_4.11.0               checkmate_2.3.2            </span></span>
-<span><span class="co">## [123] scales_1.4.0                lmtest_0.9-40              </span></span>
-<span><span class="co">## [125] stringr_1.5.1               digest_0.6.37              </span></span>
-<span><span class="co">## [127] goftest_1.2-3               spatstat.utils_3.1-4       </span></span>
-<span><span class="co">## [129] minqa_1.2.8                 rmarkdown_2.29             </span></span>
-<span><span class="co">## [131] XVector_0.46.0              htmltools_0.5.8.1          </span></span>
-<span><span class="co">## [133] pkgconfig_2.0.3             base64enc_0.1-3            </span></span>
-<span><span class="co">## [135] lme4_1.1-37                 sparseMatrixStats_1.18.0   </span></span>
-<span><span class="co">## [137] MatrixGenerics_1.18.1       fastmap_1.2.0              </span></span>
-<span><span class="co">## [139] rlang_1.1.6                 GlobalOptions_0.1.2        </span></span>
-<span><span class="co">## [141] htmlwidgets_1.6.4           UCSC.utils_1.2.0           </span></span>
-<span><span class="co">## [143] shiny_1.10.0                DelayedMatrixStats_1.28.1  </span></span>
-<span><span class="co">## [145] farver_2.1.2                jquerylib_0.1.4            </span></span>
-<span><span class="co">## [147] zoo_1.8-14                  jsonlite_2.0.0             </span></span>
-<span><span class="co">## [149] ModelMetrics_1.2.2.2        R.oo_1.27.0                </span></span>
-<span><span class="co">## [151] Formula_1.2-5               GenomeInfoDbData_1.2.13    </span></span>
-<span><span class="co">## [153] dotCall64_1.2               patchwork_1.3.1            </span></span>
-<span><span class="co">## [155] Rcpp_1.0.14                 reticulate_1.42.0          </span></span>
-<span><span class="co">## [157] stringi_1.8.7               pROC_1.18.5                </span></span>
-<span><span class="co">## [159] zlibbioc_1.52.0             MASS_7.3-65                </span></span>
-<span><span class="co">## [161] plyr_1.8.9                  parallel_4.4.3             </span></span>
-<span><span class="co">## [163] listenv_0.9.1               ggrepel_0.9.6              </span></span>
-<span><span class="co">## [165] forcats_1.0.0               deldir_2.0-4               </span></span>
-<span><span class="co">## [167] splines_4.4.3               tensor_1.5.1               </span></span>
-<span><span class="co">## [169] circlize_0.4.16             igraph_2.1.4               </span></span>
-<span><span class="co">## [171] spatstat.geom_3.4-1         RcppHNSW_0.6.0             </span></span>
-<span><span class="co">## [173] reshape2_1.4.4              stats4_4.4.3               </span></span>
-<span><span class="co">## [175] evaluate_1.0.4              ggprism_1.0.5              </span></span>
-<span><span class="co">## [177] nloptr_2.2.1                foreach_1.5.2              </span></span>
-<span><span class="co">## [179] httpuv_1.6.16               RANN_2.6.2                 </span></span>
-<span><span class="co">## [181] tidyr_1.3.1                 purrr_1.0.4                </span></span>
-<span><span class="co">## [183] polyclip_1.10-7             clue_0.3-66                </span></span>
-<span><span class="co">## [185] scattermore_1.2             janitor_2.2.1              </span></span>
-<span><span class="co">## [187] xtable_1.8-4                monocle3_1.3.7             </span></span>
-<span><span class="co">## [189] e1071_1.7-16                RSpectra_0.16-2            </span></span>
-<span><span class="co">## [191] later_1.4.2                 viridisLite_0.4.2          </span></span>
-<span><span class="co">## [193] class_7.3-23                ragg_1.4.0                 </span></span>
-<span><span class="co">## [195] tibble_3.3.0                beeswarm_0.4.0             </span></span>
-<span><span class="co">## [197] IRanges_2.40.1              cluster_2.1.8.1            </span></span>
-<span><span class="co">## [199] timechange_0.3.0            globals_0.18.0             </span></span>
-<span><span class="co">## [201] caret_7.0-1</span></span></code></pre>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<span><span class="co">##  [27] sass_0.4.10                 S7_0.2.1                   </span></span>
+<span><span class="co">##  [29] spatstat.data_3.1-9         proxy_0.4-29               </span></span>
+<span><span class="co">##  [31] ggridges_0.5.7              pbapply_1.7-4              </span></span>
+<span><span class="co">##  [33] pkgdown_2.2.0               systemfonts_1.3.1          </span></span>
+<span><span class="co">##  [35] foreign_0.8-90              R.utils_2.13.0             </span></span>
+<span><span class="co">##  [37] dichromat_2.0-0.1           parallelly_1.46.1          </span></span>
+<span><span class="co">##  [39] maps_3.4.2.1                mcprogress_0.1.1           </span></span>
+<span><span class="co">##  [41] pals_1.10                   rstudioapi_0.18.0          </span></span>
+<span><span class="co">##  [43] generics_0.1.4              shape_1.4.6.1              </span></span>
+<span><span class="co">##  [45] ica_1.0-3                   spatstat.random_3.4-4      </span></span>
+<span><span class="co">##  [47] dplyr_1.1.4                 Matrix_1.7-3               </span></span>
+<span><span class="co">##  [49] ggbeeswarm_0.7.3            S4Vectors_0.44.0           </span></span>
+<span><span class="co">##  [51] abind_1.4-8                 R.methodsS3_1.8.2          </span></span>
+<span><span class="co">##  [53] lifecycle_1.0.5             yaml_2.3.12                </span></span>
+<span><span class="co">##  [55] snakecase_0.11.1            SummarizedExperiment_1.36.0</span></span>
+<span><span class="co">##  [57] recipes_1.3.1               SparseArray_1.6.2          </span></span>
+<span><span class="co">##  [59] Rtsne_0.17                  paletteer_1.7.0            </span></span>
+<span><span class="co">##  [61] grid_4.4.3                  promises_1.5.0             </span></span>
+<span><span class="co">##  [63] crayon_1.5.3                miniUI_0.1.2               </span></span>
+<span><span class="co">##  [65] lattice_0.22-7              cowplot_1.2.0              </span></span>
+<span><span class="co">##  [67] mapproj_1.2.11              magick_2.9.0               </span></span>
+<span><span class="co">##  [69] pillar_1.11.1               knitr_1.51                 </span></span>
+<span><span class="co">##  [71] ComplexHeatmap_2.22.0       GenomicRanges_1.58.0       </span></span>
+<span><span class="co">##  [73] rjson_0.2.23                boot_1.3-31                </span></span>
+<span><span class="co">##  [75] future.apply_1.20.1         codetools_0.2-20           </span></span>
+<span><span class="co">##  [77] glue_1.8.0                  spatstat.univar_3.1-6      </span></span>
+<span><span class="co">##  [79] data.table_1.18.0           vctrs_0.7.1                </span></span>
+<span><span class="co">##  [81] png_0.1-8                   spam_2.11-3                </span></span>
+<span><span class="co">##  [83] Rdpack_2.6.4                gtable_0.3.6               </span></span>
+<span><span class="co">##  [85] rematch2_2.1.2              assertthat_0.2.1           </span></span>
+<span><span class="co">##  [87] cachem_1.1.0                gower_1.0.2                </span></span>
+<span><span class="co">##  [89] xfun_0.56                   rbibutils_2.3              </span></span>
+<span><span class="co">##  [91] S4Arrays_1.6.0              mime_0.13                  </span></span>
+<span><span class="co">##  [93] prodlim_2025.04.28          reformulas_0.4.0           </span></span>
+<span><span class="co">##  [95] survival_3.8-3              timeDate_4051.111          </span></span>
+<span><span class="co">##  [97] SingleCellExperiment_1.28.1 iterators_1.0.14           </span></span>
+<span><span class="co">##  [99] pbmcapply_1.5.1             hardhat_1.4.2              </span></span>
+<span><span class="co">## [101] lava_1.8.2                  fitdistrplus_1.2-6         </span></span>
+<span><span class="co">## [103] ROCR_1.0-12                 ipred_0.9-15               </span></span>
+<span><span class="co">## [105] nlme_3.1-168                RcppAnnoy_0.0.23           </span></span>
+<span><span class="co">## [107] GenomeInfoDb_1.42.3         bslib_0.9.0                </span></span>
+<span><span class="co">## [109] irlba_2.3.5.1               vipor_0.4.7                </span></span>
+<span><span class="co">## [111] KernSmooth_2.23-26          otel_0.2.0                 </span></span>
+<span><span class="co">## [113] rpart_4.1.24                colorspace_2.1-2           </span></span>
+<span><span class="co">## [115] BiocGenerics_0.52.0         Hmisc_5.2-5                </span></span>
+<span><span class="co">## [117] nnet_7.3-20                 ggrastr_1.0.2              </span></span>
+<span><span class="co">## [119] tidyselect_1.2.1            compiler_4.4.3             </span></span>
+<span><span class="co">## [121] htmlTable_2.4.3             desc_1.4.3                 </span></span>
+<span><span class="co">## [123] DelayedArray_0.32.0         plotly_4.12.0              </span></span>
+<span><span class="co">## [125] checkmate_2.3.3             scales_1.4.0               </span></span>
+<span><span class="co">## [127] lmtest_0.9-40               stringr_1.6.0              </span></span>
+<span><span class="co">## [129] digest_0.6.39               goftest_1.2-3              </span></span>
+<span><span class="co">## [131] spatstat.utils_3.2-1        minqa_1.2.8                </span></span>
+<span><span class="co">## [133] rmarkdown_2.30              XVector_0.46.0             </span></span>
+<span><span class="co">## [135] htmltools_0.5.9             pkgconfig_2.0.3            </span></span>
+<span><span class="co">## [137] base64enc_0.1-3             lme4_1.1-37                </span></span>
+<span><span class="co">## [139] sparseMatrixStats_1.18.0    MatrixGenerics_1.18.1      </span></span>
+<span><span class="co">## [141] fastmap_1.2.0               rlang_1.1.7                </span></span>
+<span><span class="co">## [143] GlobalOptions_0.1.3         htmlwidgets_1.6.4          </span></span>
+<span><span class="co">## [145] UCSC.utils_1.2.0            shiny_1.12.1               </span></span>
+<span><span class="co">## [147] DelayedMatrixStats_1.28.1   farver_2.1.2               </span></span>
+<span><span class="co">## [149] jquerylib_0.1.4             zoo_1.8-15                 </span></span>
+<span><span class="co">## [151] jsonlite_2.0.0              ModelMetrics_1.2.2.2       </span></span>
+<span><span class="co">## [153] R.oo_1.27.0                 Formula_1.2-5              </span></span>
+<span><span class="co">## [155] GenomeInfoDbData_1.2.13     dotCall64_1.2              </span></span>
+<span><span class="co">## [157] patchwork_1.3.2             Rcpp_1.1.1                 </span></span>
+<span><span class="co">## [159] reticulate_1.44.1           stringi_1.8.7              </span></span>
+<span><span class="co">## [161] pROC_1.19.0.1               zlibbioc_1.52.0            </span></span>
+<span><span class="co">## [163] MASS_7.3-65                 plyr_1.8.9                 </span></span>
+<span><span class="co">## [165] parallel_4.4.3              listenv_0.10.0             </span></span>
+<span><span class="co">## [167] ggrepel_0.9.6               forcats_1.0.1              </span></span>
+<span><span class="co">## [169] deldir_2.0-4                splines_4.4.3              </span></span>
+<span><span class="co">## [171] tensor_1.5.1                circlize_0.4.17            </span></span>
+<span><span class="co">## [173] igraph_2.2.1                spatstat.geom_3.7-0        </span></span>
+<span><span class="co">## [175] RcppHNSW_0.6.0              reshape2_1.4.5             </span></span>
+<span><span class="co">## [177] stats4_4.4.3                evaluate_1.0.5             </span></span>
+<span><span class="co">## [179] ggprism_1.0.7               nloptr_2.2.1               </span></span>
+<span><span class="co">## [181] foreach_1.5.2               httpuv_1.6.16              </span></span>
+<span><span class="co">## [183] RANN_2.6.2                  tidyr_1.3.2                </span></span>
+<span><span class="co">## [185] purrr_1.2.1                 polyclip_1.10-7            </span></span>
+<span><span class="co">## [187] clue_0.3-66                 scattermore_1.2            </span></span>
+<span><span class="co">## [189] janitor_2.2.1               xtable_1.8-4               </span></span>
+<span><span class="co">## [191] monocle3_1.3.7              e1071_1.7-17               </span></span>
+<span><span class="co">## [193] RSpectra_0.16-2             later_1.4.5                </span></span>
+<span><span class="co">## [195] viridisLite_0.4.2           class_7.3-23               </span></span>
+<span><span class="co">## [197] ragg_1.5.0                  tibble_3.3.1               </span></span>
+<span><span class="co">## [199] beeswarm_0.4.0              IRanges_2.40.1             </span></span>
+<span><span class="co">## [201] cluster_2.1.8.1             timechange_0.3.0           </span></span>
+<span><span class="co">## [203] globals_0.18.0              caret_7.0-1</span></span></code></pre>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] "/Users/sfurlan/develop/viewmastR/vignettes"</span></span></code></pre>
 </div>
@@ -364,7 +369,7 @@ questionable and see if we can find them<a class="anchor" aria-label="anchor" hr
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

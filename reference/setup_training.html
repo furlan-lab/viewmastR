@@ -15,7 +15,7 @@ testing splits."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">viewmastR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -79,9 +79,8 @@ testing splits.</p>
 <span>  LSImethod <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  addbias <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  return_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"list"</span>, <span class="st">"matrix"</span>, <span class="st">"S4obj"</span><span class="op">)</span>,</span>
-<span>  debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  <span class="va">...</span></span>
+<span>  return_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sparse_mat"</span>, <span class="st">"list"</span>, <span class="st">"matrix"</span>, <span class="st">"S4obj"</span><span class="op">)</span>,</span>
+<span>  debug <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -139,15 +138,12 @@ TF-IDF takes precedence and scaling is ignored.</p></dd>
 
 
 <dt id="arg-return-type">return_type<a class="anchor" aria-label="anchor" href="#arg-return-type"></a></dt>
-<dd><p>A character string specifying the return format. One of <code>"list"</code>, <code>"matrix"</code>, or <code>"S4obj"</code>.</p></dd>
+<dd><p>A character string specifying the return format. One of <code>"sparse_mat"</code>, <code>"list"</code>,
+<code>"matrix"</code>, or <code>"S4obj"</code>.</p></dd>
 
 
 <dt id="arg-debug">debug<a class="anchor" aria-label="anchor" href="#arg-debug"></a></dt>
 <dd><p>A logical indicating whether to print debugging messages.</p></dd>
-
-
-<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments passed to internal functions.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -161,9 +157,12 @@ normalizes both datasets, performs optional TF-IDF or scaling, and returns train
 along with a query dataset.</p></li>
 <li><p>If <code>query_cds</code> is <code>NULL</code>, it behaves like a reference-only setup, returning just training and
 testing splits from <code>ref_cds</code>.</p></li>
-</ul><p>The returned object depends on <code>return_type</code>:</p><ul><li><p><code>"matrix"</code>: A list of matrices containing <code>Xtrain_data</code>, <code>Xtest_data</code>, <code>Ytrain_label</code>, <code>Ytest_label</code>,
-optionally <code>query</code>, as well as <code>label_text</code> and <code>features</code>.</p></li>
-<li><p><code>"list"</code>: A list of lists, where each cell is represented as a <code>list</code> with <code>data</code> and <code>target</code> elements.</p></li>
+</ul><p>The returned object depends on <code>return_type</code>:</p><ul><li><p><code>"sparse_mat"</code>: A list containing sparse matrices (<code>dgCMatrix</code>) for train/test/query,
+labels (0-indexed integers), size factors, and metadata.</p></li>
+<li><p><code>"matrix"</code>: A list of matrices containing <code>Xtrain_data</code>, <code>Xtest_data</code>, <code>Ytrain_label</code>,
+<code>Ytest_label</code>, optionally <code>query</code>, as well as <code>label_text</code> and <code>features</code>.</p></li>
+<li><p><code>"list"</code>: A list of lists, where each cell is represented as a <code>list</code> with <code>data</code> and
+<code>target</code> elements.</p></li>
 <li><p><code>"S4obj"</code>: A list of S4 objects <code>training_set</code>, <code>test_set</code>, and optionally <code>query_set</code>,
 each containing training items and metadata.</p></li>
 </ul></div>
@@ -180,7 +179,7 @@ each containing training items and metadata.</p></li>
 <span class="r-in"><span>  train_frac <span class="op">=</span> <span class="fl">0.8</span>,</span></span>
 <span class="r-in"><span>  tf_idf <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
 <span class="r-in"><span>  scale <span class="op">=</span> <span class="cn">FALSE</span>,</span></span>
-<span class="r-in"><span>  return_type <span class="op">=</span> <span class="st">"list"</span></span></span>
+<span class="r-in"><span>  return_type <span class="op">=</span> <span class="st">"sparse_mat"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Example with reference only:</span></span></span>
@@ -205,7 +204,7 @@ each containing training items and metadata.</p></li>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

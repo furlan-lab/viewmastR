@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">viewmastR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -109,21 +109,21 @@ install Rust.</p>
 <span><span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">ROOT_DIR1</span>, <span class="st">"240813_final_object.RDS"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#reference dataset</span></span>
 <span><span class="va">seur</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">ROOT_DIR2</span>, <span class="st">"230329_rnaAugmented_seurat.RDS"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">vg</span> <span class="op">&lt;-</span> <span class="fu">get_selected_features</span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">vg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_selected_features.html">get_selected_features</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="now-you-run-viewmastr">Now you run viewmastR<a class="anchor" aria-label="anchor" href="#now-you-run-viewmastr"></a>
 </h2>
 <p>The model path is specified using the ‘dir’ argument</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/viewmastR.html">viewmastR</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">seur</span>, ref_celldata_col <span class="op">=</span> <span class="st">"SFClassification"</span>, selected_features <span class="op">=</span> <span class="va">vg</span>, dir <span class="op">=</span> <span class="st">"/tmp/sc_local"</span>, max_epochs <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/viewmastR.html">viewmastR</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">seur</span>, ref_celldata_col <span class="op">=</span> <span class="st">"SFClassification"</span>, selected_features <span class="op">=</span> <span class="va">vg</span>, model_dir <span class="op">=</span>  <span class="st">"/tmp/sc_local"</span>, max_epochs <span class="op">=</span> <span class="fl">3</span>, return_probs <span class="op">=</span> <span class="cn">T</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="a-look-at-the-predictions">A look at the predictions<a class="anchor" aria-label="anchor" href="#a-look-at-the-predictions"></a>
 </h2>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">seu</span>, group.by <span class="op">=</span> <span class="st">"viewmastR_pred"</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
-<p><img src="SavedModel_files/figure-html/unnamed-chunk-5-1.png" width="100%"></p>
+<p><img src="SavedModel_files/figure-html/unnamed-chunk-5-1.png" class="r-plt" alt="" width="100%"></p>
 </div>
 <div class="section level2">
 <h2 id="run-inference">Run inference<a class="anchor" aria-label="anchor" href="#run-inference"></a>
@@ -136,27 +136,107 @@ vector of labels can be provided. Additionally, instead of returning the
 input object with predictions added, you may instead return the
 probabilities using the return_probs argument.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/viewmastR_infer.html">viewmastR_infer</a></span><span class="op">(</span><span class="va">seu</span>, model_dir <span class="op">=</span> <span class="st">"/tmp/sc_local"</span>, <span class="va">vg</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">SFClassification</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">seu</span>, group.by <span class="op">=</span> <span class="st">"viewmastR_inferred"</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
-<p><img src="SavedModel_files/figure-html/unnamed-chunk-6-1.png" width="100%"></p>
+<code class="sourceCode R"><span><span class="va">seu_infer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/viewmastR_infer.html">viewmastR_infer</a></span><span class="op">(</span><span class="va">seu</span>, model_dir <span class="op">=</span> <span class="st">"/tmp/sc_local"</span>, <span class="va">vg</span>, </span>
+<span>                              labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">SFClassification</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                              return_probs <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">seu_infer</span>, group.by <span class="op">=</span> <span class="st">"viewmastR_inferred"</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
+<p><img src="SavedModel_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="" width="100%"></p>
 </div>
 <div class="section level2">
-<h2 id="a-confusion-matrix-comparing-the-results-using-viewmastr-to-viewmastr_infer-having-saved-the-model-to-disc-">A confusion matrix comparing the results using viewmastR to
-viewmastR_infer having saved the model to disc.<a class="anchor" aria-label="anchor" href="#a-confusion-matrix-comparing-the-results-using-viewmastr-to-viewmastr_infer-having-saved-the-model-to-disc-"></a>
+<h2 id="comparing-training-time-vs-saved-model-inference">Comparing training-time vs saved-model inference<a class="anchor" aria-label="anchor" href="#comparing-training-time-vs-saved-model-inference"></a>
 </h2>
-<p>Open question as to why a small number of cells are different :)</p>
+<p>When comparing predictions from viewmastR (training with simultaneous
+query inference) to viewmastR_infer (inference using a saved model), you
+may observe a small number of cells (~0.05%) with different
+classifications. These differences arise from minor numerical variations
+between the two computation paths.</p>
+<p>Importantly, the disagreements occur exclusively for cells at
+classification boundaries—cases where the model assigns similar
+probabilities to multiple cell types. As shown below, the disagreeing
+cells typically have two or more competing classes with probabilities
+within a few percentage points of each other, indicating genuine
+ambiguity where either classification is reasonable.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/confusion_matrix.html">confusion_matrix</a></span><span class="op">(</span>pred <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_inferred</span><span class="op">)</span>, gt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_pred</span><span class="op">)</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
-<p><img src="SavedModel_files/figure-html/unnamed-chunk-7-1.png" width="100%"></p>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/confusion_matrix.html">confusion_matrix</a></span><span class="op">(</span>pred <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu_infer</span><span class="op">$</span><span class="va">viewmastR_inferred</span><span class="op">)</span>, gt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_pred</span><span class="op">)</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
+<p><img src="SavedModel_files/figure-html/unnamed-chunk-7-1.png" class="r-plt" alt="" width="100%"></p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">disagree_idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_pred</span> <span class="op">!=</span> <span class="va">seu_infer</span><span class="op">$</span><span class="va">viewmastR_inferred</span><span class="op">)</span></span>
+<span><span class="co"># Show what changed</span></span>
+<span><span class="va">disagree_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  cell <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span><span class="op">[</span><span class="va">disagree_idx</span><span class="op">]</span>,</span>
+<span>  viewmastR_pred <span class="op">=</span> <span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_pred</span><span class="op">[</span><span class="va">disagree_idx</span><span class="op">]</span>,</span>
+<span>  viewmastR_inferred <span class="op">=</span> <span class="va">seu_infer</span><span class="op">$</span><span class="va">viewmastR_inferred</span><span class="op">[</span><span class="va">disagree_idx</span><span class="op">]</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">disagree_df</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##                                  cell viewmastR_pred viewmastR_inferred</span></span>
+<span><span class="co">## CACACCTTCATAACCG-1 CACACCTTCATAACCG-1       18_CD4.M           17_CD4.N</span></span></code></pre>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">prob_cols</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">seu</span><span class="op">@</span><span class="va">meta.data</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">grep</a></span><span class="op">(</span><span class="st">"prob"</span>, <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">seu</span><span class="op">@</span><span class="va">meta.data</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span></span>
+<span><span class="co"># For disagreeing cells, compare probabilities</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">disagree_idx</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">probs_direct</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">seu</span><span class="op">@</span><span class="va">meta.data</span><span class="op">[</span><span class="va">disagree_idx</span>, <span class="va">prob_cols</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
+<span>  <span class="va">probs_inferred</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">seu_infer</span><span class="op">@</span><span class="va">meta.data</span><span class="op">[</span><span class="va">disagree_idx</span>, <span class="va">prob_cols</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="co"># Calculate difference</span></span>
+<span>  <span class="va">prob_diff</span> <span class="op">&lt;-</span> <span class="va">probs_direct</span> <span class="op">-</span> <span class="va">probs_inferred</span></span>
+<span>  </span>
+<span>  <span class="co"># Show summary of absolute differences</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"\nAbsolute probability differences (disagreeing cells):\n"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">prob_diff</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="co"># For each disagreeing cell, show the two predictions and their probs</span></span>
+<span>  <span class="va">disagree_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    cell <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span><span class="op">[</span><span class="va">disagree_idx</span><span class="op">]</span>,</span>
+<span>    pred_direct <span class="op">=</span> <span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_pred</span><span class="op">[</span><span class="va">disagree_idx</span><span class="op">]</span>,</span>
+<span>    pred_inferred <span class="op">=</span> <span class="va">seu_infer</span><span class="op">$</span><span class="va">viewmastR_inferred</span><span class="op">[</span><span class="va">disagree_idx</span><span class="op">]</span>,</span>
+<span>    prob_direct <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">probs_direct</span>, <span class="fl">1</span>, <span class="va">max</span><span class="op">)</span>,</span>
+<span>    prob_inferred <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">probs_inferred</span>, <span class="fl">1</span>, <span class="va">max</span><span class="op">)</span>,</span>
+<span>    max_prob_diff <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">prob_diff</span><span class="op">)</span>, <span class="fl">1</span>, <span class="va">max</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">disagree_df</span><span class="op">)</span></span>
+<span>  </span>
+<span>  <span class="co"># Show the actual probabilities for the two competing classes</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">disagree_df</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">cell_idx</span> <span class="op">&lt;-</span> <span class="va">disagree_idx</span><span class="op">[</span><span class="va">i</span><span class="op">]</span></span>
+<span>    <span class="va">class_direct</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">disagree_df</span><span class="op">$</span><span class="va">pred_direct</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="va">class_inferred</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">disagree_df</span><span class="op">$</span><span class="va">pred_inferred</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span></span>
+<span>    </span>
+<span>    <span class="va">col_direct</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"prob_"</span>, <span class="va">class_direct</span><span class="op">)</span></span>
+<span>    <span class="va">col_inferred</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"prob_"</span>, <span class="va">class_inferred</span><span class="op">)</span></span>
+<span>    </span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"\nCell %s:\n"</span>, <span class="va">disagree_df</span><span class="op">$</span><span class="va">cell</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Direct:   %s = %.6f, %s = %.6f\n"</span>, </span>
+<span>                <span class="va">class_direct</span>, <span class="va">seu</span><span class="op">@</span><span class="va">meta.data</span><span class="op">[</span><span class="va">cell_idx</span>, <span class="va">col_direct</span><span class="op">]</span>,</span>
+<span>                <span class="va">class_inferred</span>, <span class="va">seu</span><span class="op">@</span><span class="va">meta.data</span><span class="op">[</span><span class="va">cell_idx</span>, <span class="va">col_inferred</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"  Inferred: %s = %.6f, %s = %.6f\n"</span>, </span>
+<span>                <span class="va">class_direct</span>, <span class="va">seu_infer</span><span class="op">@</span><span class="va">meta.data</span><span class="op">[</span><span class="va">cell_idx</span>, <span class="va">col_direct</span><span class="op">]</span>,</span>
+<span>                <span class="va">class_inferred</span>, <span class="va">seu_infer</span><span class="op">@</span><span class="va">meta.data</span><span class="op">[</span><span class="va">cell_idx</span>, <span class="va">col_inferred</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<pre><code><span><span class="co">## </span></span>
+<span><span class="co">## Absolute probability differences (disagreeing cells):</span></span>
+<span><span class="co">##      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. </span></span>
+<span><span class="co">## 1.324e-05 1.179e-04 2.310e-04 6.432e-03 6.525e-04 6.754e-02 </span></span>
+<span><span class="co">##                                  cell pred_direct pred_inferred prob_direct</span></span>
+<span><span class="co">## CACACCTTCATAACCG-1 CACACCTTCATAACCG-1    18_CD4.M      17_CD4.N   0.5258426</span></span>
+<span><span class="co">##                    prob_inferred max_prob_diff</span></span>
+<span><span class="co">## CACACCTTCATAACCG-1      0.460326    0.06753648</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Cell CACACCTTCATAACCG-1:</span></span>
+<span><span class="co">##   Direct:   18_CD4.M = 0.525843, 17_CD4.N = 0.442731</span></span>
+<span><span class="co">##   Inferred: 18_CD4.M = 0.458306, 17_CD4.N = 0.460326</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="appendix">Appendix<a class="anchor" aria-label="anchor" href="#appendix"></a>
 </h2>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html" class="external-link">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## R version 4.4.3 (2025-02-28)</span></span>
 <span><span class="co">## Platform: aarch64-apple-darwin20</span></span>
-<span><span class="co">## Running under: macOS Sequoia 15.4.1</span></span>
+<span><span class="co">## Running under: macOS Sequoia 15.7.3</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Matrix products: default</span></span>
 <span><span class="co">## BLAS:   /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRblas.0.dylib </span></span>
@@ -172,111 +252,113 @@ viewmastR_infer having saved the model to disc.<a class="anchor" aria-label="anc
 <span><span class="co">## [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## other attached packages:</span></span>
-<span><span class="co">## [1] ggplot2_3.5.2      Seurat_5.3.0       SeuratObject_5.1.0 sp_2.2-0          </span></span>
-<span><span class="co">## [5] viewmastR_0.4.0   </span></span>
+<span><span class="co">## [1] ggplot2_4.0.1      Seurat_5.4.0       SeuratObject_5.3.0 sp_2.2-0          </span></span>
+<span><span class="co">## [5] viewmastR_0.5.0   </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## loaded via a namespace (and not attached):</span></span>
 <span><span class="co">##   [1] fs_1.6.6                    matrixStats_1.5.0          </span></span>
 <span><span class="co">##   [3] spatstat.sparse_3.1-0       RcppMsgPack_0.2.4          </span></span>
 <span><span class="co">##   [5] lubridate_1.9.4             httr_1.4.7                 </span></span>
 <span><span class="co">##   [7] RColorBrewer_1.1-3          doParallel_1.0.17          </span></span>
-<span><span class="co">##   [9] tools_4.4.3                 sctransform_0.4.2          </span></span>
+<span><span class="co">##   [9] tools_4.4.3                 sctransform_0.4.3          </span></span>
 <span><span class="co">##  [11] backports_1.5.0             R6_2.6.1                   </span></span>
-<span><span class="co">##  [13] lazyeval_0.2.2              uwot_0.2.3                 </span></span>
+<span><span class="co">##  [13] lazyeval_0.2.2              uwot_0.2.4                 </span></span>
 <span><span class="co">##  [15] GetoptLong_1.0.5            withr_3.0.2                </span></span>
-<span><span class="co">##  [17] gridExtra_2.3               scCustomize_3.0.1          </span></span>
-<span><span class="co">##  [19] progressr_0.15.1            cli_3.6.5                  </span></span>
-<span><span class="co">##  [21] Biobase_2.66.0              textshaping_1.0.0          </span></span>
-<span><span class="co">##  [23] Cairo_1.6-2                 spatstat.explore_3.4-3     </span></span>
+<span><span class="co">##  [17] gridExtra_2.3               scCustomize_3.2.4          </span></span>
+<span><span class="co">##  [19] progressr_0.18.0            cli_3.6.5                  </span></span>
+<span><span class="co">##  [21] Biobase_2.66.0              textshaping_1.0.4          </span></span>
+<span><span class="co">##  [23] Cairo_1.7-0                 spatstat.explore_3.7-0     </span></span>
 <span><span class="co">##  [25] fastDummies_1.7.5           labeling_0.4.3             </span></span>
-<span><span class="co">##  [27] sass_0.4.10                 spatstat.data_3.1-6        </span></span>
-<span><span class="co">##  [29] proxy_0.4-27                ggridges_0.5.6             </span></span>
-<span><span class="co">##  [31] pbapply_1.7-2               pkgdown_2.1.1              </span></span>
-<span><span class="co">##  [33] systemfonts_1.2.2           foreign_0.8-90             </span></span>
-<span><span class="co">##  [35] R.utils_2.13.0              dichromat_2.0-0.1          </span></span>
-<span><span class="co">##  [37] parallelly_1.45.0           rstudioapi_0.17.1          </span></span>
-<span><span class="co">##  [39] generics_0.1.4              shape_1.4.6.1              </span></span>
-<span><span class="co">##  [41] ica_1.0-3                   spatstat.random_3.4-1      </span></span>
-<span><span class="co">##  [43] dplyr_1.1.4                 Matrix_1.7-3               </span></span>
-<span><span class="co">##  [45] ggbeeswarm_0.7.2            S4Vectors_0.44.0           </span></span>
-<span><span class="co">##  [47] abind_1.4-8                 R.methodsS3_1.8.2          </span></span>
-<span><span class="co">##  [49] lifecycle_1.0.4             yaml_2.3.10                </span></span>
-<span><span class="co">##  [51] snakecase_0.11.1            SummarizedExperiment_1.36.0</span></span>
-<span><span class="co">##  [53] recipes_1.2.1               SparseArray_1.6.2          </span></span>
-<span><span class="co">##  [55] Rtsne_0.17                  paletteer_1.6.0            </span></span>
-<span><span class="co">##  [57] grid_4.4.3                  promises_1.3.3             </span></span>
-<span><span class="co">##  [59] crayon_1.5.3                miniUI_0.1.2               </span></span>
-<span><span class="co">##  [61] lattice_0.22-7              cowplot_1.1.3              </span></span>
-<span><span class="co">##  [63] magick_2.9.0                pillar_1.10.2              </span></span>
-<span><span class="co">##  [65] knitr_1.50                  ComplexHeatmap_2.22.0      </span></span>
-<span><span class="co">##  [67] GenomicRanges_1.58.0        rjson_0.2.23               </span></span>
-<span><span class="co">##  [69] boot_1.3-31                 future.apply_1.20.0        </span></span>
-<span><span class="co">##  [71] codetools_0.2-20            glue_1.8.0                 </span></span>
-<span><span class="co">##  [73] spatstat.univar_3.1-3       data.table_1.17.6          </span></span>
-<span><span class="co">##  [75] vctrs_0.6.5                 png_0.1-8                  </span></span>
-<span><span class="co">##  [77] spam_2.11-1                 Rdpack_2.6.4               </span></span>
-<span><span class="co">##  [79] gtable_0.3.6                rematch2_2.1.2             </span></span>
-<span><span class="co">##  [81] assertthat_0.2.1            cachem_1.1.0               </span></span>
-<span><span class="co">##  [83] gower_1.0.2                 xfun_0.52                  </span></span>
-<span><span class="co">##  [85] rbibutils_2.3               S4Arrays_1.6.0             </span></span>
-<span><span class="co">##  [87] mime_0.13                   prodlim_2025.04.28         </span></span>
-<span><span class="co">##  [89] reformulas_0.4.0            survival_3.8-3             </span></span>
-<span><span class="co">##  [91] timeDate_4041.110           SingleCellExperiment_1.28.1</span></span>
-<span><span class="co">##  [93] iterators_1.0.14            pbmcapply_1.5.1            </span></span>
-<span><span class="co">##  [95] hardhat_1.4.1               lava_1.8.1                 </span></span>
-<span><span class="co">##  [97] fitdistrplus_1.2-2          ROCR_1.0-11                </span></span>
-<span><span class="co">##  [99] ipred_0.9-15                nlme_3.1-168               </span></span>
-<span><span class="co">## [101] RcppAnnoy_0.0.22            GenomeInfoDb_1.42.3        </span></span>
-<span><span class="co">## [103] bslib_0.9.0                 irlba_2.3.5.1              </span></span>
-<span><span class="co">## [105] vipor_0.4.7                 KernSmooth_2.23-26         </span></span>
-<span><span class="co">## [107] rpart_4.1.24                colorspace_2.1-1           </span></span>
-<span><span class="co">## [109] BiocGenerics_0.52.0         Hmisc_5.2-3                </span></span>
-<span><span class="co">## [111] nnet_7.3-20                 ggrastr_1.0.2              </span></span>
-<span><span class="co">## [113] tidyselect_1.2.1            compiler_4.4.3             </span></span>
-<span><span class="co">## [115] htmlTable_2.4.3             desc_1.4.3                 </span></span>
-<span><span class="co">## [117] DelayedArray_0.32.0         plotly_4.11.0              </span></span>
-<span><span class="co">## [119] checkmate_2.3.2             scales_1.4.0               </span></span>
-<span><span class="co">## [121] lmtest_0.9-40               stringr_1.5.1              </span></span>
-<span><span class="co">## [123] digest_0.6.37               goftest_1.2-3              </span></span>
-<span><span class="co">## [125] spatstat.utils_3.1-4        minqa_1.2.8                </span></span>
-<span><span class="co">## [127] rmarkdown_2.29              XVector_0.46.0             </span></span>
-<span><span class="co">## [129] htmltools_0.5.8.1           pkgconfig_2.0.3            </span></span>
-<span><span class="co">## [131] base64enc_0.1-3             lme4_1.1-37                </span></span>
-<span><span class="co">## [133] sparseMatrixStats_1.18.0    MatrixGenerics_1.18.1      </span></span>
-<span><span class="co">## [135] fastmap_1.2.0               rlang_1.1.6                </span></span>
-<span><span class="co">## [137] GlobalOptions_0.1.2         htmlwidgets_1.6.4          </span></span>
-<span><span class="co">## [139] UCSC.utils_1.2.0            shiny_1.10.0               </span></span>
-<span><span class="co">## [141] DelayedMatrixStats_1.28.1   farver_2.1.2               </span></span>
-<span><span class="co">## [143] jquerylib_0.1.4             zoo_1.8-14                 </span></span>
-<span><span class="co">## [145] jsonlite_2.0.0              ModelMetrics_1.2.2.2       </span></span>
-<span><span class="co">## [147] R.oo_1.27.0                 magrittr_2.0.3             </span></span>
-<span><span class="co">## [149] Formula_1.2-5               GenomeInfoDbData_1.2.13    </span></span>
-<span><span class="co">## [151] dotCall64_1.2               patchwork_1.3.1            </span></span>
-<span><span class="co">## [153] Rcpp_1.0.14                 reticulate_1.42.0          </span></span>
-<span><span class="co">## [155] stringi_1.8.7               pROC_1.18.5                </span></span>
-<span><span class="co">## [157] zlibbioc_1.52.0             MASS_7.3-65                </span></span>
-<span><span class="co">## [159] plyr_1.8.9                  parallel_4.4.3             </span></span>
-<span><span class="co">## [161] listenv_0.9.1               ggrepel_0.9.6              </span></span>
-<span><span class="co">## [163] forcats_1.0.0               deldir_2.0-4               </span></span>
-<span><span class="co">## [165] splines_4.4.3               tensor_1.5.1               </span></span>
-<span><span class="co">## [167] circlize_0.4.16             igraph_2.1.4               </span></span>
-<span><span class="co">## [169] spatstat.geom_3.4-1         RcppHNSW_0.6.0             </span></span>
-<span><span class="co">## [171] reshape2_1.4.4              stats4_4.4.3               </span></span>
-<span><span class="co">## [173] evaluate_1.0.4              ggprism_1.0.5              </span></span>
-<span><span class="co">## [175] nloptr_2.2.1                foreach_1.5.2              </span></span>
-<span><span class="co">## [177] httpuv_1.6.16               RANN_2.6.2                 </span></span>
-<span><span class="co">## [179] tidyr_1.3.1                 purrr_1.0.4                </span></span>
-<span><span class="co">## [181] polyclip_1.10-7             future_1.58.0              </span></span>
-<span><span class="co">## [183] clue_0.3-66                 scattermore_1.2            </span></span>
-<span><span class="co">## [185] janitor_2.2.1               xtable_1.8-4               </span></span>
-<span><span class="co">## [187] monocle3_1.3.7              e1071_1.7-16               </span></span>
-<span><span class="co">## [189] RSpectra_0.16-2             later_1.4.2                </span></span>
-<span><span class="co">## [191] viridisLite_0.4.2           class_7.3-23               </span></span>
-<span><span class="co">## [193] ragg_1.4.0                  tibble_3.3.0               </span></span>
-<span><span class="co">## [195] beeswarm_0.4.0              IRanges_2.40.1             </span></span>
-<span><span class="co">## [197] cluster_2.1.8.1             timechange_0.3.0           </span></span>
-<span><span class="co">## [199] globals_0.18.0              caret_7.0-1</span></span></code></pre>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<span><span class="co">##  [27] sass_0.4.10                 S7_0.2.1                   </span></span>
+<span><span class="co">##  [29] spatstat.data_3.1-9         proxy_0.4-29               </span></span>
+<span><span class="co">##  [31] ggridges_0.5.7              pbapply_1.7-4              </span></span>
+<span><span class="co">##  [33] pkgdown_2.2.0               systemfonts_1.3.1          </span></span>
+<span><span class="co">##  [35] foreign_0.8-90              R.utils_2.13.0             </span></span>
+<span><span class="co">##  [37] dichromat_2.0-0.1           parallelly_1.46.1          </span></span>
+<span><span class="co">##  [39] mcprogress_0.1.1            rstudioapi_0.18.0          </span></span>
+<span><span class="co">##  [41] generics_0.1.4              shape_1.4.6.1              </span></span>
+<span><span class="co">##  [43] ica_1.0-3                   spatstat.random_3.4-4      </span></span>
+<span><span class="co">##  [45] dplyr_1.1.4                 Matrix_1.7-3               </span></span>
+<span><span class="co">##  [47] ggbeeswarm_0.7.3            S4Vectors_0.44.0           </span></span>
+<span><span class="co">##  [49] abind_1.4-8                 R.methodsS3_1.8.2          </span></span>
+<span><span class="co">##  [51] lifecycle_1.0.5             yaml_2.3.12                </span></span>
+<span><span class="co">##  [53] snakecase_0.11.1            SummarizedExperiment_1.36.0</span></span>
+<span><span class="co">##  [55] recipes_1.3.1               SparseArray_1.6.2          </span></span>
+<span><span class="co">##  [57] Rtsne_0.17                  paletteer_1.7.0            </span></span>
+<span><span class="co">##  [59] grid_4.4.3                  promises_1.5.0             </span></span>
+<span><span class="co">##  [61] crayon_1.5.3                miniUI_0.1.2               </span></span>
+<span><span class="co">##  [63] lattice_0.22-7              cowplot_1.2.0              </span></span>
+<span><span class="co">##  [65] magick_2.9.0                pillar_1.11.1              </span></span>
+<span><span class="co">##  [67] knitr_1.51                  ComplexHeatmap_2.22.0      </span></span>
+<span><span class="co">##  [69] GenomicRanges_1.58.0        rjson_0.2.23               </span></span>
+<span><span class="co">##  [71] boot_1.3-31                 future.apply_1.20.1        </span></span>
+<span><span class="co">##  [73] codetools_0.2-20            glue_1.8.0                 </span></span>
+<span><span class="co">##  [75] spatstat.univar_3.1-6       data.table_1.18.0          </span></span>
+<span><span class="co">##  [77] vctrs_0.7.1                 png_0.1-8                  </span></span>
+<span><span class="co">##  [79] spam_2.11-3                 Rdpack_2.6.4               </span></span>
+<span><span class="co">##  [81] gtable_0.3.6                rematch2_2.1.2             </span></span>
+<span><span class="co">##  [83] assertthat_0.2.1            cachem_1.1.0               </span></span>
+<span><span class="co">##  [85] gower_1.0.2                 xfun_0.56                  </span></span>
+<span><span class="co">##  [87] rbibutils_2.3               S4Arrays_1.6.0             </span></span>
+<span><span class="co">##  [89] mime_0.13                   prodlim_2025.04.28         </span></span>
+<span><span class="co">##  [91] reformulas_0.4.0            survival_3.8-3             </span></span>
+<span><span class="co">##  [93] timeDate_4051.111           SingleCellExperiment_1.28.1</span></span>
+<span><span class="co">##  [95] iterators_1.0.14            pbmcapply_1.5.1            </span></span>
+<span><span class="co">##  [97] hardhat_1.4.2               lava_1.8.2                 </span></span>
+<span><span class="co">##  [99] fitdistrplus_1.2-6          ROCR_1.0-12                </span></span>
+<span><span class="co">## [101] ipred_0.9-15                nlme_3.1-168               </span></span>
+<span><span class="co">## [103] RcppAnnoy_0.0.23            GenomeInfoDb_1.42.3        </span></span>
+<span><span class="co">## [105] bslib_0.9.0                 irlba_2.3.5.1              </span></span>
+<span><span class="co">## [107] vipor_0.4.7                 KernSmooth_2.23-26         </span></span>
+<span><span class="co">## [109] otel_0.2.0                  rpart_4.1.24               </span></span>
+<span><span class="co">## [111] colorspace_2.1-2            BiocGenerics_0.52.0        </span></span>
+<span><span class="co">## [113] Hmisc_5.2-5                 nnet_7.3-20                </span></span>
+<span><span class="co">## [115] ggrastr_1.0.2               tidyselect_1.2.1           </span></span>
+<span><span class="co">## [117] compiler_4.4.3              htmlTable_2.4.3            </span></span>
+<span><span class="co">## [119] desc_1.4.3                  DelayedArray_0.32.0        </span></span>
+<span><span class="co">## [121] plotly_4.12.0               checkmate_2.3.3            </span></span>
+<span><span class="co">## [123] scales_1.4.0                lmtest_0.9-40              </span></span>
+<span><span class="co">## [125] stringr_1.6.0               digest_0.6.39              </span></span>
+<span><span class="co">## [127] goftest_1.2-3               spatstat.utils_3.2-1       </span></span>
+<span><span class="co">## [129] minqa_1.2.8                 rmarkdown_2.30             </span></span>
+<span><span class="co">## [131] XVector_0.46.0              htmltools_0.5.9            </span></span>
+<span><span class="co">## [133] pkgconfig_2.0.3             base64enc_0.1-3            </span></span>
+<span><span class="co">## [135] lme4_1.1-37                 sparseMatrixStats_1.18.0   </span></span>
+<span><span class="co">## [137] MatrixGenerics_1.18.1       fastmap_1.2.0              </span></span>
+<span><span class="co">## [139] rlang_1.1.7                 GlobalOptions_0.1.3        </span></span>
+<span><span class="co">## [141] htmlwidgets_1.6.4           UCSC.utils_1.2.0           </span></span>
+<span><span class="co">## [143] shiny_1.12.1                DelayedMatrixStats_1.28.1  </span></span>
+<span><span class="co">## [145] farver_2.1.2                jquerylib_0.1.4            </span></span>
+<span><span class="co">## [147] zoo_1.8-15                  jsonlite_2.0.0             </span></span>
+<span><span class="co">## [149] ModelMetrics_1.2.2.2        R.oo_1.27.0                </span></span>
+<span><span class="co">## [151] magrittr_2.0.4              Formula_1.2-5              </span></span>
+<span><span class="co">## [153] GenomeInfoDbData_1.2.13     dotCall64_1.2              </span></span>
+<span><span class="co">## [155] patchwork_1.3.2             Rcpp_1.1.1                 </span></span>
+<span><span class="co">## [157] reticulate_1.44.1           stringi_1.8.7              </span></span>
+<span><span class="co">## [159] pROC_1.19.0.1               zlibbioc_1.52.0            </span></span>
+<span><span class="co">## [161] MASS_7.3-65                 plyr_1.8.9                 </span></span>
+<span><span class="co">## [163] parallel_4.4.3              listenv_0.10.0             </span></span>
+<span><span class="co">## [165] ggrepel_0.9.6               forcats_1.0.1              </span></span>
+<span><span class="co">## [167] deldir_2.0-4                splines_4.4.3              </span></span>
+<span><span class="co">## [169] tensor_1.5.1                circlize_0.4.17            </span></span>
+<span><span class="co">## [171] igraph_2.2.1                spatstat.geom_3.7-0        </span></span>
+<span><span class="co">## [173] RcppHNSW_0.6.0              reshape2_1.4.5             </span></span>
+<span><span class="co">## [175] stats4_4.4.3                evaluate_1.0.5             </span></span>
+<span><span class="co">## [177] ggprism_1.0.7               nloptr_2.2.1               </span></span>
+<span><span class="co">## [179] foreach_1.5.2               httpuv_1.6.16              </span></span>
+<span><span class="co">## [181] RANN_2.6.2                  tidyr_1.3.2                </span></span>
+<span><span class="co">## [183] purrr_1.2.1                 polyclip_1.10-7            </span></span>
+<span><span class="co">## [185] future_1.69.0               clue_0.3-66                </span></span>
+<span><span class="co">## [187] scattermore_1.2             janitor_2.2.1              </span></span>
+<span><span class="co">## [189] xtable_1.8-4                monocle3_1.3.7             </span></span>
+<span><span class="co">## [191] e1071_1.7-17                RSpectra_0.16-2            </span></span>
+<span><span class="co">## [193] later_1.4.5                 viridisLite_0.4.2          </span></span>
+<span><span class="co">## [195] class_7.3-23                ragg_1.5.0                 </span></span>
+<span><span class="co">## [197] tibble_3.3.1                beeswarm_0.4.0             </span></span>
+<span><span class="co">## [199] IRanges_2.40.1              cluster_2.1.8.1            </span></span>
+<span><span class="co">## [201] timechange_0.3.0            globals_0.18.0             </span></span>
+<span><span class="co">## [203] caret_7.0-1</span></span></code></pre>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] "/Users/sfurlan/develop/viewmastR/vignettes"</span></span></code></pre>
 </div>
@@ -291,7 +373,7 @@ viewmastR_infer having saved the model to disc.<a class="anchor" aria-label="anc
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

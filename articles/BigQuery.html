@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">viewmastR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -100,16 +100,18 @@ install Rust.</p>
 </h2>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/message.html" class="external-link">suppressPackageStartupMessages</a></span><span class="op">(</span><span class="op">{</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://furlan-lab.github.io/viewmastR/">viewmastR</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satijalab.org/seurat" class="external-link">Seurat</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://furlan-lab.github.io/viewmastR/">viewmastR</a></span><span class="op">)</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://satijalab.org/seurat" class="external-link">Seurat</a></span><span class="op">)</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co">#query dataset</span></span>
-<span><span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">ROOT_DIR1</span>, <span class="st">"240813_final_object.RDS"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#seu &lt;- readRDS(file.path(ROOT_DIR1, "240813_final_object.RDS"))</span></span>
+<span><span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu">qs2</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/qs2/man/qs_read.html" class="external-link">qs_read</a></span><span class="op">(</span><span class="st">"/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab_2025 - General/experiments/AML_MRD/DL2_SF/cds/260113_Filtered_Processed_vmAnnotated_scrublet.qs"</span><span class="op">)</span></span>
 <span><span class="co">#reference dataset</span></span>
 <span><span class="va">seur</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">ROOT_DIR2</span>, <span class="st">"230329_rnaAugmented_seurat.RDS"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">vg</span> <span class="op">&lt;-</span> <span class="fu">get_selected_features</span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">vg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_selected_features.html">get_selected_features</a></span><span class="op">(</span><span class="va">seu</span><span class="op">)</span></span>
+<span><span class="va">vg</span> <span class="op">&lt;-</span> <span class="va">vg</span><span class="op">[</span><span class="va">vg</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">seur</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="build-the-model-and-infer-for-small-dataset-not-using-chunks-and-parallelization">Build the model and infer for small dataset (not using chunks and
@@ -121,9 +123,11 @@ parallelization)<a class="anchor" aria-label="anchor" href="#build-the-model-and
 <span></span>
 <span></span>
 <span></span>
-<span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/viewmastR_infer.html">viewmastR_infer</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">results</span><span class="op">[[</span><span class="st">"model_dir"</span><span class="op">]</span><span class="op">]</span>, <span class="va">vg</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">SFClassification</span><span class="op">)</span><span class="op">)</span>, batch_size <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span>
+<span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/viewmastR_infer.html">viewmastR_infer</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">results</span><span class="op">[[</span><span class="st">"model_dir"</span><span class="op">]</span><span class="op">]</span>, <span class="va">vg</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">SFClassification</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span></span>
 <span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">seu</span>, group.by <span class="op">=</span> <span class="st">"viewmastR_inferred"</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
-<p><img src="BigQuery_files/figure-html/unnamed-chunk-4-1.png" width="100%"></p>
+<p><img src="BigQuery_files/figure-html/unnamed-chunk-4-1.png" class="r-plt" alt="" width="100%"></p>
 </div>
 <div class="section level2">
 <h2 id="build-the-model-and-infer-for-large-dataset-dividing-the-query-into-chunks-and-using-parallelization">Build the model and infer for large dataset (dividing the query into
@@ -132,29 +136,36 @@ chunks and using parallelization)<a class="anchor" aria-label="anchor" href="#bu
 <p>By using chunks and workers, you can infer from the model only chunks
 at a time using multiple workers in parallel.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>future.globals.maxSize <span class="op">=</span> <span class="fl">16</span> <span class="op">*</span> <span class="fl">1024</span><span class="op">^</span><span class="fl">3</span><span class="op">)</span></span>
-<span><span class="va">seu</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/viewmastR_infer.html">viewmastR_infer</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">results</span><span class="op">[[</span><span class="st">"model_dir"</span><span class="op">]</span><span class="op">]</span>, query_celldata_col <span class="op">=</span> <span class="st">"viewmastR_inferred_parallel"</span>, <span class="va">vg</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">SFClassification</span><span class="op">)</span><span class="op">)</span>, chunks <span class="op">=</span> <span class="fl">4</span>, workers <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">seu</span>, group.by <span class="op">=</span> <span class="st">"viewmastR_inferred_parallel"</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
-<p><img src="BigQuery_files/figure-html/unnamed-chunk-5-1.png" width="100%"></p>
-<p>We see no difference if parallelization is used</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/confusion_matrix.html">confusion_matrix</a></span><span class="op">(</span>pred <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_inferred</span><span class="op">)</span>, gt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">viewmastR_inferred_parallel</span><span class="op">)</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
-<p><img src="BigQuery_files/figure-html/unnamed-chunk-6-1.png" width="100%"></p>
-</div>
-<div class="section level2">
-<h2 id="bigger-dataset">Bigger dataset<a class="anchor" aria-label="anchor" href="#bigger-dataset"></a>
-</h2>
-<p>By optimising chunk size, workers and batch size, you can achieve
-faster results on big datasets. Here we are just inferring back on the
-larger reference set (because it is larger, but this is not advisable in
-normal practice)</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/gc.html" class="external-link">gc</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##             used   (Mb) gc trigger    (Mb) limit (Mb)   max used    (Mb)</span></span>
+<span><span class="co">## Ncells  11296533  603.3   57654641  3079.1         NA   72068301  3848.9</span></span>
+<span><span class="co">## Vcells 772235846 5891.7 4742042850 36179.0     131072 8120631704 61955.6</span></span></code></pre>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">seur</span><span class="op">&lt;-</span><span class="fu"><a href="../reference/viewmastR_infer.html">viewmastR_infer</a></span><span class="op">(</span><span class="va">seur</span>, <span class="va">results</span><span class="op">[[</span><span class="st">"model_dir"</span><span class="op">]</span><span class="op">]</span>, query_celldata_col <span class="op">=</span> <span class="st">"viewmastR_inferred_parallel"</span>, <span class="va">vg</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">SFClassification</span><span class="op">)</span><span class="op">)</span>, chunks <span class="op">=</span> <span class="fl">20</span>, workers <span class="op">=</span> <span class="fl">16</span>, batch_size <span class="op">=</span> <span class="fl">3000</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://satijalab.org/seurat/reference/DimPlot.html" class="external-link">DimPlot</a></span><span class="op">(</span><span class="va">seur</span>, group.by <span class="op">=</span> <span class="st">"viewmastR_inferred_parallel"</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
-<p><img src="BigQuery_files/figure-html/unnamed-chunk-7-1.png" width="100%"></p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/confusion_matrix.html">confusion_matrix</a></span><span class="op">(</span>pred <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">SFClassification</span><span class="op">)</span>, gt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">viewmastR_inferred_parallel</span><span class="op">)</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
-<p><img src="BigQuery_files/figure-html/unnamed-chunk-8-1.png" width="100%"></p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/viewmastR_infer.html">viewmastR_infer</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">results</span><span class="op">[[</span><span class="st">"model_dir"</span><span class="op">]</span><span class="op">]</span>, </span>
+<span>                         query_celldata_col <span class="op">=</span> <span class="st">"test1"</span>, <span class="va">vg</span>, </span>
+<span>                         labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">SFClassification</span><span class="op">)</span><span class="op">)</span>, </span>
+<span>                         threads <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##    user  system elapsed </span></span>
+<span><span class="co">## 135.815  47.549 192.668</span></span></code></pre>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Parallel nd (8 threads)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>  <span class="va">seu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/viewmastR_infer.html">viewmastR_infer</a></span><span class="op">(</span><span class="va">seu</span>, <span class="va">results</span><span class="op">[[</span><span class="st">"model_dir"</span><span class="op">]</span><span class="op">]</span>, </span>
+<span>                         query_celldata_col <span class="op">=</span> <span class="st">"test2"</span>, <span class="va">vg</span>, </span>
+<span>                         labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seur</span><span class="op">$</span><span class="va">SFClassification</span><span class="op">)</span><span class="op">)</span>, </span>
+<span>                         threads <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">##    user  system elapsed </span></span>
+<span><span class="co">## 145.463  57.497 171.660</span></span></code></pre>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">test1</span><span class="op">==</span><span class="va">seu</span><span class="op">$</span><span class="va">test2</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] TRUE</span></span></code></pre>
+<p>We see no difference if parallelization is used</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/confusion_matrix.html">confusion_matrix</a></span><span class="op">(</span>pred <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">test1</span><span class="op">)</span>, gt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">seu</span><span class="op">$</span><span class="va">test2</span><span class="op">)</span>, cols <span class="op">=</span> <span class="va">seur</span><span class="op">@</span><span class="va">misc</span><span class="op">$</span><span class="va">colors</span><span class="op">)</span></span></code></pre></div>
+<p><img src="BigQuery_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="" width="100%"></p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
@@ -167,7 +178,7 @@ normal practice)</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>
