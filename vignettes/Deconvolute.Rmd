@@ -179,7 +179,6 @@ library(SingleCellExperiment)
 sce <- SingleCellExperiment(list(counts = sc_data@assays$RNA@counts), colData = DataFrame(sc_data@meta.data), rowData=DataFrame(symbol=rownames(sc_data)))
 
 sce$sample <- "sample"
-sce$orig.ident
 
 prop <- music_prop(bulk_counts, sce, markers = NULL, clusters = "SFClassification", samples = "orig.ident")
 
