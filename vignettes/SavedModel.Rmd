@@ -98,6 +98,8 @@ disagree_df <- data.frame(
 )
 print(disagree_df)
 
+prob_cols <- colnames(seu@meta.data)[grep("prob", colnames(seu@meta.data))]
+
 
 # For disagreeing cells, compare probabilities
 if (length(disagree_idx) > 0) {
