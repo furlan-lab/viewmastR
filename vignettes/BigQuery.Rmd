@@ -38,9 +38,9 @@ devtools::install_github("furlan-lab/viewmastR")
 
 ```{r, dpi=300, fig.height=4, fig.width = 6}
 suppressPackageStartupMessages({
-library(viewmastR)
-library(Seurat)
-library(ggplot2)
+  library(viewmastR)
+  library(Seurat)
+  library(ggplot2)
 })
 
 #query dataset
@@ -50,6 +50,8 @@ seu <- qs2::qs_read("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibrarie
 seur<-readRDS(file.path(ROOT_DIR2, "230329_rnaAugmented_seurat.RDS"))
 vg <- get_selected_features(seu)
 vg <- vg[vg %in% rownames(seur)]
+
+
 ```
 
 ## Build the model and infer for small dataset (not using chunks and parallelization)

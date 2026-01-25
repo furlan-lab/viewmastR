@@ -1049,11 +1049,19 @@ get_counts_seurat <- function(cds, assay = "RNA") {
   
   if (!compareVersion(as.character(sversion), "5.0.0") == -1) {
     # Seurat v5+ uses 'layer'
-    return(Seurat::GetAssayData(object = cds, assay = assay, layer = "counts"))
+    mat <- Seurat::GetAssayData(object = cds, assay = assay, layer = "counts")
+    if (inherits(mat, "IterableMatrix")) {
+      mat <- as(mat, "dgCMatrix")
+    }
+    return(mat)
   } else if (compareVersion(as.character(sversion), "2.9.9") == 1 && 
              compareVersion(as.character(sversion), "5.0.0") == -1) {
     # Seurat v3/v4 uses 'slot'
-    return(Seurat::GetAssayData(object = cds, assay = assay, slot = "counts"))
+    mat <- Seurat::GetAssayData(object = cds, assay = assay, slot = "counts")
+    if (inherits(mat, "IterableMatrix")) {
+      mat <- as(mat, "dgCMatrix")
+    }
+    return(mat)
   } else {
     warning("Seurat version is too old for this object. Please upgrade to Seurat v3 or higher.")
     return(NULL)
