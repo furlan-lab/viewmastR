@@ -22,6 +22,13 @@ The main features of viewmastR are:
 - Augment data for rare cell types
 - Classify single cell profiles according to a reference of bulk data
 
+Additional features include:
+
+- Classification of single-cell data using bulk reference datasets
+- Super efficient bulk RNAseq deconvolution with intercept value
+
+![](articles/Deconvolute_files/figure-html/unnamed-chunk-7-2.png)
+
 ## Installation
 
 First you need to have an updated Rust installation. Go to this
