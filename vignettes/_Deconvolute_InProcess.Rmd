@@ -1,0 +1,475 @@
+---
+title: "How to deconvolute bulk RNAseq"
+output: html_document
+date: "2025-10-13"
+always_allow_html: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = F}
+rm(list=ls())
+
+seurat_object_loc <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS"
+```
+
+
+#### Load a seurat object
+
+This is an atlas of healthy bone marrow celltypes taken from:
+
+Granja JM, Klemm S, McGinnis LM, Kathiria AS, Mezger A, Corces MR, Parks B, Gars E, Liedtke M, Zheng GXY, Chang HY, Majeti R, Greenleaf WJ. Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype acute leukemia. Nat Biotechnol. 2019 Dec;37(12):1458-1465. doi: 10.1038/s41587-019-0332-7. Epub 2019 Dec 2. PMID: 31792411; PMCID: PMC7258684.
+
+These data are not included in the viewmastR package.
+
+```{r, message=FALSE, warning=FALSE}
+suppressPackageStartupMessages({library(Seurat)
+  library(viewmastR)
+  library(magrittr)
+  library(viridis)
+  library(ggplot2)
+  library(ComplexHeatmap)})
+
+# Load single-cell data
+sc_data <- readRDS(seurat_object_loc)
+DimPlot(sc_data, group.by = "SFClassification", cols = sc_data@misc$colors)
+
+scCustomize::FeaturePlot_scCustom(sc_data, features = "CDKN2A")
+
+bmm <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab_2025 - General/ddata/mullighan_b/cds/BoneMarrowMap.rds")
+
+DimPlot(bmm)+NoLegend()
+
+scCustomize::FeaturePlot_scCustom(bmm, features = "CDKN2A", raster = F)
+scCustomize::FeaturePlot_scCustom(bmm, features = "CDKN2B", raster = F)
+scCustomize::FeaturePlot_scCustom(bmm, features = "IRX1", raster = F)
+scCustomize::FeaturePlot_scCustom(bmm, features = "MEN1", raster = F)
+colnames(bmm@meta.data)
+```
+
+Now we pseudobulk the samples to get a matrix of "signatures"
+
+```{r, message=FALSE, warning=FALSE}
+# Extract normalized counts and cell type labels
+counts <- GetAssayData(bmm, layer = "data")  # log-normalized
+cell_types <- bmm$CellType
+
+# Aggregate by cell type and create signatures
+signatures <- sapply(unique(cell_types), function(ct) {
+  cells <- which(cell_types == ct)
+  rowMeans(expm1(counts[, cells]))  # expm1 reverses log1p normalization
+})
+```
+
+## Load bulk data
+
+Next we load data released from the same publication that has bulk RNA seq from sorted populations of bone marrow cells.  These data are included in the viewmastR package.
+```{r, message=FALSE, warning=FALSE}
+# Load bulk counts and gene lengths
+bulk_counts <- system.file("extdata", "deconvolute", "GSE74246_RNAseq_All_Counts.txt", package = "viewmastR")
+bulk_counts <- read.csv(bulk_counts, sep = "\t")
+rn <- bulk_counts$X_TranscriptID
+bulk_counts$X_TranscriptID<- NULL
+bulk_counts <- as.matrix(bulk_counts)
+rownames(bulk_counts) <- rn
+
+gene_info <- read.table(system.file("extdata", "deconvolute", "geneWeights_withSymbol.tsv", package = "viewmastR"), header = TRUE)
+rownames(gene_info) <- gene_info$symbol
+```
+
+
+## Feature parity
+
+Now we make sure the features are the same across all the data used for deconvolution.  Check the dimensions to amake sure they match.  We have 21 celltypes and 81 bulk samples.  Here we find 18,879 features in common across all the inputs
+
+```{r, message=FALSE, warning=FALSE}
+# Ensure same genes
+common_genes <- intersect(intersect(rownames(signatures), rownames(bulk_counts)), gene_info$symbol)
+signatures <- signatures[common_genes, ]
+bulk_counts <- bulk_counts[common_genes, ]
+
+# Get gene lengths
+gene_lengths <- gene_info[common_genes, "length"]
+gene_weights <- gene_info[common_genes, "weight"]
+
+dim(signatures)
+dim(bulk_counts)
+length(gene_lengths)
+```
+
+
+## Deconvolute
+
+You can read more on our implementation below, but here is a minimally working example using default parameters.
+
+```{r}
+
+t1 <- system.time(result_gd <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights, 
+  max_iter = 2000,
+  backend = "ndarray"
+))
+
+t2 <- system.time(result_gd <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights, 
+  max_iter = 2000,
+  backend = "wgpu"
+))
+
+result_gd2 <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights, 
+  max_iter = 100000,
+  backend = "ndarray"
+)
+
+system.time(result_em <- deconvolve_bulk(
+  signatures = signatures,
+  bulk_counts = bulk_counts,
+  gene_lengths = gene_lengths,
+  gene_weights = gene_weights, 
+  max_iter = 3000,
+  method = "em"
+))
+```
+
+## Visualize
+
+We will remove some of the bulk data that contains tumor cells or recombinant HSC for simplicity.  We will also plot the Intercept as column annotation so one can get a sense of the degree of signal that is unaccounted for.
+
+```{r, message=FALSE, warning=FALSE}
+
+# data <- as.matrix(result_gd2$proportions_with_intercept)
+# data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | grepl("Blast", colnames(data)))]
+# saveRDS(data, file.path("~/Desktop/converged.RDS"))
+# con <- as.vector(data)
+# cols <- pals::glasbey(13)
+# names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
+# cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+# Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])), name = "GD Result Conv")
+
+
+data <- as.matrix(result_gd$proportions_with_intercept)
+data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | grepl("Blast", colnames(data)))]
+saveRDS(data, file.path("~/Desktop/no_converged.RDS"))
+no_con <- as.vector(data)
+cols <- pals::glasbey(13)
+names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])), name = "GD Result")
+
+ggplot(data.frame(x = no_con, y = con), aes(x = x, y = y))+geom_point()
+
+
+data <- as.matrix(result_em$proportions_with_intercept)
+data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | grepl("Blast", colnames(data)))]
+cols <- pals::glasbey(13)
+names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])), name = "EM Result")
+
+
+```
+
+
+
+```{r}
+
+# Or separate them
+cell_exposures <- result_em$exposures[1:21, ]
+noise_exposures <- result_em$exposures[22, , drop=FALSE]
+
+# 2. Reconstruct the "Healthy Profile" for each patient
+# Matrix Math: [Genes x CellTypes] * [CellTypes x Samples]
+# Result: [Genes x Samples] representing only the healthy contribution
+healthy_profile <- signatures %*% cell_exposures
+
+residuals <- bulk_counts - healthy_profile
+residuals[residuals < 0] <- 0  # Clamp negative values to 0
+
+# Average residual expression across all samples
+avg_tumor_program <- rowMeans(residuals_cpm)
+
+# Top 20 potential targets
+sort(avg_tumor_program, decreasing = TRUE)[1:20]
+
+# 4. Normalize for library size (optional but recommended)
+# This gives you "CPM" of the tumor component
+residuals_cpm <- sweep(residuals, 2, colSums(bulk_counts), "/") * 1e6
+# Average residual expression across all samples
+avg_tumor_program <- rowMeans(residuals_cpm)
+
+# Top 20 potential targets
+sort(avg_tumor_program, decreasing = TRUE)[1:20]
+
+# Correlate every gene's residual with the "Intercept Amount" vector
+# If a gene is part of the hidden program, it should track with the intercept usage
+correlations <- apply(residuals_cpm, 1, function(gene_vec) {
+  cor(gene_vec, noise_exposures[1,])
+})
+
+# Filter for genes that are highly correlated AND highly expressed
+target_candidates <- data.frame(
+  Gene = names(avg_tumor_program),
+  Expression = avg_tumor_program,
+  Correlation = correlations
+)
+
+# Look for high expression + high correlation (e.g., cor > 0.5)
+top_targets <- subset(target_candidates, Correlation > 0.3)
+top_targets <- top_targets[order(top_targets$Expression, decreasing = TRUE), ]
+
+head(top_targets, 20)
+
+```
+
+
+
+
+```{r, include = F, eval = F}
+# in progress
+
+# # # Extract tumor program
+# tumor_prog <- extract_tumor_program(result_em, signatures, bulk_counts,
+#                                      gene_names = rownames(signatures),
+#                                      top_n = 500)
+# # 
+# # # View top tumor genes
+# head(tumor_prog$tumor_upregulated, 20)
+# head(tumor_prog$tumor_downregulated, 20)
+# # 
+# # # Visualize
+# visualize_tumor_program(tumor_prog, bulk)
+# # 
+# # # Check consistency
+#  consistency <- compare_tumor_consistency(tumor_prog)
+#  length(consistency$consistent_upregulated)  # Core tumor program
+# # 
+# # # Export for pathway analysis
+# export_tumor_genes(tumor_prog, "AML_tumor_program")
+
+```
+
+# Mathematical Summary of Poisson regression with gradient descent
+
+**Inputs:** Signatures `S` (G×C), bulk counts `k` (G×N), gene lengths `L`, weights `w`  
+**Output:** Exposures `E` (C×N) = cell type abundances
+
+---
+
+## Model
+
+### Forward Pass
+```
+q = [S | 1/G] × [E; intercept]              # Molecules
+ŷ[g,n] = q[g,n] × (L[g] / insert_size)     # Reads
+k[g,n] ~ Poisson(ŷ[g,n])                    # Observed counts
+```
+
+### Parameterization
+```
+E = exp(log_E),  intercept = exp(log_intercept)
+log_E[c,n] ~ Normal(-5, 0.1)  # Init breaks symmetry
+```
+
+### Loss Function
+```
+NLL = Σ w[g] × [k·log(k) - k - k·log(ŷ+ε) + ŷ]  # Poisson likelihood
+L₁  = λ₁ × (NLL/100) × Σ E                      # Sparsity penalty
+L₂  = λ₂ × (NLL/100) × Σ E²                     # Stability penalty
+Loss = NLL + L₁ + L₂
+```
+
+---
+
+## Optimization
+
+**Two phases:**
+1. **NULL:** Freeze E≈0, optimize intercept only → baseline
+2. **Full:** Re-init E, optimize all parameters with Adam (lr=0.01)
+
+**Convergence:** Stop when Δloss/loss < 10⁻⁶ AND Δsparsity < 10⁻⁴
+
+---
+
+## Output
+
+```
+Exposures:   E[c,n] = exp(log_E[c,n])           # Cell-equivalents
+Proportions: P[c,n] = E[c,n] / Σ_c E[c,n]       # Fractions (sum to 1)
+Quality:     intercept / (Σ E + intercept)       # <0.1 = good fit
+```
+
+---
+
+## Key Parameters
+
+| Parameter | Default | Range | Purpose |
+|-----------|---------|-------|---------|
+| `l1_lambda` | 0 | 0-10 | Sparsity (1=moderate, 5=strong) |
+| `l2_lambda` | 0 | 0-10 | Stability (prevents extreme values) |
+| `learning_rate` | 0.01 | 0.001-0.1 | Optimization step size |
+| `insert_size` | 500 | 150-500 | Fragment length correction |
+
+**Recommendation:** Start with defaults (no regularization). Add `l1_lambda=0.5-2` only if too many cell types.
+
+---
+
+## Properties
+
+- **Non-negativity:** Guaranteed by exp() transform
+- **Scale:** Set by signature normalization (Σ S[g,c] = 1)
+- **Gene length correction:** Essential for RNA-seq (longer genes → more reads)
+- **Performance:** 10-30 sec GPU, 1-5 min CPU (typical: 18k genes, 21 types, 81 samples)
+
+# Mathematical Summary of Expectation-Maximization for Deconvolution
+
+**Inputs:** Signatures `S` (G×C), bulk counts `k` (G×N), gene lengths `L`, weights `w`  
+**Output:** Exposures `E` (C×N) = cell type abundances
+
+---
+
+## Probabilistic Model
+
+### Generative Process
+```
+For each gene g in sample n:
+  1. Each read comes from source j ∈ {cell types, noise}
+     P(source=j) ∝ S[g,j] × E[j,n]
+  
+  2. Noise has uniform signature: S[g,noise] = 1/G
+  
+  3. Observed counts: k[g,n] ~ Poisson(ŷ[g,n])
+     where ŷ[g,n] = Σ_j S[g,j] × E[j,n] × (L[g] / insert_size)
+```
+
+### Hidden Variable
+```
+z[g,j,n] = # of reads from gene g, sample n, assigned to source j
+           (unobserved, inferred by EM)
+```
+
+---
+
+## EM Algorithm
+
+### E-step: Compute Responsibilities
+```
+For each source j (cell type or noise):
+  contribution[g,j,n] = S[g,j] × E[j,n]
+  
+  responsibility[g,j,n] = contribution[g,j,n] / Σ_j' contribution[g,j',n]
+  
+Interpretation: "What fraction of counts for gene g came from source j?"
+```
+
+### M-step: Update Exposures
+```
+For each source j:
+  E[j,n] = Σ_g w[g] × k[g,n] × responsibility[g,j,n]
+  
+Interpretation: "Total weighted counts assigned to source j"
+
+Intercept[n] = E[noise,n]  # Learned automatically
+```
+
+### Log-Likelihood (Monitoring)
+```
+ŷ = [S | 1/G] × [E; intercept] × (L / insert_size)
+LL = Σ w[g] × [k·log(ŷ+ε) - ŷ - k·log(k) + k]
+
+Guarantee: LL increases every iteration (or numerical precision)
+```
+
+---
+
+## Optimization
+
+**Single unified phase** (no null model needed!)
+
+```
+Initialize: E[c,n] = total_counts[n] / C
+            intercept[n] = 0.05 × total_counts[n]
+
+Repeat:
+  1. E-step: Compute responsibilities for all sources
+  2. M-step: Update E and intercept simultaneously
+  3. Check: |ΔLL| < tolerance
+
+Convergence: Typically 100-400 iterations
+```
+
+**With L1 regularization:**
+```
+After M-step: E ← max(E - λ₁, 0)  # Soft-thresholding
+```
+
+---
+
+## Output
+
+```
+Exposures:   E[c,n]                              # Cell-equivalents
+Intercept:   intercept[n]                        # Noise level
+Proportions: P[c,n] = E[c,n] / Σ_c E[c,n]       # Fractions (sum to 1)
+Quality:     intercept / (mean(E) + intercept)   # <0.1 = good fit
+```
+
+---
+
+## Key Parameters
+
+| Parameter | Default | Range | Purpose |
+|-----------|---------|-------|---------|
+| `l1_lambda` | 0 | 0-10 | Sparsity via soft-thresholding |
+| `tolerance` | 10⁻⁶ | 10⁻⁸-10⁻⁴ | Convergence criterion (ΔLL) |
+| `insert_size` | 500 | 150-500 | Fragment length correction |
+| `max_iterations` | 1000 | 100-10000 | Safety limit |
+
+**Recommendation:** Defaults work well. No learning rate tuning needed!
+
+---
+
+## Properties
+
+- **Non-negativity:** Guaranteed by model structure (no transforms needed)
+- **Monotonic improvement:** Log-likelihood never decreases
+- **No hyperparameters:** Learning rate, momentum, warmup not needed
+- **Natural intercept:** Noise competes with signatures automatically
+- **Scale:** Set by total counts and signature normalization
+- **Gene length correction:** Essential for RNA-seq (longer genes → more reads)
+- **Performance:** 15-25 sec (typical: 18k genes, 21 types, 81 samples, 300 iters)
+
+---
+
+## Comparison to Gradient Descent
+
+| Aspect | EM | Gradient Descent |
+|--------|-----|------------------|
+| **Convergence** | Guaranteed monotonic | Can oscillate/diverge |
+| **Hyperparameters** | None (just tolerance) | Learning rate, warmup |
+| **Iterations** | 100-400 | 1000-3000 |
+| **Null model** | Not needed | Requires separate fit |
+| **Interpretation** | Missing data framework | Optimization of loss |
+| **Speed** | 15-25 sec | 20-30 sec |
+| **Stability** | Very stable | Needs careful tuning |
+
+---
+
+## Intuition
+
+**EM treats deconvolution as:**  
+"For each read, which cell type (or noise) generated it?"
+
+- **E-step:** Probabilistically assign reads to sources
+- **M-step:** Count up assignments to estimate abundances
+
+This "soft assignment" framework is more natural than gradient-based optimization for count data, leading to stable convergence without tuning.
