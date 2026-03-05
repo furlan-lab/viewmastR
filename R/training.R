@@ -89,9 +89,10 @@ optimize_backend <- function(){
 #' @param threshold Currently unused. Can be \code{NULL}.
 #' @param keras_model Currently unused. Can be \code{NULL}.
 #' @param model_dir A character string specifying the directory to store model artifacts.
-#' @param return_probs Logical, whether to return predicted probabilities in the object's metadata.
-#' @param return_type A character string specifying the return type. One of \code{"object"} or \code{"list"}. 
-#'   If \code{"object"}, returns the updated \code{query_cds}. If \code{"list"}, returns a list containing 
+#' @param return_probs Logical, whether to return predicted probabilities (softmax) in the object's metadata.
+#' @param return_logits Logical, whether to return raw logits (pre-softmax scores) in the object's metadata.
+#' @param return_type A character string specifying the return type. One of \code{"object"} or \code{"list"}.
+#'   If \code{"object"}, returns the updated \code{query_cds}. If \code{"list"}, returns a list containing
 #'   \code{object} and \code{training_output}.
 #' @param debug Logical, whether to print debugging messages and dimension checks.
 #' @param train_only Logical, if \code{TRUE}, only the reference data is processed and no query data is included.
@@ -168,7 +169,8 @@ viewmastR <- function(query_cds,
                       keras_model = NULL, 
                       model_dir = "/tmp/sc_local",
                       return_probs = FALSE,
-                      return_type = c("object", "list"), 
+                      return_logits = FALSE,
+                      return_type = c("object", "list"),
                       debug = FALSE,
                       train_only = FALSE
 ) {
@@ -386,33 +388,39 @@ if (is.null(query_celldata_col)) {
   
   log_odds <- matrix(log_odds, ncol = ncol(query_cds))
   log_odds <- t(log_odds)
-  colnames(log_odds) <- paste0("prob_", training_list$labels)
-  
+  colnames(log_odds) <- paste0("logit_", training_list$labels)
+
   # Softmax conversion
   softmax_rows <- function(mat) {
     shifted <- mat - apply(mat, 1, max)  # numerical stability
     exp_shifted <- exp(shifted)
     exp_shifted / rowSums(exp_shifted)
   }
-  
+
   prob_mat <- softmax_rows(log_odds)
+  colnames(prob_mat) <- paste0("prob_", training_list$labels)
   query_cds[[query_celldata_col]] <- training_list$labels[apply(prob_mat, 1, which.max)]
-  
+
+  if (return_logits) {
+    query_cds@meta.data <- cbind(query_cds@meta.data, log_odds)
+  }
+
   if (return_probs) {
     query_cds@meta.data <- cbind(query_cds@meta.data, prob_mat)
   }
-  
+
   if (return_type == "object") {
     return(query_cds)
   } else {
     return(list(
-      object = query_cds, 
+      object = query_cds,
       training_output = list(
-        probs = prob_mat, 
-        history = export_list$history, 
-        duration = export_list$duration, 
+        logits = log_odds,
+        probs = prob_mat,
+        history = export_list$history,
+        duration = export_list$duration,
         params = export_list$params
-      ), 
+      ),
       model_dir = model_dir
     ))
   }

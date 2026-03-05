@@ -35,6 +35,7 @@ pub struct EMDeconvModel<B: Backend> {
     #[allow(dead_code)]
     gene_lengths: Tensor<B, 2>,    // [n_genes, n_samples]
     gene_weights: Tensor<B, 1>,    // [n_genes]
+    conversion_factor: Tensor<B, 2>, // [n_genes, n_samples]
     
     // NEW: Precomputed for efficiency
     #[allow(dead_code)]
@@ -60,39 +61,87 @@ impl<B: Backend> EMDeconvModel<B> {
         // eprintln!("DEBUG: n_genes_sig={}, n_celltypes={}, n_genes_counts={}, n_samples={}", n_genes, n_celltypes, n_genes_counts, n_samples);
         // eprintln!("DEBUG: observed_counts shape={:?}", observed_counts.dims());
     
-        // Initialize exposures uniformly
-        let total_counts = observed_counts.clone().sum_dim(0);
-        // eprintln!("DEBUG: total_counts shape={:?}", total_counts.dims());
-        let init_exposures = total_counts
-            .clone()  // Clone here to reuse below
-            // .reshape([1, n_samples])
-            .repeat(&[n_celltypes, 1])
-            .div_scalar(n_celltypes as f32);
+        // // Initialize exposures uniformly
+        // let total_counts = observed_counts.clone().sum_dim(0);
+        // // eprintln!("DEBUG: total_counts shape={:?}", total_counts.dims());
+        // let init_exposures = total_counts
+        //     .clone()  // Clone here to reuse below
+        //     // .reshape([1, n_samples])
+        //     .repeat(&[n_celltypes, 1])
+        //     .div_scalar(n_celltypes as f32);
         
-        // eprintln!("DEBUG: init_exposures shape={:?}", init_exposures.dims());
-        // Initialize intercept (small uniform background)
-        let init_intercept = total_counts
-            .mul_scalar(0.05);
-            // .reshape([1, n_samples]);
+        // // eprintln!("DEBUG: init_exposures shape={:?}", init_exposures.dims());
+        // // Initialize intercept (small uniform background)
+        // let init_intercept = total_counts
+        //     .mul_scalar(0.05);
+        //     // .reshape([1, n_samples]);
 
-        // Create intercept "signature" - uniform across all genes
+        // // Create intercept "signature" - uniform across all genes
+        // let intercept_signature = Tensor::ones([n_genes, 1], device)
+        //     .div_scalar(n_genes as f32);
+        
+        // // Augmented signature matrix with intercept column
+        // let signatures_with_intercept = if use_intercept {
+        //     Tensor::cat(vec![signatures.clone(), intercept_signature.clone()], 1)
+        // } else {
+        //     signatures.clone()
+        // };
+        
+        // Convert observed reads to molecule-space counts so EM stays consistent.
+        let insert_size = 500.0; // Standard approximation or pass from config
+        let conversion_factor = gene_lengths.clone().div_scalar(insert_size);
+        let effective_counts = observed_counts
+            .clone()
+            .div(conversion_factor.clone().add_scalar(1e-6));
+        
+        // let init_exposures = total_counts.clone()
+        //     .repeat(&[n_celltypes, 1])
+        //     .div_scalar(n_celltypes as f32);
+        
+        // // FIX 2: LOWER INTERCEPT INITIALIZATION
+        // // 0.05 (5%) was too aggressive. 0.001 (0.1%) forces the model to 
+        // // prefer specific signatures first, only using noise if necessary.
+        // let init_intercept = total_counts
+        //     .mul_scalar(0.001); 
+
+        // let intercept_signature = Tensor::ones([n_genes, 1], device)
+        //     .div_scalar(n_genes as f32);
+        
+        // let signatures_with_intercept = if use_intercept {
+        //     Tensor::cat(vec![signatures.clone(), intercept_signature.clone()], 1)
+        // } else {
+        //     signatures.clone()
+        // };
+
+        // Keep signatures in molecule space.
         let intercept_signature = Tensor::ones([n_genes, 1], device)
             .div_scalar(n_genes as f32);
-        
-        // Augmented signature matrix with intercept column
         let signatures_with_intercept = if use_intercept {
             Tensor::cat(vec![signatures.clone(), intercept_signature.clone()], 1)
         } else {
             signatures.clone()
         };
         
+        // Initialize exposures using molecule-space totals.
+        let total_counts = effective_counts.clone().sum_dim(0);
+        
+        let init_exposures = total_counts
+            .clone()
+            .repeat(&[n_celltypes, 1])
+            .div_scalar(n_celltypes as f32);
+            
+        // Lower intercept init to avoiding greediness
+        let init_intercept = total_counts.mul_scalar(0.001);
+
         Self {
             signatures,
-            observed_counts,
+            // Store EFFECTIVE counts (molecules), not raw reads
+            observed_counts: effective_counts,
             exposures: init_exposures,
             intercept: init_intercept,
             gene_lengths,
             gene_weights,
+            conversion_factor,
             intercept_signature,
             signatures_with_intercept,
             use_intercept,
@@ -146,6 +195,7 @@ impl<B: Backend> EMDeconvModel<B> {
     fn m_step(&mut self, responsibilities: Tensor<B, 3>) {
         let [n_genes, _n_sources, n_samples] = responsibilities.dims();
         let n_celltypes = self.signatures.dims()[1];
+        let n_sources = self.signatures_with_intercept.dims()[1];
         
         // Expand gene_weights for broadcasting: [n_genes] -> [n_genes, 1, n_samples]
         let weights_3d = self.gene_weights.clone()
@@ -153,14 +203,32 @@ impl<B: Backend> EMDeconvModel<B> {
             .repeat(&[1, 1, n_samples]);
         
         // Weight the responsibilities: [n_genes, n_sources, n_samples] * [n_genes, 1, n_samples]
-        let weighted_resp = responsibilities.clone()
+        let weighted_resp = responsibilities
+            .clone()
             .mul(weights_3d)
             .mul(self.observed_counts.clone().unsqueeze_dim::<3>(1)); // [n_genes, 1, n_samples]
         
         // Sum over genes: [n_genes, n_sources, n_samples] -> [1, n_sources, n_samples] -> [n_sources, n_samples]
-        let all_exposures = weighted_resp
-            .sum_dim(0)  // Sum over genes -> [1, n_sources, n_samples]
-            .squeeze::<2>(0)  // Remove first dimension -> [n_sources, n_samples]
+        let numerators = weighted_resp
+            .sum_dim(0) // Sum over genes -> [1, n_sources, n_samples]
+            .squeeze::<2>(0); // [n_sources, n_samples]
+        
+        // Denominator: sum_i w_i * s_ij (per source)
+        let denom = self.signatures_with_intercept
+            .clone()
+            .mul(
+                self.gene_weights
+                    .clone()
+                    .reshape([n_genes, 1])
+                    .repeat(&[1, n_sources]),
+            )
+            .sum_dim(0)
+            .reshape([n_sources, 1])
+            .repeat(&[1, n_samples])
+            .add_scalar(1e-10);
+        
+        let all_exposures = numerators
+            .div(denom)
             .clamp_min(self.config_min_exposure);
         
         // Split into cell type exposures and intercept
@@ -222,6 +290,22 @@ impl<B: Backend> EMDeconvModel<B> {
             self.exposures.clone()
         }
     }
+    // pub fn get_predicted_counts(&self) -> Tensor<B, 2> {
+    //     let full_exposures = if self.use_intercept {
+    //         Tensor::cat(vec![self.exposures.clone(), self.intercept.clone()], 0)
+    //     } else {
+    //         self.exposures.clone()
+    //     };
+        
+    //     // Prediction in "Molecules" space
+    //     let pred_mols = self.signatures_with_intercept.clone().matmul(full_exposures);
+        
+    //     // Convert back to "Reads" space for user comparison
+    //     let insert_size = 500.0;
+    //     let conversion_factor = self.gene_lengths.clone().div_scalar(insert_size);
+        
+    //     pred_mols.mul(conversion_factor)
+    // }
     
     pub fn get_predicted_counts(&self) -> Tensor<B, 2> {
         let full_exposures = if self.use_intercept {
@@ -230,7 +314,9 @@ impl<B: Backend> EMDeconvModel<B> {
             self.exposures.clone()
         };
         
-        self.signatures_with_intercept.clone().matmul(full_exposures)
+        // Return predicted counts in read space for compatibility with GD output.
+        let pred_mols = self.signatures_with_intercept.clone().matmul(full_exposures);
+        pred_mols.mul(self.conversion_factor.clone())
     }
 }
 
@@ -428,7 +514,7 @@ impl<B: Backend> EMDeconvModel<B> {
 // =========================================
 
 // Import helper functions from your signal module
-use crate::signal::{rmat_to_tensor, rvec_to_tensor, robj_to_bool, robj_to_f64, robj_to_usize};
+use crate::deconvolute::{rmat_to_tensor, rvec_to_tensor, robj_to_bool, robj_to_f64, robj_to_usize};
 
 pub fn fit_deconv_em(
     sigs: Robj,

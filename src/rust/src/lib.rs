@@ -18,7 +18,7 @@ mod common;
 mod inference;
 mod nb;
 // mod signal;
-mod signal;
+mod deconvolute;
 mod em;
 mod splat;
 mod sparse;
@@ -989,7 +989,7 @@ fn fit_deconv(
     sparsity_tol: Robj,
     verbose: Robj,
 ) -> Result<List>{
-    signal::fit_deconv(
+    deconvolute::fit_deconv(
         sigs,
         bulk,
         gene_lengths,

@@ -138,6 +138,7 @@ One can also use our build in plotting functions
 ```{r, message=FALSE, warning=FALSE}
 
 plot_deconvolution(result_gd)
+plot_deconvolution(result_em)
 ```
 
 
