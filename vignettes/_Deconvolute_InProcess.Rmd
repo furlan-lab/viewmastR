@@ -10,11 +10,17 @@ editor_options:
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, include = F}
 rm(list=ls())
 
+seurat_object_loc <- "/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab - General/datasets/Healthy_BM_greenleaf/230329_rnaAugmented_seurat.RDS"
 ```
 
 
 #### Load a seurat object
 
+This is an atlas of healthy bone marrow celltypes taken from:
+
+Granja JM, Klemm S, McGinnis LM, Kathiria AS, Mezger A, Corces MR, Parks B, Gars E, Liedtke M, Zheng GXY, Chang HY, Majeti R, Greenleaf WJ. Single-cell multiomic analysis identifies regulatory programs in mixed-phenotype acute leukemia. Nat Biotechnol. 2019 Dec;37(12):1458-1465. doi: 10.1038/s41587-019-0332-7. Epub 2019 Dec 2. PMID: 31792411; PMCID: PMC7258684.
+
+These data are not included in the viewmastR package.
 
 ```{r, message=FALSE, warning=FALSE}
 suppressPackageStartupMessages({library(Seurat)
@@ -25,101 +31,20 @@ suppressPackageStartupMessages({library(Seurat)
   library(ComplexHeatmap)})
 
 # Load single-cell data
+sc_data <- readRDS(seurat_object_loc)
+DimPlot(sc_data, group.by = "SFClassification", cols = sc_data@misc$colors)
+
+scCustomize::FeaturePlot_scCustom(sc_data, features = "CDKN2A")
 
 bmm <- readRDS("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab_2025 - General/ddata/mullighan_b/cds/BoneMarrowMap.rds")
 
-cluster_cols <- c(
-  # Stromal
-  "Stromal" = "#607D8B",
+DimPlot(bmm)+NoLegend()
 
-  # Stem / early progenitors (blues)
-  "HSC" = "#08306B",
-  "MPP-MkEry" = "#08519C",
-  "MPP-MyLy" = "#2171B5",
-  "LMPP" = "#4292C6",
-  "CLP" = "#6BAED6",
-  "MLP" = "#9ECAE1",
-  "MLP-II" = "#C6DBEF",
-
-  # Cycling (neutral greys; keep distinct)
-  "Cycling Progenitor" = "#616161",
-  "GMP-Cycle" = "#757575",
-  # "pDC Cycling" = "#8A8A8A",
-  "Pre-pDC Cycling" = "#9E9E9E",
-  "Pro-B Cycling" = "#707070",
-  "T Proliferating" = "#4D4D4D",
-  "NK Proliferating" = "#6B6B6B",
-
-  # Erythroid (magenta/pink ramp)
-  "MEP" = "#7A0177",
-  "BFU-E" = "#AE017E",
-  "CFU-E" = "#DD3497",
-  "Pro-Erythroblast" = "#F768A1",
-  "Basophilic Erythroblast" = "#FA9FB5",
-  "Polychromatic Erythroblast" = "#FCC5C0",
-  "Orthochromatic Erythroblast" = "#FEE0D2",
-
-  # Megakaryocyte (violets)
-  "Megakaryocyte Precursor" = "#54278F",
-  "Megakaryocyte" = "#2D004B",
-
-  # Eo/Baso/Mast precursor (amber)
-  "EoBasoMast Precursor" = "#FFB300",
-
-  # Myeloid / mono (orange -> brown)
-  "Early GMP" = "#F57C00",
-  "GMP-Neut" = "#F9A825",
-  "GMP-Mono" = "#E65100",
-  "Early ProMono" = "#8D6E63",
-  "Late ProMono" = "#6D4C41",
-  "CD16 Mono" = "#A1887F",
-  "CD14 Mono" = "#4E342E",
-
-  # DC / pDC (teals)
-  "ASDC" = "#006064",
-  "cDC1" = "#00838F",
-  "cDC2" = "#00ACC1",
-  "Pre-cDC" = "#4DD0E1",
-  "pDC" = "#009688",
-  "Pre-pDC" = "#26A69A",
-
-  # B lineage (blues; plasma = magenta)
-  "Pre-ProB" = "#1565C0",
-  "Small Pre-B" = "#1976D2",
-  "Large Pre-B" = "#1E88E5",
-  # "Large Pre B" = "#1E88E5",   # alias if your labels have a space
-  "Pro-B VDJ" = "#0D47A1",
-  "Immature B" = "#42A5F5",
-  "Mature B" = "#90CAF9",
-  "Plasma Cell" = "#D81B60",
-
-  # T lineage (greens; CD4 deeper, CD8 more yellow-green)
-  "CD4 Naive" = "#1B5E20",
-  "CD4 Central Memory" = "#2E7D32",
-  "CD4 Effector Memory" = "#388E3C",
-  "CD4 Regulatory" = "#00C853",
-  "CD8 Naive" = "#33691E",
-  "CD8 Central Memory" = "#558B2F",
-  "CD8 Tissue Resident Memory" = "#7CB342",
-  "CD8 Effector Memory 1" = "#9CCC65",
-  "CD8 Effector Memory 2" = "#C5E1A5",
-
-  # NK (lavender/purples distinct from megak violets)
-  "NK" = "#8E7CC3",
-  "NK CD56high" = "#5E3C99"
-)
-
-setdiff(levels(factor(bmm$CellType)), names(cluster_cols))
-setdiff(names(cluster_cols), levels(factor(bmm$CellType)))
-# Seurat:
-# DimPlot(obj, group.by = "celltype", cols = cluster_cols)
-
-# ggplot:
-# + scale_color_manual(values = cluster_cols)
-
-
-g <- DimPlot(bmm, raster = F, cols = cluster_cols)
-plotly::ggplotly(g)
+scCustomize::FeaturePlot_scCustom(bmm, features = "CDKN2A", raster = F)
+scCustomize::FeaturePlot_scCustom(bmm, features = "CDKN2B", raster = F)
+scCustomize::FeaturePlot_scCustom(bmm, features = "IRX1", raster = F)
+scCustomize::FeaturePlot_scCustom(bmm, features = "MEN1", raster = F)
+colnames(bmm@meta.data)
 ```
 
 Now we pseudobulk the samples to get a matrix of "signatures"
@@ -134,6 +59,7 @@ signatures <- sapply(unique(cell_types), function(ct) {
   cells <- which(cell_types == ct)
   rowMeans(expm1(counts[, cells]))  # expm1 reverses log1p normalization
 })
+nrow(counts)
 ```
 
 ## Load bulk data
@@ -150,6 +76,10 @@ rownames(bulk_counts) <- rn
 
 gene_info <- read.table(system.file("extdata", "deconvolute", "geneWeights_withSymbol.tsv", package = "viewmastR"), header = TRUE)
 rownames(gene_info) <- gene_info$symbol
+
+dim(bulk_counts)
+
+dim(gene_info)
 ```
 
 
@@ -203,7 +133,7 @@ result_gd2 <- deconvolve_bulk(
   gene_lengths = gene_lengths,
   gene_weights = gene_weights, 
   max_iter = 100000,
-  backend = ifelse(as.logical(t1[3]>t2[3]), "wgpu", "ndarray")
+  backend = "ndarray"
 )
 
 system.time(result_em <- deconvolve_bulk(
@@ -224,15 +154,28 @@ We will remove some of the bulk data that contains tumor cells or recombinant HS
 
 data <- as.matrix(result_gd2$proportions_with_intercept)
 data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | grepl("Blast", colnames(data)))]
+saveRDS(data, file.path("~/Desktop/converged.RDS"))
+con <- as.vector(data)
+cols <- pals::glasbey(13)
+names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
+cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
+Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])), name = "GD Result Conv")
+
+
+data <- as.matrix(result_gd$proportions_with_intercept)
+data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | grepl("Blast", colnames(data)))]
+saveRDS(data, file.path("~/Desktop/no_converged.RDS"))
+no_con <- as.vector(data)
 cols <- pals::glasbey(13)
 names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
 cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
 Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])), name = "GD Result")
 
+ggplot(data.frame(x = no_con, y = con), aes(x = x, y = y))+geom_point()
+
 
 data <- as.matrix(result_em$proportions_with_intercept)
 data <- data[,!(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | grepl("Blast", colnames(data)))]
-
 cols <- pals::glasbey(13)
 names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
 cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
@@ -241,673 +184,59 @@ Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_col
 
 ```
 
-```{r, message=FALSE, warning=FALSE}
-df <- data.frame(GradDescent=as.vector(as.matrix(result_gd2$proportions_with_intercept)), ExpMax=as.vector(result_em$proportions_with_intercept), Celltype = rep(rownames(as.matrix(result_gd2$proportions_with_intercept)), ncol(as.matrix(result_gd2$proportions_with_intercept))), Sample = rep(strsplit(colnames(as.matrix(result_em$proportions_with_intercept)), "\\.") %>% sapply("[[", 2), each = nrow(as.matrix(result_em$proportions_with_intercept))))
-g <- ggplot(df, aes(x=GradDescent, y=ExpMax, colour = Celltype))+geom_point()+scale_color_manual(values=c(cluster_cols, "Intercept"="black"))
-plotly::ggplotly(g)
-
-g <- ggplot(df, aes(x=GradDescent, y=ExpMax, colour = Sample))+geom_point()+scale_color_manual(values=pals::glasbey(17))
-plotly::ggplotly(g)
-
-
-cor(df$GradDescent, df$ExpMax)
-
-
-
-hex_plot <- function(result, bulk_counts){
-  cor(as.vector(result$pred_counts[gene_weights>0,]), as.vector(bulk_counts[gene_weights>0,]))
-  obs_flat <- as.vector(bulk_counts[gene_weights>0,])
-  pred_flat <- as.vector(result$pred_counts[gene_weights>0,])
-  # Remove zeros for log scale
-  keep_idx <- obs_flat > 0 & pred_flat > 0
-  fit_df <- data.frame(
-    Observed = log1p(obs_flat[keep_idx]),
-    Predicted = log1p(pred_flat[keep_idx])
-  )
-  rsq <- cor(fit_df$Observed, fit_df$Predicted)^2
-ggplot(fit_df, aes(x=Observed, y=Predicted))+geom_hex(bins = 100)+scale_fill_viridis_c(trans = "log10")+ggtitle(rsq)
-}
-
-```
 
 
 ```{r}
-suppressPackageStartupMessages({
-  library(Matrix)
+
+# Or separate them
+cell_exposures <- result_em$exposures[1:21, ]
+noise_exposures <- result_em$exposures[22, , drop=FALSE]
+
+# 2. Reconstruct the "Healthy Profile" for each patient
+# Matrix Math: [Genes x CellTypes] * [CellTypes x Samples]
+# Result: [Genes x Samples] representing only the healthy contribution
+healthy_profile <- signatures %*% cell_exposures
+
+residuals <- bulk_counts - healthy_profile
+residuals[residuals < 0] <- 0  # Clamp negative values to 0
+
+# Average residual expression across all samples
+avg_tumor_program <- rowMeans(residuals_cpm)
+
+# Top 20 potential targets
+sort(avg_tumor_program, decreasing = TRUE)[1:20]
+
+# 4. Normalize for library size (optional but recommended)
+# This gives you "CPM" of the tumor component
+residuals_cpm <- sweep(residuals, 2, colSums(bulk_counts), "/") * 1e6
+# Average residual expression across all samples
+avg_tumor_program <- rowMeans(residuals_cpm)
+
+# Top 20 potential targets
+sort(avg_tumor_program, decreasing = TRUE)[1:20]
+
+# Correlate every gene's residual with the "Intercept Amount" vector
+# If a gene is part of the hidden program, it should track with the intercept usage
+correlations <- apply(residuals_cpm, 1, function(gene_vec) {
+  cor(gene_vec, noise_exposures[1,])
 })
 
-# --- Benchmark: simulate pseudo-bulk from bmm and compare EM vs GD ---
-
-# Choose simulation layer:
-# - "counts" = raw UMI counts (more realistic)
-# - "data"   = Seurat normalized/log1p data (linear after expm1; usually "easier")
-use_layer <- "data"   # <- change to "data" if you want
-
-expr <- GetAssayData(bmm, layer = use_layer)
-expr <- expr[common_genes, , drop = FALSE]
-
-if (use_layer == "data") {
-  expr <- expm1(expr)  # undo log1p -> non-negative normalized values
-}
-
-cell_types <- factor(bmm$CellType)
-ct_levels  <- levels(cell_types)
-
-# 1) Split cells into TRAIN (signatures) and TEST (pseudo-bulk) to avoid leakage
-set.seed(1)
-train_frac <- 0.7
-
-train_cells <- unlist(lapply(ct_levels, function(ct) {
-  idx <- which(cell_types == ct)
-  sample(idx, size = max(1, floor(length(idx) * train_frac)))
-}))
-test_cells <- setdiff(seq_len(ncol(expr)), train_cells)
-
-expr_train <- expr[, train_cells, drop = FALSE]
-expr_test  <- expr[, test_cells,  drop = FALSE]
-ct_train   <- cell_types[train_cells]
-ct_test    <- cell_types[test_cells]
-
-
-# 2) Build signatures from TRAIN cells (genes x celltype)
-signatures_sim <- sapply(ct_levels, function(ct) {
-  cells <- which(ct_train == ct)
-  Matrix::rowMeans(expr_train[, cells, drop = FALSE])
-})
-colnames(signatures_sim) <- ct_levels
-
-common_genes <- intersect(rownames(signatures_sim), gene_info$symbol)
-
-signatures_sim <- signatures_sim[common_genes, ]
-gene_lengths_sim <- gene_info[common_genes, "length"]
-gene_weights_sim <- gene_info[common_genes, "weight"]
-names(gene_lengths_sim)<-common_genes
-names(gene_weights_sim)<-common_genes
-
-
-stopifnot(identical(rownames(signatures_sim), names(gene_lengths_sim)))
-stopifnot(identical(rownames(signatures_sim), names(gene_weights_sim)))
-
-# 3) Helpers: Dirichlet + pseudo-bulk simulator
-rdirichlet1 <- function(alpha) {
-  x <- rgamma(length(alpha), shape = alpha, rate = 1)
-  x / sum(x)
-}
-
-simulate_pseudobulk <- function(expr_mat, cell_types_vec,
-                               n_sims = 60,
-                               n_cells = 20000,
-                               alpha = 1,
-                               depth = NULL,            # e.g., 2e7 to Poisson-resample to 20M reads; NULL = no resample
-                               seed = 2,
-                               replace_if_needed = TRUE) {
-  set.seed(seed)
-  ct_levels <- levels(factor(cell_types_vec))
-
-  pools <- lapply(ct_levels, function(ct) which(cell_types_vec == ct))
-  names(pools) <- ct_levels
-
-  bulk_list <- vector("list", n_sims)
-  truth_n   <- matrix(0, nrow = length(ct_levels), ncol = n_sims,
-                      dimnames = list(ct_levels, paste0("sim", seq_len(n_sims))))
-  truth_p   <- truth_n
-
-  for (i in seq_len(n_sims)) {
-    p <- rdirichlet1(rep(alpha, length(ct_levels)))
-    n_by_ct <- as.integer(rmultinom(1, size = n_cells, prob = p))
-    names(n_by_ct) <- ct_levels
-
-    picked <- integer(0)
-    for (ct in ct_levels) {
-      n_ct <- n_by_ct[ct]
-      if (n_ct == 0) next
-      pool <- pools[[ct]]
-      if (length(pool) == 0) next
-
-      if (n_ct > length(pool)) {
-        if (!replace_if_needed) n_ct <- length(pool)
-        picked_ct <- sample(pool, size = n_ct, replace = replace_if_needed)
-      } else {
-        picked_ct <- sample(pool, size = n_ct, replace = FALSE)
-      }
-      picked <- c(picked, picked_ct)
-    }
-
-    bulk_vec <- Matrix::rowSums(expr_mat[, picked, drop = FALSE])
-
-    # Optional: Poisson resample to a fixed sequencing depth (adds realistic noise)
-    if (!is.null(depth)) {
-      lib <- sum(bulk_vec)
-      if (lib > 0) {
-        lam <- as.numeric(bulk_vec) / lib * depth
-        bulk_vec <- rpois(length(lam), lambda = pmax(lam, 0))
-        names(bulk_vec) <- rownames(expr_mat)
-      }
-    }
-
-    bulk_list[[i]] <- bulk_vec
-    truth_n[, i] <- n_by_ct
-    truth_p[, i] <- n_by_ct / sum(n_by_ct)
-  }
-
-  bulk_counts <- do.call(cbind, bulk_list)
-  rownames(bulk_counts) <- rownames(expr_mat)
-  colnames(bulk_counts) <- colnames(truth_p)
-
-  list(bulk_counts = bulk_counts, truth_props = truth_p, truth_ncells = truth_n)
-}
-
-# 4) Simulate pseudo-bulk from TEST cells
-sim <- simulate_pseudobulk(
-  expr_mat        = expr_test,
-  cell_types_vec  = ct_test,
-  n_sims          = 80,
-  n_cells         = 20000,
-  alpha           = 1,     # smaller => sparser mixtures; larger => more even mixtures
-  depth           = 2e7,   # set NULL if you don't want Poisson depth noise
-  seed            = 2
+# Filter for genes that are highly correlated AND highly expressed
+target_candidates <- data.frame(
+  Gene = names(avg_tumor_program),
+  Expression = avg_tumor_program,
+  Correlation = correlations
 )
 
-bulk_counts_sim <- sim$bulk_counts
-truth_props     <- sim$truth_props
+# Look for high expression + high correlation (e.g., cor > 0.5)
+top_targets <- subset(target_candidates, Correlation > 0.3)
+top_targets <- top_targets[order(top_targets$Expression, decreasing = TRUE), ]
 
-# Make sure bulk genes match signatures
-bulk_counts_sim <- bulk_counts_sim[rownames(signatures_sim), , drop = FALSE]
-
-# 5) Deconvolve (GD vs EM)
-t_gd <- system.time(res_gd <- deconvolve_bulk(
-  signatures   = signatures_sim,
-  bulk_counts  = bulk_counts_sim,
-  gene_lengths = gene_lengths_sim,
-  gene_weights = gene_weights_sim,
-  max_iter     = 4000,
-  backend      = "ndarray"
-))
-
-t_em <- system.time(res_em <- deconvolve_bulk(
-  signatures   = signatures_sim,
-  bulk_counts  = bulk_counts_sim,
-  gene_lengths = gene_lengths_sim,
-  gene_weights = gene_weights_sim,
-  max_iter     = 4000,
-  method       = "em"
-))
-
-# 6) Scoring
-get_pred <- function(res, ct_levels) {
-  P <- as.matrix(res$proportions_with_intercept)
-  P <- P[rownames(P) %in% ct_levels, , drop = FALSE]  # drop intercept if present
-  P <- P[ct_levels, , drop = FALSE]
-  P <- pmax(P, 0)
-  P <- sweep(P, 2, colSums(P) + 1e-12, "/")           # renormalize to sum-to-1
-  P
-}
-
-score_preds <- function(pred, truth) {
-  stopifnot(identical(dim(pred), dim(truth)))
-  ns <- ncol(truth)
-  out <- data.frame(sample = colnames(truth),
-                    rmse = NA_real_, mae = NA_real_, tv = NA_real_, cor = NA_real_)
-  for (j in seq_len(ns)) {
-    p <- pred[, j]; t <- truth[, j]
-    out$rmse[j] <- sqrt(mean((p - t)^2))
-    out$mae[j]  <- mean(abs(p - t))
-    out$tv[j]   <- 0.5 * sum(abs(p - t))              # total variation distance
-    out$cor[j]  <- suppressWarnings(cor(p, t))        # may be NA if constant
-  }
-  out
-}
-
-pred_gd <- get_pred(res_gd, ct_levels)
-pred_em <- get_pred(res_em, ct_levels)
-
-scores_gd <- score_preds(pred_gd, truth_props); scores_gd$method <- "GD"
-scores_em <- score_preds(pred_em, truth_props); scores_em$method <- "EM"
-scores <- rbind(scores_gd, scores_em)
-
-# 7) Summaries + paired comparison (lower RMSE/MAE/TV is better; higher cor is better)
-summary_medians <- aggregate(cbind(rmse, mae, tv, cor) ~ method, data = scores,
-                             FUN = median, na.rm = TRUE)
-print(summary_medians)
-
-# Paired tests across simulated samples
-print(wilcox.test(scores_gd$rmse, scores_em$rmse, paired = TRUE))
-print(wilcox.test(scores_gd$mae,  scores_em$mae,  paired = TRUE))
-print(wilcox.test(scores_gd$tv,   scores_em$tv,   paired = TRUE))
-
-# Optional: quick visualization
-ggplot(scores, aes(x = method, y = rmse)) + geom_boxplot() + theme_classic()
-
-delta <- scores_gd$rmse - scores_em$rmse   # >0 => EM better
-summary(delta)
-mean(delta)
-median(delta)
-mean(delta > 0)  # fraction of mixtures where EM beats GD
-
-# Which mixtures favor GD?
-idx_gd_better <- which(delta < 0)
-length(idx_gd_better)
-
-# Are those mixtures sparser / rarer-cell heavy?
-sparsity <- apply(truth_props, 2, function(p) sum(p < 0.01))  # #types <1%
-data.frame(
-  sim = colnames(truth_props)[idx_gd_better],
-  delta = delta[idx_gd_better],
-  n_rare_lt1pct = sparsity[idx_gd_better],
-  max_prop = apply(truth_props[, idx_gd_better, drop=FALSE], 2, max)
-) |> head(10)
-
-# Plot delta vs sparsity
-plot(sparsity, delta, xlab = "# cell types <1%", ylab = "GD RMSE - EM RMSE")
-abline(h = 0, lty = 2)
-```
-
-```{r}
-data <- as.matrix(result_em$proportions_with_intercept)
-data <- data[,(grepl("LSC", colnames(data)) | grepl("rHSC", colnames(data)) | grepl("Blast", colnames(data)))]
-
-cols <- pals::glasbey(4)
-names(cols) <- unique(strsplit(colnames(data), "\\.") %>% sapply("[[", 2))
-cola <- HeatmapAnnotation(bulk = strsplit(colnames(data), "\\.") %>% sapply("[[", 2), col = list(bulk=cols))
-Heatmap(data[!rownames(data) %in% "Intercept",], top_annotation = cola, show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])), name = "EM Result")
-
-
-
-```
-
-## Load leukemia data
-
-save seurat object of leukemia count data for all
-
-```{r}
-seu <- qs2::qs_read(file.path("/Users/sfurlan/Library/CloudStorage/OneDrive-SharedLibraries-FredHutchCancerCenter/Furlan_Lab_2025 - General/ddata/leukemia_rna_atlas/cds/leukemia_atlas_seu.qs2"))
-bulk_counts <- as.matrix(GetAssayData(seu, layers = "counts"))
-
-gene_info <- read.table(system.file("extdata", "deconvolute", "geneWeights_withSymbol.tsv", package = "viewmastR"), header = TRUE)
-rownames(gene_info) <- gene_info$symbol
-
-counts <- GetAssayData(bmm, layer = "data")  # log-normalized
-cell_types <- bmm$CellType
-
-# Aggregate by cell type and create signatures
-signatures <- sapply(unique(cell_types), function(ct) {
-  cells <- which(cell_types == ct)
-  rowMeans(expm1(counts[, cells]))  # expm1 reverses log1p normalization
-})
-
-common_genes <- intersect(intersect(rownames(signatures), rownames(bulk_counts)), gene_info$symbol)
-signatures <- signatures[common_genes, ]
-bulk_counts <- bulk_counts[common_genes, ]
-
-# Get gene lengths
-gene_lengths <- gene_info[common_genes, "length"]
-gene_weights <- gene_info[common_genes, "weight"]
-
-dim(signatures)
-dim(bulk_counts)
-length(gene_lengths)
-
-
-leukemia_colors <- c(
-  # AML Group 1 - APL
-  "APL" = "#DC143C",                    # Crimson
-  
-  # AML Group 2 - Core binding factor
-  "RUNX1-RUNX1T1" = "#C62828",         # Dark red
-  "CBFB-MYH11" = "#722F37",            # Wine
-  "CEBPAmut" = "#FFA07A",              # Light salmon
-  
-  # AML Group 3 - NPM1
-  "NPM1mut" = "#FA8072",               # Salmon
-  
-  # AML Group 4 - Mixed group
-  "NUP98-NSD1" = "#FF1493",            # Deep pink
-  "DEK-NUP214" = "#D65076",            # Rose pink
-  "KMT2A_PTD" = "#DB7093",             # Pale violet red
-  "UBTF_ITD" = "#FFA500",              # Orange
-  "FLT3_ITD" = "#F08080",              # Light coral
-  
-  # AML Group 5 - KMT2A Fusion
-  "KMT2A_Fusion_AML" = "#C71585",      # Medium violet red
-  
-  # AML Group 6 - Fusion group
-  "NUP98-KDM5A" = "#FF69B4",           # Hot pink
-  "CBFA2T3-GLIS2" = "#C94C7F",         # Rose
-  "RBM15-MKL1" = "#FF8C00",            # Dark orange
-  
-  # AML Group 7 - Other/Chromosomal
-  "ETS-Fusion" = "#FF6347",            # Tomato
-  "TP53mut" = "#B71C1C",               # Very dark red
-  "monosomy7" = "#8B0000",             # Dark red/burgundy
-  "del5q" = "#800020",                 # Burgundy
-  "DNMT3Amut" = "#FFB6B6",             # Light pink
-  
-  # Other AML
-  "Rare_Fusion" = "#FF7F50",           # Coral
-  "Omics_Cold_AML" = "#FFE4E1",        # Misty rose
-  "Other" = "#FFEBEE",                 # Very light pink
-  
-  # B-ALL subtypes (Blue-Purple family)
-  "BCL2/MYC" = "#4169E1",
-  "CRLF2(non-Ph-like)" = "#6495ED",
-  "DUX4" = "#4682B4",
-  "ETV6-RUNX1" = "#5F9EA0",
-  "ETV6-RUNX1-like" = "#7AC5CD",
-  "High_hyperdiploid" = "#87CEEB",
-  "HLF" = "#191970",
-  "iAMP21" = "#6A5ACD",
-  "IKZF1_N159Y" = "#7B68EE",
-  "KMT2A_ALL_like" = "#9370DB",
-  "KMT2A_Fusion_ALL" = "#8A2BE2",
-  "Low_hyperdiploid" = "#BA55D3",
-  "Low_hypodiploid" = "#DA70D6",
-  "MEF2D" = "#DDA0DD",
-  "Near_haploid" = "#EE82EE",
-  "PAX5_P80R" = "#8B7EC8",
-  "PAX5alt" = "#9F8FBF",
-  "Ph" = "#4B0082",
-  "Ph-like" = "#6A0DAD",
-  "TCF3-PBX1" = "#5D3FD3",
-  "ZNF384" = "#7F00FF",
-  "NUTM1" = "#9400D3",                 # Dark violet (moved to B-ALL)
-  
-  # T-ALL subtypes (Green-Teal family)
-  "ZNF384-like" = "#8F00FF",
-  "BCL11B" = "#2E8B57",
-  "ETP-like" = "#3CB371",
-  "HOXA9_TCR" = "#66CDAA",
-  "KMT2A" = "#20B2AA",
-  "LMO2_γδ-like" = "#48D1CC",
-  "MLLT10" = "#40E0D0",
-  "NKX2-1" = "#00CED1",
-  "NKX2-5" = "#00BFBF",
-  "NUP214" = "#5F9EA0",
-  "NUP98" = "#008B8B",
-  "SPI1" = "#2F4F4F",
-  "STAG2&LMO2" = "#556B2F",
-  "TAL1_DP-like" = "#6B8E23",
-  "TAL1_αβ-like" = "#808000",
-  "TLX1" = "#8FBC8F",
-  "TLX3" = "#90EE90",
-  "TME-enriched" = "#98FB98",
-  
-  # DS (Bright Yellow-Orange)
-  "DS" = "#FFD700",
-  
-  # JMML (Amber-Brown)
-  "JMML" = "#D2691E",
-  
-  # MPN (Chocolate Brown)
-  "MPN" = "#8B4513",
-  
-  # TMD (Gold)
-  "TMD" = "#DAA520"
-)
-
+head(top_targets, 20)
 
 ```
 
 
-## Run leukemia subsets
-```{r}
-
-
-st<- levels(factor(seu@meta.data$leukemia_st))
-
-
-# subtype <- "NUP98-NSD1"
-# subtype <- "KMT2A_Fusion_AML"
-# reslist <- lapply(st, function(subtype){
-#   ind<-which(seu@meta.data$leukemia_st %in% subtype)
-#   if(length(ind)>1){
-#   return(deconvolve_bulk(
-#       signatures = signatures,
-#       bulk_counts = bulk_counts[,ind],
-#       gene_lengths = gene_lengths,
-#       gene_weights = gene_weights, 
-#       max_iter = 3000,
-#       method = "em"
-#     ))
-#   } else {
-#       return("not enough samples")
-#     }
-#   })
-
-# reslist <- lapply(st, function(subtype){
-#   ind<-which(seu@meta.data$leukemia_st %in% subtype)
-#   deconvolve_bulk(
-#       signatures = signatures,
-#       bulk_counts = bulk_counts[,ind],
-#       gene_lengths = gene_lengths,
-#       gene_weights = gene_weights, 
-#       max_iter = 3000,
-#       method = "em"
-#     )
-# })
-
-# names(reslist)<-st
-reslist <- qs2::qs_read(file = file.path("~/Desktop/leftover_reslist.qs2"))
-
-
-ind<-26
-st[ind]
-data <- as.matrix(reslist[[ind]]$proportions_with_intercept)
-Heatmap(data[!rownames(data) %in% "Intercept",], show_column_names = F, col = viridis(100), bottom_annotation = HeatmapAnnotation(Intercept = anno_points(data[rownames(data) %in% "Intercept",])), name = "GD Result")
-
-
-
-
-```
-
-## cluster
-```{r}
-
-
-
-props <- lapply(1:length(st), function (i){
-  if(length(which(seu$leukemia_subtype %in% st[i]))>1){
-    return(reslist[[i]]$proportions_with_intercept)
-  }
-  else (return(NULL))
-})
-
-#props <- props[!unlist(lapply(props, is.null))]
-props <- do.call(cbind, props)
-
-meta <- seu@meta.data[colnames(props),]
-
-seud <- CreateSeuratObject(counts=props, meta.data = meta)
-seud <- NormalizeData(seud)
-seud <- ScaleData(seud)
-VariableFeatures(seud)<-rownames(seud)
-seud <- RunPCA(seud)
-seud <- FindNeighbors(seud)
-ElbowPlot(seud, ndims = 50)
-seud <- RunUMAP(seud, dims = 1:50)
-
-
-g <- DimPlot(seud, group.by = "leukemia_subtype", cols = leukemia_colors, pt.size = 2)
-plotly::ggplotly(g)
-
-g <- DimPlot(seu, group.by = "leukemia_subtype", cols = leukemia_colors, pt.size = 2)
-plotly::ggplotly(g)
-
-
-rownames(seud)
-scCustomize::FeaturePlot_scCustom(seud, features = "NK")
-
-scCustomize::FeaturePlot_scCustom(seu, features = "NCAM1")
-```
-
-
-
-## find cell surface markers
-```{r}
-
-
-
-# qs2::qs_save(reslist, file = file.path("~/Desktop/leftover_reslist.qs2"))
-
-
-
-surface <- lapply(1:length(st), function (i){
-  if(length(which(seu$leukemia_subtype %in% st[i]))>1){
-    leftovers <- extract_leftovers(reslist[[i]], signatures, bulk_counts[,seu$leukemia_subtype %in% st[i]], thresh = 0.3)
-    return(filter_membrane_genes(leftovers$Gene)$kept_symbols)
-  } else {
-    return("not enough cases")
-  }
-})
-
-
-
-
-surface_safe <- pbmcapply::pbmclapply(1:length(st), function (i){
-  if(length(which(seu$leukemia_subtype %in% st[i]))>1){
-    leftovers <- extract_leftovers(reslist[[i]], signatures, bulk_counts[,seu$leukemia_subtype %in% st[i]], thresh = 0.3)
-    return(filter_membrane_genes(leftovers$Gene)$kept_symbols)
-  } else {
-    return("not enough cases")
-  }
-}, mc.cores = 16)
-
-
-
-ind <- 24
-st[ind]
-gene <- surface[[ind]][3]
-scCustomize::FeaturePlot_scCustom(seu, features = gene)
-scCustomize::FeaturePlot_scCustom(bmm, features = gene, raster = F)
-
-
-
-db_path <- ensure_hpa_data() 
-
-# Read the full dataset into memory once
-hpa_data <- readr::read_tsv(
-  db_path, 
-  col_types = readr::cols(
-    `Gene name` = readr::col_character(),
-    Tissue = readr::col_character(),
-    nTPM = readr::col_double()
-  ),
-  progress = FALSE
-)
-
-# Define strict safety constraints
-critical_organs <- c("heart", "lung", "liver", "kidney", "brain", "pancreas")
-safety_threshold <- 1.0
-
-surface_safe <- lapply(st, function(subtype) {
-  
-  # A. Validate Case Counts
-  # Using matching logic compatible with vector 'st' containing subtype names
-  cases <- which(seu$leukemia_subtype == subtype)
-  
-  if (length(cases) <= 1) {
-    return(NULL) # Return NULL for consistent list structure, not a string
-  }
-  
-  # B. Extract Candidates (Your custom function)
-  # Assuming 'extract_leftovers' returns a data.frame or list with a $Gene column
-  # We subset bulk_counts to the specific cases for this subtype
-  leftovers <- extract_leftovers(
-    reslist[[match(subtype, st)]], # Ensure index alignment
-    signatures, 
-    bulk_counts[, cases, drop = FALSE], 
-    thresh = 0.3
-  )
-  
-  if (is.null(leftovers) || nrow(leftovers) == 0) return(NULL)
-  
-  # C. Membrane Filter (Vectorized)
-  # We pass ALL genes at once. Much faster.
-  membrane_candidates <- filter_membrane_genes(
-    leftovers$Gene, 
-    mode = "surface_protein", 
-    return_table = FALSE
-  )
-  
-  if (length(membrane_candidates) == 0) return(NULL)
-  
-  # D. Batch Safety Check (The biggest speedup)
-  # Instead of checking 1-by-1, we filter the pre-loaded HPA table
-  
-  # 1. Find ANY entry for these genes in critical organs > threshold
-  unsafe_hits <- hpa_data %>%
-    dplyr::filter(
-      `Gene name` %in% membrane_candidates,
-      Tissue %in% critical_organs,
-      nTPM >= safety_threshold
-    ) %>%
-    dplyr::pull(`Gene name`) %>%
-    unique()
-  
-  # 2. Set difference: Candidates MINUS Unsafe
-  safe_targets <- setdiff(membrane_candidates, unsafe_hits)
-  
-  if (length(safe_targets) == 0) return(NULL)
-  
-  # E. Create Summary Table for this Subtype
-  # Calculate a simple specificity score for the safe ones
-  safe_stats <- hpa_data %>%
-    dplyr::filter(`Gene name` %in% safe_targets) %>%
-    dplyr::group_by(`Gene name`) %>%
-    dplyr::summarise(
-      max_healthy_tpm = max(nTPM),
-      max_healthy_tissue = Tissue[which.max(nTPM)],
-      specificity = max(nTPM) / sum(nTPM)
-    ) %>%
-    dplyr::arrange(max_healthy_tpm)
-    
-  return(safe_stats)
-})
-
-# Add names to the list for easy access later
-names(surface_safe) <- st
-
-safe <- do.call(rbind, surface_safe)
-genes <- unique(safe$`Gene name`)
-
-colMeans(seu@assays$RNA@layers$data[safe$`Gene name`,])
-
-gidx <- 41
-gene <- genes[gidx]
-scCustomize::FeaturePlot_scCustom(seu, features = gene)
-scCustomize::FeaturePlot_scCustom(bmm, features = gene,raster =  F)
-
-pdf("~/Desktop/surface.pdf", height = 4, width = 5)
-for(gene in genes){
-  plot(scCustomize::FeaturePlot_scCustom(seu, features = gene))
-}
-dev.off()
-
-scCustomize::FeaturePlot_scCustom(seu, features = "ASIC2",raster =  F)
-
-scCustomize::FeaturePlot_scCustom(bmm, features = "COL17A1",raster =  F)
-
-score_healthy_expression("DSC3")
-
-```
-
-```{r}
-scCustomize::FeaturePlot_scCustom(seu, features = top_targets[31,1])
-scCustomize::FeaturePlot_scCustom(bmm, features = top_targets[22,1], raster = F)
-
-
-
-
-scCustomize::FeaturePlot_scCustom(seu, features = top_targets[11,1])
-scCustomize::FeaturePlot_scCustom(bmm, features = top_targets[11,1], raster = F)
-scCustomize::FeaturePlot_scCustom(bmm, features = "TMIGD2", raster = F)
-scCustomize::FeaturePlot_scCustom(seu, features = "GPC3")
-
-
-DimPlot(seu, group.by = "leukemia_subtype", cols = leukemia_colors)
-scCustomize::FeaturePlot_scCustom(seu, features = "ASIC1")
-scCustomize::FeaturePlot_scCustom(bmm, features = "ASIC1", raster = F)
-scCustomize::FeaturePlot_scCustom(bmm, features = "PSD2", raster = F)
-```
 
 
 ```{r, include = F, eval = F}

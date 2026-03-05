@@ -415,6 +415,7 @@ if (is.null(query_celldata_col)) {
     return(list(
       object = query_cds,
       training_output = list(
+        labels = training_list$labels,
         logits = log_odds,
         probs = prob_mat,
         history = export_list$history,
