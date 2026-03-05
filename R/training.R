@@ -996,7 +996,7 @@ get_norm_counts <- function(cds, norm_method = c("log", "binary", "size_only", "
   if (is.null(software)) { stop("Software not found for input") }
   
   if (software == "monocle3") {
-    norm_mat <- SingleCellExperiment::counts(cds)
+    norm_mat <- SingleCellExperiment::counts(cds) %>% Seurat::as.sparse()
     if (norm_method == "none") {
       return(norm_mat)
     }

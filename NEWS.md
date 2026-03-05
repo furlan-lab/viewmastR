@@ -1,3 +1,10 @@
+# viewmastR v0.5.1
+
+* enhancement - option to return logits
+
+
+
+
 # viewmastR v0.5.0
 
 * enhancement - added support for bpcells, better handling of seurat v3, v4, v5 objects
