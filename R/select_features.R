@@ -506,7 +506,7 @@ calculate_feature_dispersion <- function(cds, q=3, id_tag="id",
     
     # Handle IDs
     if(software == "monocle3"){
-      fdat <- Biobase::fData(cds)
+      fdat <-fData(cds)
       df[[id_tag]] <- fdat[[id_tag]]
     } else {
       df[[id_tag]] <- rownames(cds)
