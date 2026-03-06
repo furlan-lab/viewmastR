@@ -120,7 +120,7 @@ viewmastR_infer <- function(query_cds,
   if (return_type == "object") {
     return(query_cds)
   } else {
-    return(list(object = query_cds, training_output = list(probs = prob_mat)))
+    return(list(object = query_cds, training_output = list(labels = labels, logits = log_odds, probs = prob_mat)))
   }
 }
 
