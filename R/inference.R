@@ -36,7 +36,8 @@ viewmastR_infer <- function(query_cds,
                                   return_probs = FALSE,
                                   return_type = c("object", "list"),
                                   batch_size = NULL,
-                                  threads = 1) {
+                                  threads = 1,
+                                  new_sm = F) {
   
   return_type <- match.arg(return_type)
   
@@ -90,21 +91,36 @@ viewmastR_infer <- function(query_cds,
   )
   
   # Process results
-  log_odds <- unlist(res$probs)
+  logits <- unlist(res$probs)
   
   if(is.null(labels)) labels <- 1:num_classes_model
   
-  log_odds_mat <- matrix(log_odds, ncol = num_classes_model, byrow = TRUE)
-  colnames(log_odds_mat) <- paste0("prob_", labels)
+  logits_mat <- matrix(logits, ncol = num_classes_model, byrow = TRUE)
+  colnames(logits_mat) <- paste0("logit_", labels)
   
-  # Softmax
-  softmax_rows <- function(mat) {
-    shifted <- mat - apply(mat, 1, max)
-    exp_shifted <- exp(shifted)
-    exp_shifted / rowSums(exp_shifted)
+  # # Softmax
+  # softmax_rows <- function(mat) {
+  #   shifted <- mat - apply(mat, 1, max)
+  #   exp_shifted <- exp(shifted)
+  #   exp_shifted / rowSums(exp_shifted)
+  # }
+  if(new_sm){
+    softmax_rows <- function(mat) {
+      shifted <- sweep(mat, 1, apply(mat, 1, max), "-")
+      exp_shifted <- exp(shifted)
+      sweep(exp_shifted, 1, rowSums(exp_shifted), "/")
+    }
+  } else {
+      softmax_rows <- function(mat) {
+        shifted <- mat - apply(mat, 1, max)
+        exp_shifted <- exp(shifted)
+        exp_shifted / rowSums(exp_shifted)
+      }
   }
+
   
-  prob_mat <- softmax_rows(log_odds_mat)
+  prob_mat <- softmax_rows(logits_mat)
+  colnames(prob_mat) <- paste0("prob_", labels)
   
   # Add results to object
   query_cds[[query_celldata_col]] <- labels[apply(prob_mat, 1, which.max)]
@@ -120,7 +136,14 @@ viewmastR_infer <- function(query_cds,
   if (return_type == "object") {
     return(query_cds)
   } else {
-    return(list(object = query_cds, training_output = list(labels = labels, logits = log_odds, probs = prob_mat)))
+      return(list(
+        object = query_cds,
+        training_output = list(
+          labels = labels,
+          logits = logits_mat,
+          probs = prob_mat
+        )
+      ))
   }
 }
 

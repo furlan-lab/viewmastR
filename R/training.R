@@ -172,7 +172,8 @@ viewmastR <- function(query_cds,
                       return_logits = FALSE,
                       return_type = c("object", "list"),
                       debug = FALSE,
-                      train_only = FALSE
+                      train_only = FALSE,
+                      new_sm = F
 ) {
   FUNC <- match.arg(FUNC)
   return_type <- match.arg(return_type)
@@ -391,10 +392,23 @@ if (is.null(query_celldata_col)) {
   colnames(log_odds) <- paste0("logit_", training_list$labels)
 
   # Softmax conversion
-  softmax_rows <- function(mat) {
-    shifted <- mat - apply(mat, 1, max)  # numerical stability
-    exp_shifted <- exp(shifted)
-    exp_shifted / rowSums(exp_shifted)
+  # softmax_rows <- function(mat) {
+  #   shifted <- mat - apply(mat, 1, max)  # numerical stability
+  #   exp_shifted <- exp(shifted)
+  #   exp_shifted / rowSums(exp_shifted)
+  # }
+  if(new_sm){
+    softmax_rows <- function(mat) {
+      shifted <- sweep(mat, 1, apply(mat, 1, max), "-")
+      exp_shifted <- exp(shifted)
+      sweep(exp_shifted, 1, rowSums(exp_shifted), "/")
+    }
+  } else {
+      softmax_rows <- function(mat) {
+        shifted <- mat - apply(mat, 1, max)
+        exp_shifted <- exp(shifted)
+        exp_shifted / rowSums(exp_shifted)
+      }
   }
 
   prob_mat <- softmax_rows(log_odds)
